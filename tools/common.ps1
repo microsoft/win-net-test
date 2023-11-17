@@ -114,6 +114,21 @@ function Get-CoreNetCiArtifactPath {
     return "$RootDir\artifacts\corenet-ci-$Commit\vm-setup\$Name"
 }
 
+function Get-ProjectBuildVersion {
+    $RootDir = Split-Path $PSScriptRoot -Parent
+    $ProjectBuildVersion = @{}
+    [xml]$ProjectVersion = Get-Content $RootDir\src\fnmp.props
+    $ProjectBuildVersion.Major = $ProjectVersion.Project.PropertyGroup.MajorVersion
+    $ProjectBuildVersion.Minor = $ProjectVersion.Project.PropertyGroup.MinorVersion
+    $ProjectBuildVersion.Patch = $ProjectVersion.Project.PropertyGroup.PatchVersion
+    return $ProjectBuildVersion;
+}
+
+function Get-ProjectBuildVersionString {
+    $ProjectVersion = Get-ProjectBuildVersion
+    return "$($ProjectVersion.Major).$($ProjectVersion.Minor).$($ProjectVersion.Patch)"
+}
+
 # Returns whether the script is running as a built-in administrator.
 function Test-Admin {
     return ([Security.Principal.WindowsPrincipal] `

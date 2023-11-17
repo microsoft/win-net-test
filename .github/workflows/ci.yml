@@ -1,0 +1,101 @@
+name: CI
+
+on:
+  push:
+    branches:
+    - main
+    - release/*
+  pull_request:
+    branches:
+    - main
+    - release/*
+
+concurrency:
+  # Cancel any workflow currently in progress for the same PR.
+  # Allow running concurrently with any other commits.
+  group: ci-${{ github.event.pull_request.number || github.sha }}
+  cancel-in-progress: true
+
+permissions: read-all
+
+jobs:
+  build:
+    name: Build
+    strategy:
+      fail-fast: false
+      matrix:
+        # Some driver developers are building for WS2022 LTSC targets using VS2019 +
+        # the Windows Server 2022 WDK, so validate our project still builds in that
+        # environment, in addition to the default WS 2022.
+        os: [2019, 2022]
+        configuration: [Release, Debug]
+        platform: [x64]
+    runs-on: windows-${{ matrix.os }}
+    steps:
+    - name: Checkout repository
+      uses: actions/checkout@b4ffde65f46336ab88eb53be808477a3936bae11
+      with:
+        submodules: recursive
+    - name: Setup MSBuild.exe
+      uses: microsoft/setup-msbuild@ab534842b4bdf384b8aaf93765dc6f721d9f5fab
+    - name: Prepare Machine
+      shell: PowerShell
+      run: tools/prepare-machine.ps1 -ForBuild -Verbose
+    - name: Nuget Restore
+      run: nuget.exe restore fnmp.sln -ConfigFile src/nuget.config
+    - name: Build
+      run: msbuild fnmp.sln /m /p:configuration=${{ matrix.configuration }} /p:platform=${{ matrix.platform }}
+    - name: Sign Binaries
+      shell: PowerShell
+      run: tools/sign.ps1 -Config ${{ matrix.configuration }} -Arch ${{ matrix.platform }}
+    - name: Upload Artifacts
+      if: matrix.os == 2022
+      uses: actions/upload-artifact@a8a3f3ad30e3422c9c7b888a15615d19a852ae32
+      with:
+        name: bin_${{ matrix.configuration }}_${{ matrix.platform }}
+        path: |
+          artifacts/bin
+          !artifacts/bin/**/*.ilk
+          !artifacts/bin/**/*.exp
+          !artifacts/bin/**/*.lastcodeanalysissucceeded
+    - name: Publish Symbols
+      uses: microsoft/action-publish-symbols@719c40b80e38bca806f3e01e1e3dd3a67554cd68
+      if: github.event_name != 'pull_request' && matrix.os == 2022
+      with:
+        accountName: mscodehub
+        symbolServiceUrl: 'https://artifacts.dev.azure.com'
+        personalAccessToken: ${{ secrets.AZDO_PAT }}
+
+  create_artifacts:
+    name: Create Release Artifacts
+    needs: build
+    strategy:
+      fail-fast: false
+      matrix:
+        configuration: [Release]
+        platform: [x64]
+    runs-on: windows-2022
+    steps:
+    - name: Checkout repository
+      uses: actions/checkout@b4ffde65f46336ab88eb53be808477a3936bae11
+    - name: Download Artifacts
+      uses: actions/download-artifact@9bc31d5ccc31df68ecc42ccf4149144866c47d8a
+      with:
+        name: bin_${{ matrix.configuration }}_${{ matrix.platform }}
+        path: artifacts/bin
+    - name: Create Dev Kit
+      shell: PowerShell
+      run: tools/create-devkit.ps1 -Config ${{ matrix.configuration }} -Platform ${{ matrix.platform }}
+    - name: Upload Release Artifacts
+      uses: actions/upload-artifact@a8a3f3ad30e3422c9c7b888a15615d19a852ae32
+      with:
+        name: release_artifacts_${{ matrix.configuration }}_${{ matrix.platform }}
+        path: |
+          artifacts/kit/**/*.zip
+
+  Complete:
+    name: Complete
+    needs: [build, functional_tests, downlevel_functional_tests, create_artifacts]
+    runs-on: windows-latest
+    steps:
+    - run: echo "CI succeeded"
