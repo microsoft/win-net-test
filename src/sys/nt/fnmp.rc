@@ -1,0 +1,15 @@
+//
+// Copyright (c) Microsoft Corporation.
+// Licensed under the MIT License.
+//
+
+#include <windows.h>
+#include <ntverp.h>
+
+#define VER_FILETYPE                VFT_DRV
+#define VER_FILESUBTYPE             VFT2_DRV_NETWORK
+#define VER_FILEDESCRIPTION_STR     "Functional Test Miniport Driver"
+#define VER_INTERNALNAME_STR        "fnmp.sys"
+#define VER_ORIGINALFILENAME_STR    "fnmp.sys"
+
+#include "common.ver"
