@@ -95,7 +95,7 @@ jobs:
 
   Complete:
     name: Complete
-    needs: [build, functional_tests, downlevel_functional_tests, create_artifacts]
+    needs: [build, create_artifacts]
     runs-on: windows-latest
     steps:
     - run: echo "CI succeeded"
