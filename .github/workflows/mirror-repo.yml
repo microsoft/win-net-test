@@ -26,4 +26,4 @@ jobs:
       env:
         AzDO_PAT: ${{ secrets.AZDO_PAT }}
         Source: ${{ github.ref }} # refs/heads/<branch_name> or refs/tags/<tag_name>
-      run: sync-mirror.ps1 -Source $env:Source
+      run: .github\workflows\sync-mirror.ps1 -Source $env:Source
