@@ -2,7 +2,7 @@
   <PropertyGroup>
     <!-- Defines the project version numbers -->
     <MajorVersion>0</MajorVersion>
-    <MinorVersion>0</MinorVersion>
+    <MinorVersion>1</MinorVersion>
     <PatchVersion>0</PatchVersion>
   </PropertyGroup>
   <!-- The set of (eventually?) supported configurations -->
