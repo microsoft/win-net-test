@@ -29,7 +29,7 @@ Remove-Item $DstPath -Recurse -ErrorAction Ignore
 New-Item -Path $DstPath -ItemType Directory > $null
 
 New-Item -Path $DstPath\bin -ItemType Directory > $null
-copy "artifacts\bin\$($Platform)_$($Config)\fnmp\*" $DstPath\bin
+copy -Recurse "artifacts\bin\$($Platform)_$($Config)\fnmp\" $DstPath\bin
 
 New-Item -Path $DstPath\symbols -ItemType Directory > $null
 copy "artifacts\bin\$($Platform)_$($Config)\fnmp.pdb"   $DstPath\symbols

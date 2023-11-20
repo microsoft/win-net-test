@@ -15,6 +15,12 @@ This script installs or uninstalls various FNMP components.
 .PARAMETER Uninstall
     Attempts to uninstall all FNMP components.
 
+.PARAMETER ArtifactsDir
+    Supplies an optional directory containing FNMP component artifacts.
+
+.PARAMETER LogsDir
+    Supplies an optional directory to output logs.
+
 #>
 
 param (
@@ -32,7 +38,13 @@ param (
 
     [Parameter(Mandatory = $false)]
     [ValidateSet("", "fnmp")]
-    [string]$Uninstall = ""
+    [string]$Uninstall = "",
+
+    [Parameter(Mandatory = $false)]
+    [string]$ArtifactsDir = "",
+
+    [Parameter(Mandatory = $false)]
+    [string]$LogsDir = ""
 )
 
 Set-StrictMode -Version 'Latest'
@@ -43,8 +55,12 @@ $RootDir = Split-Path $PSScriptRoot -Parent
 . $RootDir\tools\common.ps1
 
 # Important paths.
-$ArtifactsDir = "$RootDir\artifacts\bin\$($Arch)_$($Config)"
-$LogsDir = "$RootDir\artifacts\logs"
+if ([string]::IsNullOrEmpty($ArtifactsDir)) {
+    $ArtifactsDir = "$RootDir\artifacts\bin\$($Arch)_$($Config)"
+}
+if ([string]::IsNullOrEmpty($LogsDir)) {
+    $LogsDir = "$RootDir\artifacts\logs"
+}
 $DevCon = Get-CoreNetCiArtifactPath -Name "devcon.exe"
 $DswDevice = Get-CoreNetCiArtifactPath -Name "dswdevice.exe"
 
