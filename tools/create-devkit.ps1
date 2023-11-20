@@ -33,5 +33,6 @@ copy -Recurse inc\* $DstPath\include
 
 New-Item -Path $DstPath\lib -ItemType Directory > $null
 copy "artifacts\bin\$($Platform)_$($Config)\fnmpapi.lib" $DstPath\lib
+copy "artifacts\bin\$($Platform)_$($Config)\fnmpapi.pdb" $DstPath\lib
 
 Compress-Archive -DestinationPath "$DstPath\$Name.zip" -Path $DstPath\*
