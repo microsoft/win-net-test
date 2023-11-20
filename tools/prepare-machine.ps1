@@ -194,4 +194,6 @@ if ($Reboot -and !$NoReboot) {
 } elseif ($Reboot) {
     Write-Verbose "Reboot required."
     return @{"RebootRequired" = $true}
+} else {
+    return $null
 }
