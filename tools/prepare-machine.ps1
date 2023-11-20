@@ -88,11 +88,7 @@ function Setup-TestSigning {
         # Enable test signing.
         Write-Host "Enabling Test Signing. Reboot required!"
         bcdedit /set testsigning on | Write-Verbose
-        if ($NoReboot) {
-            Write-Warning "Enabling Test Signing requires reboot, but -NoReboot option specified."
-        } else {
-            $Script:Reboot = $true
-        }
+        $Script:Reboot = $true
     }
 }
 
@@ -196,5 +192,6 @@ if ($Reboot -and !$NoReboot) {
     Write-Host "Rebooting..."
     shutdown.exe /f /r /t 0
 } elseif ($Reboot) {
-    Write-Host "Reboot required."
+    Write-Verbose "Reboot required."
+    return @{"RebootRequired" = $true}
 }
