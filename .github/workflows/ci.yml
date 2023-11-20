@@ -79,6 +79,9 @@ jobs:
     - name: Create Dev Kit
       shell: PowerShell
       run: tools/create-devkit.ps1 -Config ${{ matrix.configuration }} -Platform ${{ matrix.platform }}
+    - name: Create Runtime Kit
+      shell: PowerShell
+      run: tools/create-runtimekit.ps1 -Config ${{ matrix.configuration }} -Platform ${{ matrix.platform }}
     - name: Upload Release Artifacts
       uses: actions/upload-artifact@a8a3f3ad30e3422c9c7b888a15615d19a852ae32
       with:

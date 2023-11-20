@@ -175,11 +175,12 @@ if ($Cleanup) {
             reg.exe add HKLM\System\CurrentControlSet\Control\CrashControl /v CrashDumpEnabled /d 1 /t REG_DWORD /f
             $Reboot = $true
         }
+
+        Setup-VcRuntime
+        Setup-VsTest
     }
 
     if ($ForTest) {
-        Setup-VcRuntime
-        Setup-VsTest
         Download-CoreNet-Deps
         Setup-TestSigning
         Install-Certs
