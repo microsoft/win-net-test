@@ -1,5 +1,5 @@
 #
-# Assembles a dev kit for FNMP client development.
+# Assembles a runtime kit for FNMP execution.
 # Code must be built before running this script.
 #
 
@@ -19,7 +19,7 @@ $ErrorActionPreference = 'Stop'
 $RootDir = Split-Path $PSScriptRoot -Parent
 . $RootDir\tools\common.ps1
 
-$Name = "fnmp-devkit-$Platform"
+$Name = "fnmp-runtime-$Platform"
 if ($Config -eq "Debug") {
     $Name += "-debug"
 }
@@ -28,10 +28,15 @@ $DstPath = "artifacts\kit\$Name"
 Remove-Item $DstPath -Recurse -ErrorAction Ignore
 New-Item -Path $DstPath -ItemType Directory > $null
 
-New-Item -Path $DstPath\include -ItemType Directory > $null
-copy -Recurse inc\* $DstPath\include
+New-Item -Path $DstPath\bin -ItemType Directory > $null
+copy "artifacts\bin\$($Platform)_$($Config)\fnmp\*" $DstPath\bin
 
-New-Item -Path $DstPath\lib -ItemType Directory > $null
-copy "artifacts\bin\$($Platform)_$($Config)\fnmpapi.lib" $DstPath\lib
+New-Item -Path $DstPath\symbols -ItemType Directory > $null
+copy "artifacts\bin\$($Platform)_$($Config)\fnmp.pdb"   $DstPath\symbols
+
+New-Item -Path $DstPath\tools -ItemType Directory > $null
+copy ".\tools\common.ps1" $DstPath\tools
+copy ".\tools\prepare-machine.ps1" $DstPath\tools
+copy ".\tools\setup.ps1" $DstPath\tools
 
 Compress-Archive -DestinationPath "$DstPath\$Name.zip" -Path $DstPath\*
