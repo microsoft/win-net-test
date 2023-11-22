@@ -9,9 +9,5 @@
 #include <windows.h>
 #include <ws2ipdef.h>
 #include <mstcpip.h>
-#include <pkthlp.h>
 #include <winternl.h>
-
-#ifndef STATUS_SUCCESS
-#define STATUS_SUCCESS 0
-#endif
+#include <pkthlp.h>
