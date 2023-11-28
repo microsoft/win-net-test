@@ -105,7 +105,7 @@ FnIoFilterNbl(
     ASSERT(Buffer != NULL);
 
     for (UINT32 Index = 0; Index < DataLength; Index++) {
-        if ((Buffer[Index] & Filter->Params.Mask[Index]) != Filter->Params.Pattern[Index]) {
+        if (((Buffer[Index] ^ Filter->Params.Pattern[Index]) & Filter->Params.Mask[Index])) {
             return FALSE;
         }
     }
