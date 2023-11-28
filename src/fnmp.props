@@ -3,7 +3,7 @@
     <!-- Defines the project version numbers -->
     <MajorVersion>0</MajorVersion>
     <MinorVersion>2</MinorVersion>
-    <PatchVersion>0</PatchVersion>
+    <PatchVersion>1</PatchVersion>
   </PropertyGroup>
   <!-- The set of (eventually?) supported configurations -->
   <ItemGroup Label="ProjectConfigurations">
