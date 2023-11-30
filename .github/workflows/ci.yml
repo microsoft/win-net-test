@@ -59,6 +59,58 @@ jobs:
           !artifacts/bin/**/*.exp
           !artifacts/bin/**/*.lastcodeanalysissucceeded
 
+  functional_tests:
+    name: Functional Tests
+    needs: build
+    env:
+      # For 'main' commits
+      fullRuntime: 50 # minutes.
+      fullIters: 10
+      # For PRs
+      prRuntime: 5 # minutes.
+      prIters: 1
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [2019, 2022]
+        configuration: [Release, Debug]
+        platform: [x64]
+    runs-on: windows-${{ matrix.os }}
+    steps:
+    - name: Checkout repository
+      uses: actions/checkout@b4ffde65f46336ab88eb53be808477a3936bae11
+      with:
+        sparse-checkout: tools
+    - name: Prepare Machine
+      shell: PowerShell
+      run: tools/prepare-machine.ps1 -ForFunctionalTest -NoReboot -Verbose
+    - name: Download Artifacts
+      uses: actions/download-artifact@9bc31d5ccc31df68ecc42ccf4149144866c47d8a
+      with:
+        name: bin_${{ matrix.configuration }}_${{ matrix.platform }}
+        path: artifacts/bin
+    - name: Run Tests (PR)
+      if: ${{ github.event_name == 'pull_request' }}
+      shell: PowerShell
+      timeout-minutes: ${{ env.prRuntime }}
+      run: tools/functional.ps1 -Verbose -Config ${{ matrix.configuration }} -Arch ${{ matrix.platform }} -Iterations ${{ env.prIters }} -Timeout ${{ env.prRuntime }}
+    - name: Run Tests (main)
+      if: ${{ github.event_name != 'pull_request' }}
+      shell: PowerShell
+      timeout-minutes: ${{ env.fullRuntime }}
+      run: tools/functional.ps1 -Verbose -Config ${{ matrix.configuration }} -Arch ${{ matrix.platform }} -Iterations ${{ env.fullIters }} -Timeout ${{ env.fullRuntime }}
+    - name: Convert Logs
+      if: ${{ always() }}
+      timeout-minutes: 5
+      shell: PowerShell
+      run: tools/log.ps1 -Convert -Name fnmpfunc* -Verbose -Config ${{ matrix.configuration }} -Arch ${{ matrix.platform }}
+    - name: Upload Logs
+      uses: actions/upload-artifact@a8a3f3ad30e3422c9c7b888a15615d19a852ae32
+      if: ${{ always() }}
+      with:
+        name: logs_func_win${{ matrix.windows }}_${{ matrix.configuration }}_${{ matrix.platform }}
+        path: artifacts/logs
+
   create_artifacts:
     name: Create Release Artifacts
     needs: build
