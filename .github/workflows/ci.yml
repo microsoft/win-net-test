@@ -63,12 +63,12 @@ jobs:
     name: Functional Tests
     needs: build
     env:
-      # For 'main' commits
-      fullRuntime: 50 # minutes.
-      fullIters: 10
       # For PRs
-      prRuntime: 5 # minutes.
+      prRuntime: 5 # Minutes. Update timeout-minutes with any changes.
       prIters: 1
+      # For 'main' commits
+      fullRuntime: 50 # Minutes. Update timeout-minutes with any changes.
+      fullIters: 10
     strategy:
       fail-fast: false
       matrix:
@@ -92,12 +92,12 @@ jobs:
     - name: Run Tests (PR)
       if: ${{ github.event_name == 'pull_request' }}
       shell: PowerShell
-      timeout-minutes: ${{ env.prRuntime }}
+      timeout-minutes: 10 # Intentionally 5 more than the test timeout to allow for watchdog timeout processing.
       run: tools/functional.ps1 -Verbose -Config ${{ matrix.configuration }} -Arch ${{ matrix.platform }} -Iterations ${{ env.prIters }} -Timeout ${{ env.prRuntime }}
     - name: Run Tests (main)
       if: ${{ github.event_name != 'pull_request' }}
       shell: PowerShell
-      timeout-minutes: ${{ env.fullRuntime }}
+      timeout-minutes: 55 # Intentionally 5 more than the test timeout to allow for watchdog timeout processing.
       run: tools/functional.ps1 -Verbose -Config ${{ matrix.configuration }} -Arch ${{ matrix.platform }} -Iterations ${{ env.fullIters }} -Timeout ${{ env.fullRuntime }}
     - name: Convert Logs
       if: ${{ always() }}

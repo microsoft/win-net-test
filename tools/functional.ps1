@@ -12,8 +12,18 @@ This script runs the FNMP functional tests.
 .PARAMETER TestCaseFilter
     The test case filter passed to VSTest.
 
+.PARAMETER ListTestCases
+    Lists all available test cases.
+
 .PARAMETER Iterations
     The number of times to run the test suite.
+
+.PARAMETER Timeout
+    Timeout in minutes. If multiple iterations are specified, the timeout provided is divided by the
+    iterations and a watchdog is armed for each iteration.
+
+.PARAMETER TestBinaryPath
+    Path to the functional test binary (the binary passed to VSTest).
 
 #>
 
