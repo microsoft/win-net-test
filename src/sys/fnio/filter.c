@@ -82,26 +82,17 @@ FnIoDeleteFilter(
     ExFreePoolWithTag(Filter, POOLTAG_FILTER);
 }
 
+static
 _IRQL_requires_max_(DISPATCH_LEVEL)
 BOOLEAN
-FnIoFilterNbl(
+FnIoFilterNb(
     _In_ DATA_FILTER *Filter,
-    _In_ NET_BUFFER_LIST *Nbl
+    _In_ NET_BUFFER *NetBuffer
     )
 {
-    NET_BUFFER *NetBuffer = NET_BUFFER_LIST_FIRST_NB(Nbl);
     UINT32 DataLength = min(NET_BUFFER_DATA_LENGTH(NetBuffer), Filter->Params.Length);
-    UCHAR *Buffer;
-    PROCESSOR_NUMBER ProcessorNumber;
+    UCHAR *Buffer = NdisGetDataBuffer(NetBuffer, DataLength, Filter->ContiguousBuffer, 1, 0);
 
-    if (NetBuffer->Next != NULL) {
-        //
-        // FNMP does not yet support multiple NBs per NBL.
-        //
-        return FALSE;
-    }
-
-    Buffer = NdisGetDataBuffer(NetBuffer, DataLength, Filter->ContiguousBuffer, 1, 0);
     ASSERT(Buffer != NULL);
 
     for (UINT32 Index = 0; Index < DataLength; Index++) {
@@ -110,11 +101,36 @@ FnIoFilterNbl(
         }
     }
 
-    KeGetCurrentProcessorNumberEx(&ProcessorNumber);
-    NBL_PROCESSOR_NUMBER(Nbl) = ProcessorNumber;
-    NdisAppendSingleNblToNblCountedQueue(&Filter->NblQueue, Nbl);
-
     return TRUE;
+}
+
+_IRQL_requires_max_(DISPATCH_LEVEL)
+BOOLEAN
+FnIoFilterNbl(
+    _In_ DATA_FILTER *Filter,
+    _In_ NET_BUFFER_LIST *Nbl
+    )
+{
+    NET_BUFFER *NetBuffer = NET_BUFFER_LIST_FIRST_NB(Nbl);
+    PROCESSOR_NUMBER ProcessorNumber;
+    BOOLEAN MatchAnyNbs = FALSE;
+
+    ASSERT(NetBuffer != NULL);
+
+    do {
+        if (FnIoFilterNb(Filter, NetBuffer)) {
+            MatchAnyNbs = TRUE;
+            break;
+        }
+    } while ((NetBuffer = NetBuffer->Next) != NULL);
+
+    if (MatchAnyNbs) {
+        KeGetCurrentProcessorNumberEx(&ProcessorNumber);
+        NBL_PROCESSOR_NUMBER(Nbl) = ProcessorNumber;
+        NdisAppendSingleNblToNblCountedQueue(&Filter->NblQueue, Nbl);
+    }
+
+    return MatchAnyNbs;
 }
 
 _IRQL_requires_max_(DISPATCH_LEVEL)
@@ -122,6 +138,7 @@ NTSTATUS
 FnIoGetFilteredFrame(
     _In_ DATA_FILTER *Filter,
     _In_ UINT32 Index,
+    _In_ UINT32 SubIndex,
     _In_ IRP *Irp,
     _In_ IO_STACK_LOCATION *IrpSp
     )
@@ -159,6 +176,23 @@ FnIoGetFilteredFrame(
     }
 
     NetBuffer = NET_BUFFER_LIST_FIRST_NB(Nbl);
+
+    for (UINT32 NbIndex = 0; NbIndex < SubIndex; NbIndex++) {
+        if (NetBuffer == NULL) {
+            Status = STATUS_NOT_FOUND;
+            goto Exit;
+        }
+
+        //
+        // Only count NBs that match the filter.
+        //
+        if (!FnIoFilterNb(Filter, NetBuffer)) {
+            NbIndex--;
+        }
+
+        NetBuffer = NetBuffer->Next;
+    }
+
     BufferCount = 0;
     OutputSize = sizeof(*Frame);
 

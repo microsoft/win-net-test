@@ -256,7 +256,7 @@ SharedIrpTxGetFrame(
         goto Exit;
     }
 
-    Status = FnIoGetFilteredFrame(Tx->DataFilter, In->Index, Irp, IrpSp);
+    Status = FnIoGetFilteredFrame(Tx->DataFilter, In->Index, In->SubIndex, Irp, IrpSp);
 
 Exit:
 

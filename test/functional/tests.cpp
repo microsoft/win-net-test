@@ -392,17 +392,19 @@ MpTxGetFrame(
     _In_ const wil::unique_handle& Handle,
     _In_ UINT32 Index,
     _Inout_ UINT32 *FrameBufferLength,
-    _Out_opt_ DATA_FRAME *Frame
+    _Out_opt_ DATA_FRAME *Frame,
+    _In_opt_ UINT32 SubIndex = 0
     )
 {
-    return FnMpTxGetFrame(Handle.get(), Index, FrameBufferLength, Frame);
+    return FnMpTxGetFrame(Handle.get(), Index, SubIndex, FrameBufferLength, Frame);
 }
 
 static
 unique_malloc_ptr<DATA_FRAME>
 MpTxAllocateAndGetFrame(
     _In_ const wil::unique_handle& Handle,
-    _In_ UINT32 Index
+    _In_ UINT32 Index,
+    _In_opt_ UINT32 SubIndex = 0
     )
 {
     unique_malloc_ptr<DATA_FRAME> FrameBuffer;
@@ -414,7 +416,7 @@ MpTxAllocateAndGetFrame(
     // Poll FNMP for TX: the driver doesn't support overlapped IO.
     //
     do {
-        Result = MpTxGetFrame(Handle, Index, &FrameLength, NULL);
+        Result = MpTxGetFrame(Handle, Index, &FrameLength, NULL, SubIndex);
         if (Result != HRESULT_FROM_WIN32(ERROR_NOT_FOUND)) {
             break;
         }
@@ -425,7 +427,7 @@ MpTxAllocateAndGetFrame(
     FrameBuffer.reset((DATA_FRAME *)malloc(FrameLength));
     TEST_TRUE(FrameBuffer != NULL);
 
-    TEST_HRESULT(MpTxGetFrame(Handle, Index, &FrameLength, FrameBuffer.get()));
+    TEST_HRESULT(MpTxGetFrame(Handle, Index, &FrameLength, FrameBuffer.get(), SubIndex));
 
     return FrameBuffer;
 }
@@ -635,12 +637,13 @@ BasicTx()
     auto UdpSocket = CreateUdpSocket(AF_INET, NULL, &LocalPort);
     auto SharedMp = MpOpenShared(FnMpIf.GetIfIndex());
 
-    UCHAR UdpPayload[] = "BasicTx";
-    UCHAR Pattern[UDP_HEADER_BACKFILL(AF_INET) + sizeof(UdpPayload)];
-    UCHAR Mask[UDP_HEADER_BACKFILL(AF_INET) + sizeof(UdpPayload)];
+    UCHAR UdpPayload[] = "BasicTx0BasicTx1";
+    UCHAR Pattern[UDP_HEADER_BACKFILL(AF_INET) + (sizeof(UdpPayload) - 1) / 2];
+    UCHAR Mask[sizeof(Pattern)];
+    UINT32 ExpectedUdpPayloadSize = sizeof(UdpPayload) / 2;
 
     RtlZeroMemory(Pattern, sizeof(Pattern));
-    RtlCopyMemory(Pattern + UDP_HEADER_BACKFILL(AF_INET), UdpPayload, sizeof(UdpPayload));
+    RtlCopyMemory(Pattern + UDP_HEADER_BACKFILL(AF_INET), UdpPayload, (sizeof(UdpPayload) - 1) / 2);
 
     RtlZeroMemory(Mask, sizeof(Mask));
     for (int i = UDP_HEADER_BACKFILL(AF_INET); i < sizeof(Mask); i++) {
@@ -651,6 +654,10 @@ BasicTx()
 
     SOCKADDR_STORAGE RemoteAddr;
     SetSockAddr(FNMP_NEIGHBOR_IPV4_ADDRESS, 1234, AF_INET, &RemoteAddr);
+    TEST_EQUAL(
+        (int)NO_ERROR,
+        WSASetUdpSendMessageSize(UdpSocket.get(), ExpectedUdpPayloadSize));
+
     TEST_EQUAL(sizeof(UdpPayload), sendto(UdpSocket.get(), (PCHAR)UdpPayload, sizeof(UdpPayload), 0, (PSOCKADDR)&RemoteAddr, sizeof(RemoteAddr)));
 
     auto MpTxFrame = MpTxAllocateAndGetFrame(SharedMp, 0);
@@ -663,15 +670,46 @@ BasicTx()
 
     TEST_EQUAL(2, MpTxFrame->BufferCount);
     TEST_EQUAL(MpTxFrame->Buffers[0].DataLength, UDP_HEADER_BACKFILL(AF_INET));
-    TEST_EQUAL(MpTxFrame->Buffers[1].DataLength, sizeof(UdpPayload));
+    TEST_EQUAL(MpTxFrame->Buffers[1].DataLength, ExpectedUdpPayloadSize);
 
     CONST DATA_BUFFER *MpTxBuffer = &MpTxFrame->Buffers[1];
     TEST_TRUE(
         RtlEqualMemory(
             UdpPayload, MpTxBuffer->VirtualAddress + MpTxBuffer->DataOffset,
-            sizeof(UdpPayload)));
+            ExpectedUdpPayloadSize));
+
+    MpTxFrame = MpTxAllocateAndGetFrame(SharedMp, 0, 1);
+
+    //
+    // The following assumes the following MDL structure formed by the UDP TX path.
+    //     MDL #1: Ethernet header + IP header + UDP header
+    //     MDL #1: UDP payload
+    //
+
+    TEST_EQUAL(2, MpTxFrame->BufferCount);
+    TEST_EQUAL(MpTxFrame->Buffers[0].DataLength, UDP_HEADER_BACKFILL(AF_INET));
+    TEST_EQUAL(MpTxFrame->Buffers[1].DataLength, ExpectedUdpPayloadSize);
+
+    MpTxBuffer = &MpTxFrame->Buffers[1];
+    TEST_TRUE(
+        RtlEqualMemory(
+            UdpPayload + ExpectedUdpPayloadSize,
+            MpTxBuffer->VirtualAddress + MpTxBuffer->DataOffset,
+            ExpectedUdpPayloadSize));
+
+    UINT32 FrameLength = 0;
+    TEST_EQUAL(
+        HRESULT_FROM_WIN32(ERROR_NOT_FOUND),
+        MpTxGetFrame(SharedMp, 0, &FrameLength, NULL, 3));
 
     MpTxDequeueFrame(SharedMp, 0);
+    TEST_EQUAL(
+        HRESULT_FROM_WIN32(ERROR_NOT_FOUND),
+        MpTxGetFrame(SharedMp, 0, &FrameLength, NULL, 0));
+    TEST_EQUAL(
+        HRESULT_FROM_WIN32(ERROR_NOT_FOUND),
+        MpTxGetFrame(SharedMp, 0, &FrameLength, NULL, 1));
+
     MpTxFlush(SharedMp);
 }
 

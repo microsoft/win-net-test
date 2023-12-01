@@ -105,6 +105,7 @@ HRESULT
 FnMpTxGetFrame(
     _In_ HANDLE Handle,
     _In_ UINT32 FrameIndex,
+    _In_ UINT32 FrameSubIndex,
     _Inout_ UINT32 *FrameBufferLength,
     _Out_opt_ DATA_FRAME *Frame
     )
@@ -113,10 +114,11 @@ FnMpTxGetFrame(
     HRESULT Result;
 
     //
-    // Returns the contents of a captured NBL.
+    // Returns the contents of a captured NBL (Index) and NB (SubIndex).
     //
 
     In.Index = FrameIndex;
+    In.SubIndex = FrameSubIndex;
 
     Result =
         FnMpIoctl(
