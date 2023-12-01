@@ -636,11 +636,13 @@ BasicTx()
     UINT16 LocalPort;
     auto UdpSocket = CreateUdpSocket(AF_INET, NULL, &LocalPort);
     auto SharedMp = MpOpenShared(FnMpIf.GetIfIndex());
+    BOOLEAN Uso = TRUE;
 
     UCHAR UdpPayload[] = "BasicTx0BasicTx1";
     UCHAR Pattern[UDP_HEADER_BACKFILL(AF_INET) + (sizeof(UdpPayload) - 1) / 2];
     UCHAR Mask[sizeof(Pattern)];
     UINT32 ExpectedUdpPayloadSize = sizeof(UdpPayload) / 2;
+    UINT32 SendSize = sizeof(UdpPayload);
 
     RtlZeroMemory(Pattern, sizeof(Pattern));
     RtlCopyMemory(Pattern + UDP_HEADER_BACKFILL(AF_INET), UdpPayload, (sizeof(UdpPayload) - 1) / 2);
@@ -654,11 +656,14 @@ BasicTx()
 
     SOCKADDR_STORAGE RemoteAddr;
     SetSockAddr(FNMP_NEIGHBOR_IPV4_ADDRESS, 1234, AF_INET, &RemoteAddr);
-    TEST_EQUAL(
-        (int)NO_ERROR,
-        WSASetUdpSendMessageSize(UdpSocket.get(), ExpectedUdpPayloadSize));
 
-    TEST_EQUAL(sizeof(UdpPayload), sendto(UdpSocket.get(), (PCHAR)UdpPayload, sizeof(UdpPayload), 0, (PSOCKADDR)&RemoteAddr, sizeof(RemoteAddr)));
+    if (SOCKET_ERROR == WSASetUdpSendMessageSize(UdpSocket.get(), ExpectedUdpPayloadSize)) {
+        TEST_EQUAL(WSAEOPNOTSUPP, WSAGetLastError());
+        Uso = FALSE;
+        SendSize = ExpectedUdpPayloadSize;
+    }
+
+    TEST_EQUAL(sizeof(UdpPayload), sendto(UdpSocket.get(), (PCHAR)UdpPayload, SendSize, 0, (PSOCKADDR)&RemoteAddr, sizeof(RemoteAddr)));
 
     auto MpTxFrame = MpTxAllocateAndGetFrame(SharedMp, 0);
 
@@ -678,24 +683,20 @@ BasicTx()
             UdpPayload, MpTxBuffer->VirtualAddress + MpTxBuffer->DataOffset,
             ExpectedUdpPayloadSize));
 
-    MpTxFrame = MpTxAllocateAndGetFrame(SharedMp, 0, 1);
+    if (Uso) {
+        MpTxFrame = MpTxAllocateAndGetFrame(SharedMp, 0, 1);
 
-    //
-    // The following assumes the following MDL structure formed by the UDP TX path.
-    //     MDL #1: Ethernet header + IP header + UDP header
-    //     MDL #1: UDP payload
-    //
+        TEST_EQUAL(2, MpTxFrame->BufferCount);
+        TEST_EQUAL(MpTxFrame->Buffers[0].DataLength, UDP_HEADER_BACKFILL(AF_INET));
+        TEST_EQUAL(MpTxFrame->Buffers[1].DataLength, ExpectedUdpPayloadSize);
 
-    TEST_EQUAL(2, MpTxFrame->BufferCount);
-    TEST_EQUAL(MpTxFrame->Buffers[0].DataLength, UDP_HEADER_BACKFILL(AF_INET));
-    TEST_EQUAL(MpTxFrame->Buffers[1].DataLength, ExpectedUdpPayloadSize);
-
-    MpTxBuffer = &MpTxFrame->Buffers[1];
-    TEST_TRUE(
-        RtlEqualMemory(
-            UdpPayload + ExpectedUdpPayloadSize,
-            MpTxBuffer->VirtualAddress + MpTxBuffer->DataOffset,
-            ExpectedUdpPayloadSize));
+        MpTxBuffer = &MpTxFrame->Buffers[1];
+        TEST_TRUE(
+            RtlEqualMemory(
+                UdpPayload + ExpectedUdpPayloadSize,
+                MpTxBuffer->VirtualAddress + MpTxBuffer->DataOffset,
+                ExpectedUdpPayloadSize));
+    }
 
     UINT32 FrameLength = 0;
     TEST_EQUAL(
