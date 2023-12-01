@@ -128,7 +128,6 @@ FnIoFilterNbl(
         KeGetCurrentProcessorNumberEx(&ProcessorNumber);
         NBL_PROCESSOR_NUMBER(Nbl) = ProcessorNumber;
         NdisAppendSingleNblToNblCountedQueue(&Filter->NblQueue, Nbl);
-
     }
 
     return MatchAnyNbs;
