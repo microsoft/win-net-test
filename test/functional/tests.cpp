@@ -658,12 +658,12 @@ BasicTx()
     SetSockAddr(FNMP_NEIGHBOR_IPV4_ADDRESS, 1234, AF_INET, &RemoteAddr);
 
     if (SOCKET_ERROR == WSASetUdpSendMessageSize(UdpSocket.get(), ExpectedUdpPayloadSize)) {
-        TEST_EQUAL(WSAEOPNOTSUPP, WSAGetLastError());
+        TEST_EQUAL(WSAEINVAL, WSAGetLastError());
         Uso = FALSE;
         SendSize = ExpectedUdpPayloadSize;
     }
 
-    TEST_EQUAL(sizeof(UdpPayload), sendto(UdpSocket.get(), (PCHAR)UdpPayload, SendSize, 0, (PSOCKADDR)&RemoteAddr, sizeof(RemoteAddr)));
+    TEST_EQUAL((int)SendSize, sendto(UdpSocket.get(), (PCHAR)UdpPayload, SendSize, 0, (PSOCKADDR)&RemoteAddr, sizeof(RemoteAddr)));
 
     auto MpTxFrame = MpTxAllocateAndGetFrame(SharedMp, 0);
 
