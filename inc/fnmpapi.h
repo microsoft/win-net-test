@@ -48,6 +48,7 @@ HRESULT
 FnMpTxGetFrame(
     _In_ HANDLE Handle,
     _In_ UINT32 FrameIndex,
+    _In_ UINT32 FrameSubIndex,
     _Inout_ UINT32 *FrameBufferLength,
     _Out_opt_ DATA_FRAME *Frame
     );

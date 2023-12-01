@@ -89,6 +89,7 @@ typedef struct _DATA_FILTER_IN {
 
 typedef struct _DATA_GET_FRAME_IN {
     UINT32 Index;
+    UINT32 SubIndex;
 } DATA_GET_FRAME_IN;
 
 //
