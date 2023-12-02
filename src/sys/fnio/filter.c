@@ -176,22 +176,26 @@ FnIoGetFilteredFrame(
     }
 
     NetBuffer = NET_BUFFER_LIST_FIRST_NB(Nbl);
+    ASSERT(NetBuffer != NULL);
 
-    for (UINT32 NbIndex = 0; NbIndex < SubIndex; NbIndex++) {
+    do {
+        //
+        // Only count NBs that match the filter.
+        //
+        if (FnIoFilterNb(Filter, NetBuffer)) {
+            if (SubIndex == 0) {
+                break;
+            } else {
+                SubIndex--;
+            }
+        }
+
+        NetBuffer = NetBuffer->Next;
         if (NetBuffer == NULL) {
             Status = STATUS_NOT_FOUND;
             goto Exit;
         }
-
-        //
-        // Only count NBs that match the filter.
-        //
-        if (!FnIoFilterNb(Filter, NetBuffer)) {
-            NbIndex--;
-        }
-
-        NetBuffer = NetBuffer->Next;
-    }
+    } while (TRUE);
 
     BufferCount = 0;
     OutputSize = sizeof(*Frame);

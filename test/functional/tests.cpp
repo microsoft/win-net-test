@@ -639,13 +639,13 @@ BasicTx()
     BOOLEAN Uso = TRUE;
 
     UCHAR UdpPayload[] = "BasicTx0BasicTx1";
-    UCHAR Pattern[UDP_HEADER_BACKFILL(AF_INET) + (sizeof(UdpPayload) - 1) / 2];
+    UCHAR Pattern[UDP_HEADER_BACKFILL(AF_INET) + sizeof(UdpPayload) / 2 - 1];
     UCHAR Mask[sizeof(Pattern)];
     UINT32 ExpectedUdpPayloadSize = sizeof(UdpPayload) / 2;
     UINT32 SendSize = sizeof(UdpPayload);
 
     RtlZeroMemory(Pattern, sizeof(Pattern));
-    RtlCopyMemory(Pattern + UDP_HEADER_BACKFILL(AF_INET), UdpPayload, (sizeof(UdpPayload) - 1) / 2);
+    RtlCopyMemory(Pattern + UDP_HEADER_BACKFILL(AF_INET), UdpPayload, sizeof(UdpPayload) / 2 - 1);
 
     RtlZeroMemory(Mask, sizeof(Mask));
     for (int i = UDP_HEADER_BACKFILL(AF_INET); i < sizeof(Mask); i++) {
