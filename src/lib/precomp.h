@@ -9,7 +9,6 @@
 #include <winioctl.h>
 #include <winternl.h>
 #include <ifdef.h>
-#include <fnndisuser.h>
 #include <fnmpapi.h>
 #include <fnmpioctl.h>
 #include <fnmprtl.h>

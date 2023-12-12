@@ -13,7 +13,15 @@
 EXTERN_C_START
 
 #ifndef KERNEL_MODE
-#include <fnndisuser.h>
+//
+// This header depends on the following headers included in the following order.
+// However, it is most likely too late to include these headers by the time this
+// header is included.
+//
+#include <windows.h>
+#include <winsock2.h>
+#include <ws2ipdef.h>
+#include <iphlpapi.h>
 #endif
 
 typedef struct _DATA_BUFFER {
