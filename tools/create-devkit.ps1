@@ -31,8 +31,16 @@ New-Item -Path $DstPath -ItemType Directory > $null
 New-Item -Path $DstPath\include -ItemType Directory > $null
 copy -Recurse inc\* $DstPath\include
 
+# Fix up arch and config to match build conventions.
+$WinArch = $Platform
+$WinConfig = $Config
+if ($Platform -eq "x64") { $WinArch = "amd64" }
+else                     { $WinArch = "arm64" }
+if ($Config -eq "Debug") { $WinConfig = "chk" }
+else                     { $WinConfig = "fre" }
+
 New-Item -Path $DstPath\lib -ItemType Directory > $null
-copy "build\bin\$($Platform)_$($Config)\fnmpapi.lib" $DstPath\lib
-copy "build\bin\$($Platform)_$($Config)\fnmpapi.pdb" $DstPath\lib
+copy "build\bin\$($WinArch)$($WinConfig)\fnmpapi.lib" $DstPath\lib
+copy "build\bin\$($WinArch)$($WinConfig)\fnmpapi.pdb" $DstPath\lib
 
 Compress-Archive -DestinationPath "$DstPath\$Name.zip" -Path $DstPath\*

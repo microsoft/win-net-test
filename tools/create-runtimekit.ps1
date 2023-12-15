@@ -28,11 +28,19 @@ $DstPath = "build\kit\$Name"
 Remove-Item $DstPath -Recurse -ErrorAction Ignore
 New-Item -Path $DstPath -ItemType Directory > $null
 
+# Fix up arch and config to match build conventions.
+$WinArch = $Platform
+$WinConfig = $Config
+if ($Platform -eq "x64") { $WinArch = "amd64" }
+else                     { $WinArch = "arm64" }
+if ($Config -eq "Debug") { $WinConfig = "chk" }
+else                     { $WinConfig = "fre" }
+
 New-Item -Path $DstPath\bin -ItemType Directory > $null
-copy -Recurse "build\bin\$($Platform)_$($Config)\fnmp\" $DstPath\bin
+copy -Recurse "build\bin\$($WinArch)$($WinConfig)\fnmp\" $DstPath\bin
 
 New-Item -Path $DstPath\symbols -ItemType Directory > $null
-copy "build\bin\$($Platform)_$($Config)\fnmp.pdb"   $DstPath\symbols
+copy "build\bin\$($WinArch)$($WinConfig)\fnmp.pdb"   $DstPath\symbols
 
 New-Item -Path $DstPath\tools -ItemType Directory > $null
 copy ".\tools\common.ps1" $DstPath\tools

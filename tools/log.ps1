@@ -77,7 +77,15 @@ $ErrorActionPreference = 'Stop'
 $RootDir = Split-Path $PSScriptRoot -Parent
 . $RootDir\tools\common.ps1
 
-$ArtifactsDir = "$RootDir\build\bin\$($Arch)_$($Config)"
+# Fix up arch and config to match build conventions.
+$WinArch = $Arch
+$WinConfig = $Config
+if ($Arch -eq "x64")     { $WinArch = "amd64" }
+else                     { $WinArch = "arm64" }
+if ($Config -eq "Debug") { $WinConfig = "chk" }
+else                     { $WinConfig = "fre" }
+
+$ArtifactsDir = "$RootDir\build\bin\$($WinArch)$($WinConfig)"
 $TracePdb = Get-CoreNetCiArtifactPath -Name "tracepdb.exe"
 $WprpFile = "$RootDir\tools\fnmptrace.wprp"
 $TmfPath = "$ArtifactsDir\tmfs"

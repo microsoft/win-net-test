@@ -55,9 +55,17 @@ param (
 Set-StrictMode -Version 'Latest'
 $ErrorActionPreference = 'Stop'
 
+# Fix up arch and config to match build conventions.
+$WinArch = $Arch
+$WinConfig = $Config
+if ($Arch -eq "x64")     { $WinArch = "amd64" }
+else                     { $WinArch = "arm64" }
+if ($Config -eq "Debug") { $WinConfig = "chk" }
+else                     { $WinConfig = "fre" }
+
 # Important paths.
 $RootDir = Split-Path $PSScriptRoot -Parent
-$BuildDir = "$RootDir\build\bin\$($Arch)_$($Config)"
+$BuildDir = "$RootDir\build\bin\$($WinArch)$($WinConfig)"
 $LogsDir = "$RootDir\build\logs"
 $IterationFailureCount = 0
 $IterationTimeout = 0

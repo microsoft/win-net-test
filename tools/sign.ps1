@@ -59,9 +59,17 @@ if (!(Test-Path $SignToolPath)) { Write-Error "$SignToolPath does not exist!" }
 $Inf2CatToolPath = Get-WindowsKitTool -Tool "inf2cat.exe"
 if (!(Test-Path $Inf2CatToolPath)) { Write-Error "$Inf2CatToolPath does not exist!" }
 
+# Fix up arch and config to match build conventions.
+$WinArch = $Arch
+$WinConfig = $Config
+if ($Arch -eq "x64")     { $WinArch = "amd64" }
+else                     { $WinArch = "arm64" }
+if ($Config -eq "Debug") { $WinConfig = "chk" }
+else                     { $WinConfig = "fre" }
+
 # Artifact paths.
 $RootDir = (Split-Path $PSScriptRoot -Parent)
-$BuildDir = Join-Path $RootDir "build\bin\$($Arch)_$($Config)"
+$BuildDir = Join-Path $RootDir "build\bin\$($WinArch)$($WinConfig)"
 
 # Certificate paths.
 $CodeSignCertPath = Get-CoreNetCiArtifactPath -Name "CoreNetSignRoot.cer"

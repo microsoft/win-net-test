@@ -48,6 +48,8 @@
         %(AdditionalIncludeDirectories)
       </AdditionalIncludeDirectories>
       <UseFullPaths>true</UseFullPaths>
+      <!-- Disable C26812: The enum type '' is unscoped. Prefer 'enum class' over 'enum' -->
+      <DisableSpecificWarnings>26812;%(DisableSpecificWarnings)</DisableSpecificWarnings>
     </ClCompile>
     <Link>
       <SubSystem>Windows</SubSystem>

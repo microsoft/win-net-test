@@ -54,9 +54,17 @@ $ErrorActionPreference = 'Stop'
 $RootDir = Split-Path $PSScriptRoot -Parent
 . $RootDir\tools\common.ps1
 
+# Fix up arch and config to match build conventions.
+$WinArch = $Arch
+$WinConfig = $Config
+if ($Arch -eq "x64")     { $WinArch = "amd64" }
+else                     { $WinArch = "arm64" }
+if ($Config -eq "Debug") { $WinConfig = "chk" }
+else                     { $WinConfig = "fre" }
+
 # Important paths.
 if ([string]::IsNullOrEmpty($BuildDir)) {
-    $BuildDir = "$RootDir\build\bin\$($Arch)_$($Config)"
+    $BuildDir = "$RootDir\build\bin\$($WinArch)$($WinConfig)"
 }
 if ([string]::IsNullOrEmpty($LogsDir)) {
     $LogsDir = "$RootDir\build\logs"
