@@ -41,6 +41,6 @@ else                     { $WinConfig = "fre" }
 
 New-Item -Path $DstPath\lib -ItemType Directory > $null
 copy "build\bin\$($WinArch)$($WinConfig)\fnmpapi.lib" $DstPath\lib
-copy "build\bin\$($WinArch)$($WinConfig)\fnmpapi.pdb" $DstPath\lib
+# TODO - PBD for .lib? copy "build\bin\$($WinArch)$($WinConfig)\fnmpapi.pdb" $DstPath\lib
 
 Compress-Archive -DestinationPath "$DstPath\$Name.zip" -Path $DstPath\*
