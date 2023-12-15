@@ -53,7 +53,7 @@ $ErrorActionPreference = 'Stop'
 $RootDir = Split-Path $PSScriptRoot -Parent
 . $RootDir\tools\common.ps1
 
-$ArtifactsDir = "$RootDir\build"
+$BuildDir = "$RootDir\build"
 
 if (!$ForBuild -and !$ForTest -and !$ForFunctionalTest -and !$ForLogging) {
     Write-Error 'Must one of -ForBuild, -ForTest, -ForFunctionalTest, or -ForLogging'
@@ -66,15 +66,15 @@ function Download-CoreNet-Deps {
     $CoreNetCiCommit = Get-CoreNetCiCommit
 
     # Download and extract https://github.com/microsoft/corenet-ci.
-    if (!(Test-Path $ArtifactsDir)) { mkdir $ArtifactsDir }
-    if ($Force -and (Test-Path "$ArtifactsDir/corenet-ci-$CoreNetCiCommit")) {
-        Remove-Item -Recurse -Force "$ArtifactsDir/corenet-ci-$CoreNetCiCommit"
+    if (!(Test-Path $BuildDir)) { mkdir $BuildDir }
+    if ($Force -and (Test-Path "$BuildDir/corenet-ci-$CoreNetCiCommit")) {
+        Remove-Item -Recurse -Force "$BuildDir/corenet-ci-$CoreNetCiCommit"
     }
-    if (!(Test-Path "$ArtifactsDir/corenet-ci-$CoreNetCiCommit")) {
-        Remove-Item -Recurse -Force "$ArtifactsDir/corenet-ci-*"
-        Invoke-WebRequest-WithRetry -Uri "https://github.com/microsoft/corenet-ci/archive/$CoreNetCiCommit.zip" -OutFile "$ArtifactsDir\corenet-ci.zip"
-        Expand-Archive -Path "$ArtifactsDir\corenet-ci.zip" -DestinationPath $ArtifactsDir -Force
-        Remove-Item -Path "$ArtifactsDir\corenet-ci.zip"
+    if (!(Test-Path "$BuildDir/corenet-ci-$CoreNetCiCommit")) {
+        Remove-Item -Recurse -Force "$BuildDir/corenet-ci-*"
+        Invoke-WebRequest-WithRetry -Uri "https://github.com/microsoft/corenet-ci/archive/$CoreNetCiCommit.zip" -OutFile "$BuildDir\corenet-ci.zip"
+        Expand-Archive -Path "$BuildDir\corenet-ci.zip" -DestinationPath $BuildDir -Force
+        Remove-Item -Path "$BuildDir\corenet-ci.zip"
     }
 }
 
@@ -115,12 +115,12 @@ function Setup-VcRuntime {
     if (!$Installed -or $Force) {
         Write-Host "Installing VC++ runtime"
 
-        if (!(Test-Path $ArtifactsDir)) { mkdir build }
-        Remove-Item -Force "$ArtifactsDir\vc_redist.x64.exe" -ErrorAction Ignore
+        if (!(Test-Path $BuildDir)) { mkdir build }
+        Remove-Item -Force "$BuildDir\vc_redist.x64.exe" -ErrorAction Ignore
 
         # Download and install.
-        Invoke-WebRequest-WithRetry -Uri "https://aka.ms/vs/16/release/vc_redist.x64.exe" -OutFile "$ArtifactsDir\vc_redist.x64.exe"
-        & $ArtifactsDir\vc_redist.x64.exe /install /passive | Write-Verbose
+        Invoke-WebRequest-WithRetry -Uri "https://aka.ms/vs/16/release/vc_redist.x64.exe" -OutFile "$BuildDir\vc_redist.x64.exe"
+        & $BuildDir\vc_redist.x64.exe /install /passive | Write-Verbose
     }
 }
 
@@ -128,13 +128,13 @@ function Setup-VsTest {
     if (!(Get-VsTestPath) -or $Force) {
         Write-Host "Installing VsTest"
 
-        if (!(Test-Path $ArtifactsDir)) { mkdir $ArtifactsDir }
-        Remove-Item -Recurse -Force "$ArtifactsDir\Microsoft.TestPlatform" -ErrorAction Ignore
+        if (!(Test-Path $BuildDir)) { mkdir $BuildDir }
+        Remove-Item -Recurse -Force "$BuildDir\Microsoft.TestPlatform" -ErrorAction Ignore
 
         # Download and extract.
-        Invoke-WebRequest-WithRetry -Uri "https://www.nuget.org/api/v2/package/Microsoft.TestPlatform/16.11.0" -OutFile "$ArtifactsDir\Microsoft.TestPlatform.zip"
-        Expand-Archive -Path "$ArtifactsDir\Microsoft.TestPlatform.zip" -DestinationPath "$ArtifactsDir\Microsoft.TestPlatform" -Force
-        Remove-Item -Path "$ArtifactsDir\Microsoft.TestPlatform.zip"
+        Invoke-WebRequest-WithRetry -Uri "https://www.nuget.org/api/v2/package/Microsoft.TestPlatform/16.11.0" -OutFile "$BuildDir\Microsoft.TestPlatform.zip"
+        Expand-Archive -Path "$BuildDir\Microsoft.TestPlatform.zip" -DestinationPath "$BuildDir\Microsoft.TestPlatform" -Force
+        Remove-Item -Path "$BuildDir\Microsoft.TestPlatform.zip"
 
         # Add to PATH.
         $RootDir = Split-Path $PSScriptRoot -Parent
