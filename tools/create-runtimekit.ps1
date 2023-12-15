@@ -23,16 +23,16 @@ $Name = "fnmp-runtime-$Platform"
 if ($Config -eq "Debug") {
     $Name += "-debug"
 }
-$DstPath = "artifacts\kit\$Name"
+$DstPath = "build\kit\$Name"
 
 Remove-Item $DstPath -Recurse -ErrorAction Ignore
 New-Item -Path $DstPath -ItemType Directory > $null
 
 New-Item -Path $DstPath\bin -ItemType Directory > $null
-copy -Recurse "artifacts\bin\$($Platform)_$($Config)\fnmp\" $DstPath\bin
+copy -Recurse "build\bin\$($Platform)_$($Config)\fnmp\" $DstPath\bin
 
 New-Item -Path $DstPath\symbols -ItemType Directory > $null
-copy "artifacts\bin\$($Platform)_$($Config)\fnmp.pdb"   $DstPath\symbols
+copy "build\bin\$($Platform)_$($Config)\fnmp.pdb"   $DstPath\symbols
 
 New-Item -Path $DstPath\tools -ItemType Directory > $null
 copy ".\tools\common.ps1" $DstPath\tools

@@ -53,7 +53,7 @@ $ErrorActionPreference = 'Stop'
 $RootDir = Split-Path $PSScriptRoot -Parent
 . $RootDir\tools\common.ps1
 
-$ArtifactsDir = "$RootDir\artifacts"
+$ArtifactsDir = "$RootDir\build"
 
 if (!$ForBuild -and !$ForTest -and !$ForFunctionalTest -and !$ForLogging) {
     Write-Error 'Must one of -ForBuild, -ForTest, -ForFunctionalTest, or -ForLogging'
@@ -115,7 +115,7 @@ function Setup-VcRuntime {
     if (!$Installed -or $Force) {
         Write-Host "Installing VC++ runtime"
 
-        if (!(Test-Path $ArtifactsDir)) { mkdir artifacts }
+        if (!(Test-Path $ArtifactsDir)) { mkdir build }
         Remove-Item -Force "$ArtifactsDir\vc_redist.x64.exe" -ErrorAction Ignore
 
         # Download and install.

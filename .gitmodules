@@ -7,3 +7,6 @@
 [submodule "submodules/net-offloads"]
 	path = submodules/net-offloads
 	url = https://github.com/microsoft/net-offloads.git
+[submodule "submodules/undocked"]
+	path = submodules/undocked
+	url = https://github.com/microsoft/undocked.git

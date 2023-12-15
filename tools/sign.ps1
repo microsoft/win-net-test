@@ -61,7 +61,7 @@ if (!(Test-Path $Inf2CatToolPath)) { Write-Error "$Inf2CatToolPath does not exis
 
 # Artifact paths.
 $RootDir = (Split-Path $PSScriptRoot -Parent)
-$ArtifactsDir = Join-Path $RootDir "artifacts\bin\$($Arch)_$($Config)"
+$BuildDir = Join-Path $RootDir "build\bin\$($Arch)_$($Config)"
 
 # Certificate paths.
 $CodeSignCertPath = Get-CoreNetCiArtifactPath -Name "CoreNetSignRoot.cer"
@@ -70,7 +70,7 @@ $CertPath = Get-CoreNetCiArtifactPath -Name "CoreNetSign.pfx"
 if (!(Test-Path $CertPath)) { Write-Error "$CertPath does not exist!" }
 
 # All the file paths.
-$FnMpDir = Join-Path $ArtifactsDir "fnmp"
+$FnMpDir = Join-Path $BuildDir "fnmp"
 $FnMpSys = Join-Path $FnMpDir "fnmp.sys"
 $FnMpInf = Join-Path $FnMpDir "fnmp.inf"
 $FnMpCat = Join-Path $FnMpDir "fnmp.cat"
@@ -91,5 +91,5 @@ if ($LastExitCode) { Write-Error "inf2cat.exe exit code: $LastExitCode" }
 & $SignToolPath sign /f $CertPath -p "placeholder" /fd SHA256 $FnMpCat
 if ($LastExitCode) { Write-Error "signtool.exe exit code: $LastExitCode" }
 
-# Copy the cert to the artifacts dir.
-Copy-Item $CodeSignCertPath $ArtifactsDir
+# Copy the cert to the build dir.
+Copy-Item $CodeSignCertPath $BuildDir

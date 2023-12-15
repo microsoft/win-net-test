@@ -85,7 +85,7 @@ function Get-VsTestPath {
     # Unfortunately CI doesn't add vstest to PATH. Test existence of vstest
     # install paths instead.
 
-    $ManualVsTestPath = "$(Split-Path $PSScriptRoot -Parent)\artifacts\Microsoft.TestPlatform\tools\net451\Common7\IDE\Extensions\TestPlatform"
+    $ManualVsTestPath = "$(Split-Path $PSScriptRoot -Parent)\build\Microsoft.TestPlatform\tools\net451\Common7\IDE\Extensions\TestPlatform"
     if (Test-Path $ManualVsTestPath) {
         return $ManualVsTestPath
     }
@@ -111,7 +111,7 @@ function Get-CoreNetCiArtifactPath {
     $RootDir = Split-Path $PSScriptRoot -Parent
     $Commit = Get-CoreNetCiCommit
 
-    return "$RootDir\artifacts\corenet-ci-$Commit\vm-setup\$Name"
+    return "$RootDir\build\corenet-ci-$Commit\vm-setup\$Name"
 }
 
 function Get-ProjectBuildVersion {

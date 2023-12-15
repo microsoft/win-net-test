@@ -15,7 +15,7 @@ This script installs or uninstalls various FNMP components.
 .PARAMETER Uninstall
     Attempts to uninstall all FNMP components.
 
-.PARAMETER ArtifactsDir
+.PARAMETER BuildDir
     Supplies an optional directory containing FNMP component artifacts.
 
 .PARAMETER LogsDir
@@ -41,7 +41,7 @@ param (
     [string]$Uninstall = "",
 
     [Parameter(Mandatory = $false)]
-    [string]$ArtifactsDir = "",
+    [string]$BuildDir = "",
 
     [Parameter(Mandatory = $false)]
     [string]$LogsDir = ""
@@ -55,18 +55,18 @@ $RootDir = Split-Path $PSScriptRoot -Parent
 . $RootDir\tools\common.ps1
 
 # Important paths.
-if ([string]::IsNullOrEmpty($ArtifactsDir)) {
-    $ArtifactsDir = "$RootDir\artifacts\bin\$($Arch)_$($Config)"
+if ([string]::IsNullOrEmpty($BuildDir)) {
+    $BuildDir = "$RootDir\build\bin\$($Arch)_$($Config)"
 }
 if ([string]::IsNullOrEmpty($LogsDir)) {
-    $LogsDir = "$RootDir\artifacts\logs"
+    $LogsDir = "$RootDir\build\logs"
 }
 $DevCon = Get-CoreNetCiArtifactPath -Name "devcon.exe"
 $DswDevice = Get-CoreNetCiArtifactPath -Name "dswdevice.exe"
 
 # File paths.
-$FnMpSys = "$ArtifactsDir\fnmp\fnmp.sys"
-$FnMpInf = "$ArtifactsDir\fnmp\fnmp.inf"
+$FnMpSys = "$BuildDir\fnmp\fnmp.sys"
+$FnMpInf = "$BuildDir\fnmp\fnmp.inf"
 $FnMpComponentId = "ms_fnmp"
 $FnMpDeviceId0 = "fnmp0"
 $FnMpServiceName = "FNMP"

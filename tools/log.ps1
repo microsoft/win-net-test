@@ -4,10 +4,10 @@
 This helps start and stop ETW logging.
 
 .PARAMETER Config
-    When using an artifacts directory, specifies the build configuration to use.
+    When using an build directory, specifies the build configuration to use.
 
 .PARAMETER Arch
-    When using an artifacts directory, specifies the CPU architecture to use.
+    When using an build directory, specifies the CPU architecture to use.
 
 .PARAMETER SymbolPath
     Specifies a directory containing symbol files.
@@ -77,11 +77,11 @@ $ErrorActionPreference = 'Stop'
 $RootDir = Split-Path $PSScriptRoot -Parent
 . $RootDir\tools\common.ps1
 
-$ArtifactsDir = "$RootDir\artifacts\bin\$($Arch)_$($Config)"
+$ArtifactsDir = "$RootDir\build\bin\$($Arch)_$($Config)"
 $TracePdb = Get-CoreNetCiArtifactPath -Name "tracepdb.exe"
 $WprpFile = "$RootDir\tools\fnmptrace.wprp"
 $TmfPath = "$ArtifactsDir\tmfs"
-$LogsDir = "$RootDir\artifacts\logs"
+$LogsDir = "$RootDir\build\logs"
 
 & $RootDir/tools/prepare-machine.ps1 -ForLogging
 

@@ -57,8 +57,8 @@ $ErrorActionPreference = 'Stop'
 
 # Important paths.
 $RootDir = Split-Path $PSScriptRoot -Parent
-$ArtifactsDir = "$RootDir\artifacts\bin\$($Arch)_$($Config)"
-$LogsDir = "$RootDir\artifacts\logs"
+$BuildDir = "$RootDir\build\bin\$($Arch)_$($Config)"
+$LogsDir = "$RootDir\build\logs"
 $IterationFailureCount = 0
 $IterationTimeout = 0
 
@@ -99,7 +99,7 @@ for ($i = 1; $i -le $Iterations; $i++) {
         if (![string]::IsNullOrEmpty($TestBinaryPath)) {
             $TestArgs += $TestBinaryPath
         } else {
-            $TestArgs += "$ArtifactsDir\fnmpfunctionaltests.dll"
+            $TestArgs += "$BuildDir\fnmpfunctionaltests.dll"
         }
         if (![string]::IsNullOrEmpty($TestCaseFilter)) {
             $TestArgs += "/TestCaseFilter:$TestCaseFilter"

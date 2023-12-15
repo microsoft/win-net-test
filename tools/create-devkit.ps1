@@ -23,7 +23,7 @@ $Name = "fnmp-devkit-$Platform"
 if ($Config -eq "Debug") {
     $Name += "-debug"
 }
-$DstPath = "artifacts\kit\$Name"
+$DstPath = "build\kit\$Name"
 
 Remove-Item $DstPath -Recurse -ErrorAction Ignore
 New-Item -Path $DstPath -ItemType Directory > $null
@@ -32,7 +32,7 @@ New-Item -Path $DstPath\include -ItemType Directory > $null
 copy -Recurse inc\* $DstPath\include
 
 New-Item -Path $DstPath\lib -ItemType Directory > $null
-copy "artifacts\bin\$($Platform)_$($Config)\fnmpapi.lib" $DstPath\lib
-copy "artifacts\bin\$($Platform)_$($Config)\fnmpapi.pdb" $DstPath\lib
+copy "build\bin\$($Platform)_$($Config)\fnmpapi.lib" $DstPath\lib
+copy "build\bin\$($Platform)_$($Config)\fnmpapi.pdb" $DstPath\lib
 
 Compress-Archive -DestinationPath "$DstPath\$Name.zip" -Path $DstPath\*
