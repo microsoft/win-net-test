@@ -18,6 +18,7 @@ $ErrorActionPreference = 'Stop'
 
 $RootDir = Split-Path $PSScriptRoot -Parent
 . $RootDir\tools\common.ps1
+Generate-WinConfig $Platform $Config
 
 $Name = "fnmp-runtime-$Platform"
 if ($Config -eq "Debug") {
@@ -27,14 +28,6 @@ $DstPath = "artifacts\kit\$Name"
 
 Remove-Item $DstPath -Recurse -ErrorAction Ignore
 New-Item -Path $DstPath -ItemType Directory > $null
-
-# Fix up arch and config to match build conventions.
-$WinArch = $Platform
-$WinConfig = $Config
-if ($Platform -eq "x64") { $WinArch = "amd64" }
-else                     { $WinArch = "arm64" }
-if ($Config -eq "Debug") { $WinConfig = "chk" }
-else                     { $WinConfig = "fre" }
 
 New-Item -Path $DstPath\bin -ItemType Directory > $null
 copy -Recurse "artifacts\bin\$($WinArch)$($WinConfig)\fnmp\" $DstPath\bin

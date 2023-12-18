@@ -55,13 +55,8 @@ param (
 Set-StrictMode -Version 'Latest'
 $ErrorActionPreference = 'Stop'
 
-# Fix up arch and config to match build conventions.
-$WinArch = $Arch
-$WinConfig = $Config
-if ($Arch -eq "x64")     { $WinArch = "amd64" }
-else                     { $WinArch = "arm64" }
-if ($Config -eq "Debug") { $WinConfig = "chk" }
-else                     { $WinConfig = "fre" }
+. $RootDir\tools\common.ps1
+Generate-WinConfig $Arch $Config
 
 # Important paths.
 $RootDir = Split-Path $PSScriptRoot -Parent
@@ -69,8 +64,6 @@ $ArtifactsDir = "$RootDir\artifacts\bin\$($WinArch)$($WinConfig)"
 $LogsDir = "$RootDir\artifacts\logs"
 $IterationFailureCount = 0
 $IterationTimeout = 0
-
-. $RootDir\tools\common.ps1
 
 $VsTestPath = Get-VsTestPath
 if ($VsTestPath -eq $null) {

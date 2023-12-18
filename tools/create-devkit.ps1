@@ -18,6 +18,7 @@ $ErrorActionPreference = 'Stop'
 
 $RootDir = Split-Path $PSScriptRoot -Parent
 . $RootDir\tools\common.ps1
+Generate-WinConfig $Platform $Config
 
 $Name = "fnmp-devkit-$Platform"
 if ($Config -eq "Debug") {
@@ -30,14 +31,6 @@ New-Item -Path $DstPath -ItemType Directory > $null
 
 New-Item -Path $DstPath\include -ItemType Directory > $null
 copy -Recurse inc\* $DstPath\include
-
-# Fix up arch and config to match build conventions.
-$WinArch = $Platform
-$WinConfig = $Config
-if ($Platform -eq "x64") { $WinArch = "amd64" }
-else                     { $WinArch = "arm64" }
-if ($Config -eq "Debug") { $WinConfig = "chk" }
-else                     { $WinConfig = "fre" }
 
 New-Item -Path $DstPath\lib -ItemType Directory > $null
 copy "artifacts\bin\$($WinArch)$($WinConfig)\fnmpapi.lib" $DstPath\lib
