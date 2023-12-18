@@ -76,8 +76,9 @@ $ErrorActionPreference = 'Stop'
 # Important paths.
 $RootDir = Split-Path $PSScriptRoot -Parent
 . $RootDir\tools\common.ps1
+Generate-WinConfig $Arch $Config
 
-$ArtifactsDir = "$RootDir\artifacts\bin\$($Arch)_$($Config)"
+$ArtifactsDir = "$RootDir\artifacts\bin\$($WinArch)$($WinConfig)"
 $TracePdb = Get-CoreNetCiArtifactPath -Name "tracepdb.exe"
 $WprpFile = "$RootDir\tools\fnmptrace.wprp"
 $TmfPath = "$ArtifactsDir\tmfs"

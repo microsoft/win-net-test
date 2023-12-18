@@ -116,12 +116,7 @@ function Get-CoreNetCiArtifactPath {
 
 function Get-ProjectBuildVersion {
     $RootDir = Split-Path $PSScriptRoot -Parent
-    $ProjectBuildVersion = @{}
-    [xml]$ProjectVersion = Get-Content $RootDir\src\fnmp.props
-    $ProjectBuildVersion.Major = $ProjectVersion.Project.PropertyGroup.MajorVersion
-    $ProjectBuildVersion.Minor = $ProjectVersion.Project.PropertyGroup.MinorVersion
-    $ProjectBuildVersion.Patch = $ProjectVersion.Project.PropertyGroup.PatchVersion
-    return $ProjectBuildVersion;
+    return Get-Content $RootDir\version.json | ConvertFrom-Json
 }
 
 function Get-ProjectBuildVersionString {
@@ -199,4 +194,21 @@ function Initiate-Bugcheck {
 
     Write-Host "$NotMyFault -accepteula -bugcheck $Code"
     & $NotMyFault -accepteula -bugcheck $Code
+}
+
+function Generate-WinConfig {
+    param (
+        [Parameter()]
+        [string]$Arch,
+
+        [Parameter()]
+        [string]$Config
+    )
+
+    $global:WinArch = $Arch
+    $global:WinConfig = $Config
+    if ($Arch -eq "x64")     { $global:WinArch = "amd64" }
+    else                     { $global:WinArch = "arm64" }
+    if ($Config -eq "Debug") { $global:WinConfig = "chk" }
+    else                     { $global:WinConfig = "fre" }
 }

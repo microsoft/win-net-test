@@ -55,14 +55,15 @@ param (
 Set-StrictMode -Version 'Latest'
 $ErrorActionPreference = 'Stop'
 
+. $RootDir\tools\common.ps1
+Generate-WinConfig $Arch $Config
+
 # Important paths.
 $RootDir = Split-Path $PSScriptRoot -Parent
-$ArtifactsDir = "$RootDir\artifacts\bin\$($Arch)_$($Config)"
+$ArtifactsDir = "$RootDir\artifacts\bin\$($WinArch)$($WinConfig)"
 $LogsDir = "$RootDir\artifacts\logs"
 $IterationFailureCount = 0
 $IterationTimeout = 0
-
-. $RootDir\tools\common.ps1
 
 $VsTestPath = Get-VsTestPath
 if ($VsTestPath -eq $null) {

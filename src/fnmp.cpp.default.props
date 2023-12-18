@@ -1,7 +1,0 @@
-<Project xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
-  <!-- Use the highest available VS toolset -->
-  <PropertyGroup>
-    <FnMpPlatformToolset>v143</FnMpPlatformToolset>
-    <FnMpPlatformToolset Condition="'$(VisualStudioVersion)' == '16.0'">v142</FnMpPlatformToolset>
-  </PropertyGroup>
-</Project>

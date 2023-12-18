@@ -53,10 +53,11 @@ $ErrorActionPreference = 'Stop'
 
 $RootDir = Split-Path $PSScriptRoot -Parent
 . $RootDir\tools\common.ps1
+Generate-WinConfig $Arch $Config
 
 # Important paths.
 if ([string]::IsNullOrEmpty($ArtifactsDir)) {
-    $ArtifactsDir = "$RootDir\artifacts\bin\$($Arch)_$($Config)"
+    $ArtifactsDir = "$RootDir\artifacts\bin\$($WinArch)$($WinConfig)"
 }
 if ([string]::IsNullOrEmpty($LogsDir)) {
     $LogsDir = "$RootDir\artifacts\logs"

@@ -26,6 +26,7 @@ $ErrorActionPreference = 'Stop'
 
 $RootDir = Split-Path $PSScriptRoot -Parent
 . $RootDir\tools\common.ps1
+Generate-WinConfig $Arch $Config
 
 function Get-WindowsKitTool {
     param (
@@ -61,7 +62,7 @@ if (!(Test-Path $Inf2CatToolPath)) { Write-Error "$Inf2CatToolPath does not exis
 
 # Artifact paths.
 $RootDir = (Split-Path $PSScriptRoot -Parent)
-$ArtifactsDir = Join-Path $RootDir "artifacts\bin\$($Arch)_$($Config)"
+$ArtifactsDir = Join-Path $RootDir "artifacts\bin\$($WinArch)$($WinConfig)"
 
 # Certificate paths.
 $CodeSignCertPath = Get-CoreNetCiArtifactPath -Name "CoreNetSignRoot.cer"

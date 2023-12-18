@@ -18,6 +18,7 @@ $ErrorActionPreference = 'Stop'
 
 $RootDir = Split-Path $PSScriptRoot -Parent
 . $RootDir\tools\common.ps1
+Generate-WinConfig $Platform $Config
 
 $Name = "fnmp-devkit-$Platform"
 if ($Config -eq "Debug") {
@@ -32,7 +33,7 @@ New-Item -Path $DstPath\include -ItemType Directory > $null
 copy -Recurse inc\* $DstPath\include
 
 New-Item -Path $DstPath\lib -ItemType Directory > $null
-copy "artifacts\bin\$($Platform)_$($Config)\fnmpapi.lib" $DstPath\lib
-copy "artifacts\bin\$($Platform)_$($Config)\fnmpapi.pdb" $DstPath\lib
+copy "artifacts\bin\$($WinArch)$($WinConfig)\fnmpapi.lib" $DstPath\lib
+# TODO - PBD for .lib? copy "artifacts\bin\$($WinArch)$($WinConfig)\fnmpapi.pdb" $DstPath\lib
 
 Compress-Archive -DestinationPath "$DstPath\$Name.zip" -Path $DstPath\*
