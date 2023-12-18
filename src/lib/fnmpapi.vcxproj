@@ -22,6 +22,8 @@
         %(AdditionalIncludeDirectories)
       </AdditionalIncludeDirectories>
       <PreprocessorDefinitions>
+        POOL_NX_OPTIN_AUTO=1;
+        POOL_ZERO_DOWN_LEVEL_SUPPORT=1;
         WIN32_LEAN_AND_MEAN;
         %(PreprocessorDefinitions)
       </PreprocessorDefinitions>
