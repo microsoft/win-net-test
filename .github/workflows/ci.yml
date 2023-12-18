@@ -139,7 +139,7 @@ jobs:
       with:
         name: release_artifacts_${{ matrix.configuration }}_${{ matrix.platform }}
         path: |
-        artifacts/kit/**/*.zip
+          artifacts/kit/**/*.zip
 
   Complete:
     name: Complete
