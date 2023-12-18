@@ -10,6 +10,7 @@
     <TargetName>fnmpfunctionaltests</TargetName>
     <UndockedType>dll</UndockedType>
     <UndockedDir>$(SolutionDir)submodules\undocked\</UndockedDir>
+    <UndockedOut>$(SolutionDir)artifacts\</UndockedOut>
   </PropertyGroup>
   <Import Project="$(UndockedDir)vs\windows.undocked.props" />
   <ItemGroup>

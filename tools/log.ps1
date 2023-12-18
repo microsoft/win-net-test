@@ -4,10 +4,10 @@
 This helps start and stop ETW logging.
 
 .PARAMETER Config
-    When using a build directory, specifies the build configuration to use.
+    When using an artifact directory, specifies the build configuration to use.
 
 .PARAMETER Arch
-    When using a build directory, specifies the CPU architecture to use.
+    When using an artifact directory, specifies the CPU architecture to use.
 
 .PARAMETER SymbolPath
     Specifies a directory containing symbol files.
@@ -85,10 +85,10 @@ else                     { $WinArch = "arm64" }
 if ($Config -eq "Debug") { $WinConfig = "chk" }
 else                     { $WinConfig = "fre" }
 
-$BuildDir = "$RootDir\build\bin\$($WinArch)$($WinConfig)"
+$ArtifactsDir = "$RootDir\artifacts\bin\$($WinArch)$($WinConfig)"
 $TracePdb = Get-CoreNetCiArtifactPath -Name "tracepdb.exe"
 $WprpFile = "$RootDir\tools\fnmptrace.wprp"
-$TmfPath = "$BuildDir\tmfs"
+$TmfPath = "$ArtifactsDir\tmfs"
 $LogsDir = "$RootDir\build\logs"
 
 & $RootDir/tools/prepare-machine.ps1 -ForLogging
@@ -136,7 +136,7 @@ try {
         }
 
         if (!$SymbolPath) {
-            $SymbolPath = $BuildDir
+            $SymbolPath = $ArtifactsDir
         }
 
         & $TracePdb -f "$SymbolPath\*.pdb" -p $TmfPath

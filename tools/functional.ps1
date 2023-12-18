@@ -65,8 +65,8 @@ else                     { $WinConfig = "fre" }
 
 # Important paths.
 $RootDir = Split-Path $PSScriptRoot -Parent
-$BuildDir = "$RootDir\build\bin\$($WinArch)$($WinConfig)"
-$LogsDir = "$RootDir\build\logs"
+$ArtifactsDir = "$RootDir\artifacts\bin\$($WinArch)$($WinConfig)"
+$LogsDir = "$RootDir\artifacts\logs"
 $IterationFailureCount = 0
 $IterationTimeout = 0
 
@@ -107,7 +107,7 @@ for ($i = 1; $i -le $Iterations; $i++) {
         if (![string]::IsNullOrEmpty($TestBinaryPath)) {
             $TestArgs += $TestBinaryPath
         } else {
-            $TestArgs += "$BuildDir\fnmpfunctionaltests.dll"
+            $TestArgs += "$ArtifactsDir\fnmpfunctionaltests.dll"
         }
         if (![string]::IsNullOrEmpty($TestCaseFilter)) {
             $TestArgs += "/TestCaseFilter:$TestCaseFilter"

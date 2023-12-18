@@ -23,7 +23,7 @@ $Name = "fnmp-runtime-$Platform"
 if ($Config -eq "Debug") {
     $Name += "-debug"
 }
-$DstPath = "build\kit\$Name"
+$DstPath = "artifacts\kit\$Name"
 
 Remove-Item $DstPath -Recurse -ErrorAction Ignore
 New-Item -Path $DstPath -ItemType Directory > $null
@@ -37,10 +37,10 @@ if ($Config -eq "Debug") { $WinConfig = "chk" }
 else                     { $WinConfig = "fre" }
 
 New-Item -Path $DstPath\bin -ItemType Directory > $null
-copy -Recurse "build\bin\$($WinArch)$($WinConfig)\fnmp\" $DstPath\bin
+copy -Recurse "artifacts\bin\$($WinArch)$($WinConfig)\fnmp\" $DstPath\bin
 
 New-Item -Path $DstPath\symbols -ItemType Directory > $null
-copy "build\bin\$($WinArch)$($WinConfig)\fnmp.pdb"   $DstPath\symbols
+copy "artifacts\bin\$($WinArch)$($WinConfig)\fnmp.pdb"   $DstPath\symbols
 
 New-Item -Path $DstPath\tools -ItemType Directory > $null
 copy ".\tools\common.ps1" $DstPath\tools
