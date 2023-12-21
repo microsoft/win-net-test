@@ -5,6 +5,8 @@
 
 #pragma once
 
+#define FNMPAPI __declspec(dllexport)
+
 #include <windows.h>
 #include <winioctl.h>
 #include <winternl.h>

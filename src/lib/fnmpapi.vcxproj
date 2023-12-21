@@ -3,7 +3,9 @@
   <PropertyGroup>
     <ProjectGuid>{15de7d30-6a0b-47c7-8ddc-1cfc658e8a1e}</ProjectGuid>
     <TargetName>fnmpapi</TargetName>
-    <UndockedType>lib</UndockedType>
+    <!-- Temporary hack to disable linking stage in official OneBranch builds, because it's broken -->
+    <UndockedType Condition="'$(UndockedOfficial)' != 'true'">dll</UndockedType>
+    <UndockedType Condition="'$(UndockedOfficial)' == 'true'">lib</UndockedType>
     <UndockedDir>$(SolutionDir)submodules\undocked\</UndockedDir>
     <UndockedOut>$(SolutionDir)artifacts\</UndockedOut>
     <UndockedSourceLink>true</UndockedSourceLink>
@@ -28,6 +30,13 @@
         %(PreprocessorDefinitions)
       </PreprocessorDefinitions>
     </ClCompile>
+    <Link>
+      <SubSystem>Windows</SubSystem>
+      <AdditionalDependencies>
+        ntdll.lib;
+        %(AdditionalDependencies)
+      </AdditionalDependencies>
+    </Link>
   </ItemDefinitionGroup>
   <Import Project="$(UndockedDir)vs\windows.undocked.targets" />
 </Project>
