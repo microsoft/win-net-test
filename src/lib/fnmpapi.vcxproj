@@ -3,7 +3,7 @@
   <PropertyGroup>
     <ProjectGuid>{15de7d30-6a0b-47c7-8ddc-1cfc658e8a1e}</ProjectGuid>
     <TargetName>fnmpapi</TargetName>
-    <UndockedType>lib</UndockedType>
+    <UndockedType>dll</UndockedType>
     <UndockedDir>$(SolutionDir)submodules\undocked\</UndockedDir>
     <UndockedOut>$(SolutionDir)artifacts\</UndockedOut>
     <UndockedSourceLink>true</UndockedSourceLink>
@@ -28,6 +28,12 @@
         %(PreprocessorDefinitions)
       </PreprocessorDefinitions>
     </ClCompile>
+    <Link>
+      <AdditionalDependencies>
+        ntdll.lib;
+        %(AdditionalDependencies)
+      </AdditionalDependencies>
+    </Link>
   </ItemDefinitionGroup>
   <Import Project="$(UndockedDir)vs\windows.undocked.targets" />
 </Project>

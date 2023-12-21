@@ -34,6 +34,6 @@ copy -Recurse inc\* $DstPath\include
 
 New-Item -Path $DstPath\lib -ItemType Directory > $null
 copy "artifacts\bin\$($WinArch)$($WinConfig)\fnmpapi.lib" $DstPath\lib
-# TODO - PBD for .lib? copy "artifacts\bin\$($WinArch)$($WinConfig)\fnmpapi.pdb" $DstPath\lib
+copy "artifacts\bin\$($WinArch)$($WinConfig)\fnmpapi.pdb" $DstPath\lib
 
 Compress-Archive -DestinationPath "$DstPath\$Name.zip" -Path $DstPath\*

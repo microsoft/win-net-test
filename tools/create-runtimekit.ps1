@@ -31,9 +31,11 @@ New-Item -Path $DstPath -ItemType Directory > $null
 
 New-Item -Path $DstPath\bin -ItemType Directory > $null
 copy -Recurse "artifacts\bin\$($WinArch)$($WinConfig)\fnmp\" $DstPath\bin
+copy -Recurse "artifacts\bin\$($WinArch)$($WinConfig)\fnmpapi.dll" $DstPath\bin
 
 New-Item -Path $DstPath\symbols -ItemType Directory > $null
-copy "artifacts\bin\$($WinArch)$($WinConfig)\fnmp.pdb"   $DstPath\symbols
+copy "artifacts\bin\$($WinArch)$($WinConfig)\fnmp.pdb" $DstPath\symbols
+copy "artifacts\bin\$($WinArch)$($WinConfig)\fnmpapi.pdb" $DstPath\symbols
 
 New-Item -Path $DstPath\tools -ItemType Directory > $null
 copy ".\tools\common.ps1" $DstPath\tools

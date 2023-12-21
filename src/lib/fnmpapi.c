@@ -5,6 +5,7 @@
 
 #include "precomp.h"
 
+FNMPAPI
 HRESULT
 FnMpOpenShared(
     _In_ UINT32 IfIndex,
@@ -20,6 +21,7 @@ FnMpOpenShared(
     return FnMpOpen(FILE_CREATE, EaBuffer, sizeof(EaBuffer), Handle);
 }
 
+FNMPAPI
 HRESULT
 FnMpOpenExclusive(
     _In_ UINT32 IfIndex,
@@ -35,6 +37,7 @@ FnMpOpenExclusive(
     return FnMpOpen(FILE_CREATE, EaBuffer, sizeof(EaBuffer), Handle);
 }
 
+FNMPAPI
 HRESULT
 FnMpRxEnqueue(
     _In_ HANDLE Handle,
@@ -53,6 +56,7 @@ FnMpRxEnqueue(
     return FnMpIoctl(Handle, IOCTL_RX_ENQUEUE, &In, sizeof(In), NULL, 0, NULL, NULL);
 }
 
+FNMPAPI
 HRESULT
 FnMpRxFlush(
     _In_ HANDLE Handle,
@@ -72,6 +76,7 @@ FnMpRxFlush(
     return FnMpIoctl(Handle, IOCTL_RX_FLUSH, &In, sizeof(In), NULL, 0, NULL, NULL);
 }
 
+FNMPAPI
 HRESULT
 FnMpTxFilter(
     _In_ HANDLE Handle,
@@ -101,6 +106,7 @@ FnMpTxFilter(
     return FnMpIoctl(Handle, IOCTL_TX_FILTER, &In, sizeof(In), NULL, 0, NULL, NULL);
 }
 
+FNMPAPI
 HRESULT
 FnMpTxGetFrame(
     _In_ HANDLE Handle,
@@ -142,6 +148,7 @@ FnMpTxGetFrame(
     return Result;
 }
 
+FNMPAPI
 HRESULT
 FnMpTxDequeueFrame(
     _In_ HANDLE Handle,
@@ -160,6 +167,7 @@ FnMpTxDequeueFrame(
     return FnMpIoctl(Handle, IOCTL_TX_DEQUEUE_FRAME, &In, sizeof(In), NULL, 0, NULL, NULL);
 }
 
+FNMPAPI
 HRESULT
 FnMpTxFlush(
     _In_ HANDLE Handle
@@ -172,6 +180,7 @@ FnMpTxFlush(
     return FnMpIoctl(Handle, IOCTL_TX_FLUSH, NULL, 0, NULL, 0, NULL, NULL);
 }
 
+FNMPAPI
 HRESULT
 FnMpGetLastMiniportPauseTimestamp(
     _In_ HANDLE Handle,
@@ -188,6 +197,7 @@ FnMpGetLastMiniportPauseTimestamp(
             sizeof(*Timestamp), NULL, NULL);
 }
 
+FNMPAPI
 HRESULT
 FnMpSetMtu(
     _In_ HANDLE Handle,
@@ -206,6 +216,7 @@ FnMpSetMtu(
     return FnMpIoctl(Handle, IOCTL_MINIPORT_SET_MTU, &In, sizeof(In), NULL, 0, NULL, NULL);
 }
 
+FNMPAPI
 HRESULT
 FnMpOidFilter(
     _In_ HANDLE Handle,
@@ -224,6 +235,7 @@ FnMpOidFilter(
             Handle, IOCTL_OID_FILTER, (VOID *)Keys, sizeof(Keys[0]) * KeyCount, NULL, 0, NULL, NULL);
 }
 
+FNMPAPI
 HRESULT
 FnMpOidGetRequest(
     _In_ HANDLE Handle,
@@ -247,6 +259,7 @@ FnMpOidGetRequest(
             *InformationBufferLength, InformationBufferLength, NULL);
 }
 
+FNMPAPI
 HRESULT
 FnMpOidCompleteRequest(
     _In_ HANDLE Handle,
