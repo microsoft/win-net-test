@@ -17,9 +17,14 @@ This script installs or uninstalls various FNMP components.
 
 .PARAMETER ArtifactsDir
     Supplies an optional directory containing FNMP component artifacts.
+    Supply this if you are running this script outside of the FNMP repo.
 
 .PARAMETER LogsDir
     Supplies an optional directory to output logs.
+
+.PARAMETER ToolsDir
+    Supplies an optional directory to tools (devcon.exe, dswdevice.exe).
+    Supply this if you are running this script outside of the FNMP repo.
 
 #>
 
@@ -44,7 +49,10 @@ param (
     [string]$ArtifactsDir = "",
 
     [Parameter(Mandatory = $false)]
-    [string]$LogsDir = ""
+    [string]$LogsDir = "",
+
+    [Parameter(Mandatory = $false)]
+    [string]$ToolsDir = ""
 )
 
 Set-StrictMode -Version 'Latest'
@@ -52,18 +60,24 @@ $OriginalErrorActionPreference = $ErrorActionPreference
 $ErrorActionPreference = 'Stop'
 
 $RootDir = Split-Path $PSScriptRoot -Parent
-. $RootDir\tools\common.ps1
-Generate-WinConfig $Arch $Config
 
 # Important paths.
 if ([string]::IsNullOrEmpty($ArtifactsDir)) {
+    . $RootDir\tools\common.ps1
+    Generate-WinConfig $Arch $Config
     $ArtifactsDir = "$RootDir\artifacts\bin\$($WinArch)$($WinConfig)"
 }
 if ([string]::IsNullOrEmpty($LogsDir)) {
     $LogsDir = "$RootDir\artifacts\logs"
 }
-$DevCon = Get-CoreNetCiArtifactPath -Name "devcon.exe"
-$DswDevice = Get-CoreNetCiArtifactPath -Name "dswdevice.exe"
+if ([string]::IsNullOrEmpty($ToolsDir)) {
+    . $RootDir\tools\common.ps1
+    $DevCon = Get-CoreNetCiArtifactPath -Name "devcon.exe"
+    $DswDevice = Get-CoreNetCiArtifactPath -Name "dswdevice.exe"
+} else {
+    $DevCon = "$ToolsDir\devcon.exe"
+    $DswDevice = "$ToolsDir\dswdevice.exe"
+}
 
 # File paths.
 $FnMpSys = "$ArtifactsDir\fnmp\fnmp.sys"
@@ -77,6 +91,7 @@ New-Item -ItemType Directory -Force -Path $LogsDir | Out-Null
 
 # Helper to capture failure diagnostics and trigger CI agent reboot
 function Uninstall-Failure($FileName) {
+    . $RootDir\tools\common.ps1
     Collect-LiveKD -OutFile $LogsDir\$FileName
 
     Write-Host "##vso[task.setvariable variable=NeedsReboot]true"

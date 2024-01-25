@@ -20,5 +20,6 @@ foreach ($Config in $Configs) {
         $VpackDir = Join-Path $BinDir "$($Platform)$($Config)"
         New-Item -Path $VpackDir -ItemType Directory -Force | Out-Null
         Copy-Item $IncludeDir\* $VpackDir -Force | Out-Null
+        Copy-Item $RootDir\tools\setup.ps1 $VpackDir -Force | Out-Null
     }
 }
