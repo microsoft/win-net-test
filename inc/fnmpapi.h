@@ -121,4 +121,13 @@ FnMpOidCompleteRequest(
     _In_ UINT32 InformationBufferLength
     );
 
+FNMPAPI
+HRESULT
+FnMpUpdateTaskOffload(
+    _In_ HANDLE Handle,
+    _In_ FN_OFFLOAD_TYPE OffloadType,
+    _In_opt_ const NDIS_OFFLOAD_PARAMETERS *OffloadParameters,
+    _In_ UINT32 OffloadParametersLength
+    );
+
 EXTERN_C_END

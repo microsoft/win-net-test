@@ -137,6 +137,85 @@ Exit:
     return Status;
 }
 
+static
+_IRQL_requires_max_(PASSIVE_LEVEL)
+NTSTATUS
+SharedIrpUpdateTaskOffload(
+    _In_ SHARED_CONTEXT *Shared,
+    _In_ IRP *Irp,
+    _In_ IO_STACK_LOCATION *IrpSp
+    )
+{
+    CONST MINIPORT_UPDATE_TASK_OFFLOAD_IN *In = Irp->AssociatedIrp.SystemBuffer;
+    ADAPTER_CONTEXT *Adapter = Shared->Adapter;
+    NDIS_HANDLE ConfigHandle = NULL;
+    BOUNCE_BUFFER OffloadParameters;
+    NTSTATUS Status;
+    NDIS_OFFLOAD Offload;
+    UINT32 IndicationStatus;
+
+    BounceInitialize(&OffloadParameters);
+
+    if (IrpSp->Parameters.DeviceIoControl.InputBufferLength < sizeof(*In)) {
+        Status = STATUS_BUFFER_TOO_SMALL;
+        goto Exit;
+    }
+
+    if (In->OffloadType != FnOffloadCurrentConfig &&
+        In->OffloadType != FnOffloadHardwareCapabilities) {
+        Status = STATUS_INVALID_PARAMETER;
+        goto Exit;
+    }
+
+    IndicationStatus =
+        In->OffloadType == FnOffloadCurrentConfig ?
+            NDIS_STATUS_TASK_OFFLOAD_CURRENT_CONFIG :
+            NDIS_STATUS_TASK_OFFLOAD_HARDWARE_CAPABILITIES;
+
+    if (In->OffloadParametersLength > 0) {
+        Status =
+            BounceBuffer(
+                &OffloadParameters, In->OffloadParameters, In->OffloadParametersLength,
+                __alignof(NDIS_OFFLOAD_PARAMETERS));
+        if (!NT_SUCCESS(Status)) {
+            goto Exit;
+        }
+
+        Status =
+            MpSetOffloadParameters(
+                Adapter, MpGetOffload(Adapter, In->OffloadType), OffloadParameters.Buffer,
+                In->OffloadParametersLength, IndicationStatus);
+        if (Status != NDIS_STATUS_SUCCESS) {
+            goto Exit;
+        }
+    } else {
+        Status = MpOpenConfiguration(&ConfigHandle, Adapter);
+        if (Status != NDIS_STATUS_SUCCESS) {
+            goto Exit;
+        }
+
+        Status = MpReadOffload(Adapter, ConfigHandle, In->OffloadType);
+        if (Status != NDIS_STATUS_SUCCESS) {
+            goto Exit;
+        }
+
+        MpFillOffload(&Offload, Adapter, MpGetOffload(Adapter, In->OffloadType));
+        MpIndicateStatus(Adapter, &Offload, sizeof(Offload), IndicationStatus);
+    }
+
+    Status = STATUS_SUCCESS;
+
+Exit:
+
+    if (ConfigHandle != NULL) {
+        NdisCloseConfiguration(ConfigHandle);
+    }
+
+    BounceCleanup(&OffloadParameters);
+
+    return Status;
+}
+
 VOID
 SharedAdapterCleanup(
     _In_ ADAPTER_SHARED *AdapterShared
@@ -240,6 +319,10 @@ SharedIrpDeviceIoControl(
 
     case IOCTL_MINIPORT_SET_MTU:
         Status = SharedIrpSetMtu(Shared, Irp, IrpSp);
+        break;
+
+    case IOCTL_MINIPORT_UPDATE_TASK_OFFLOAD:
+        Status = SharedIrpUpdateTaskOffload(Shared, Irp, IrpSp);
         break;
 
     default:

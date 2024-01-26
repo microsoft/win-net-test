@@ -137,4 +137,13 @@ typedef struct _OID_KEY {
     OID_REQUEST_INTERFACE RequestInterface;
 } OID_KEY;
 
+//
+// Offload interface.
+//
+
+typedef enum _FN_OFFLOAD_TYPE {
+    FnOffloadCurrentConfig,
+    FnOffloadHardwareCapabilities,
+} FN_OFFLOAD_TYPE;
+
 EXTERN_C_END
