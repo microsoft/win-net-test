@@ -44,7 +44,6 @@ C_ASSERT((ChecksumOffloadTx & ChecksumOffloadRx) == 0);
 C_ASSERT((ChecksumOffloadTx | ChecksumOffloadRx) == ChecksumOffloadRxTx);
 
 typedef struct _ADAPTER_OFFLOAD {
-    CHECKSUM_OFFLOAD_STATE UdpChecksumOffloadIPv4;
     CHECKSUM_OFFLOAD_STATE IPChecksumOffloadIPv4;
     CHECKSUM_OFFLOAD_STATE TCPChecksumOffloadIPv4;
     CHECKSUM_OFFLOAD_STATE TCPChecksumOffloadIPv6;

@@ -12,6 +12,8 @@
 #pragma warning(pop)
 
 // Windows and WIL includes need to be ordered in a certain way.
+#pragma warning(push)
+#pragma warning(disable:4324) // structure was padded due to alignment specifier
 #define NOMINMAX
 #include <winsock2.h>
 #include <windows.h>
@@ -19,6 +21,7 @@
 #include <iphlpapi.h>
 #include <ws2tcpip.h>
 #include <mstcpip.h>
+#pragma warning(pop)
 #include <wil/resource.h>
 #include <CppUnitTest.h>
 
@@ -469,6 +472,19 @@ MpTxFlush(
 
 static
 VOID
+MpUpdateTaskOffload(
+    _In_ const wil::unique_handle& Handle,
+    _In_ FN_OFFLOAD_TYPE OffloadType,
+    _In_opt_ const NDIS_OFFLOAD_PARAMETERS *OffloadParameters
+    )
+{
+    UINT32 Size = OffloadParameters != NULL ? sizeof(*OffloadParameters) : 0;
+
+    TEST_HRESULT(FnMpUpdateTaskOffload(Handle.get(), OffloadType, OffloadParameters, Size));
+}
+
+static
+VOID
 WaitForWfpQuarantine(
     _In_ const TestInterface& If
     );
@@ -720,6 +736,143 @@ BasicTx()
     MpTxFlush(SharedMp);
 }
 
+static
+VOID
+InitializeOffloadParameters(
+    _Out_ NDIS_OFFLOAD_PARAMETERS *OffloadParameters
+    )
+{
+    ZeroMemory(OffloadParameters, sizeof(*OffloadParameters));
+    OffloadParameters->Header.Type = NDIS_OBJECT_TYPE_DEFAULT;
+    OffloadParameters->Header.Size = NDIS_SIZEOF_OFFLOAD_PARAMETERS_REVISION_5;
+    OffloadParameters->Header.Revision = NDIS_OFFLOAD_PARAMETERS_REVISION_5;
+}
+
+VOID
+BasicRxOffload()
+{
+    UINT16 LocalPort, RemotePort;
+    ETHERNET_ADDRESS LocalHw, RemoteHw;
+    INET_ADDR LocalIp, RemoteIp;
+    auto UdpSocket = CreateUdpSocket(AF_INET, NULL, &LocalPort);
+    auto SharedMp = MpOpenShared(FnMpIf.GetIfIndex());
+    auto MpTaskOffloadCleanup = wil::scope_exit([&]() {
+        MpUpdateTaskOffload(SharedMp, FnOffloadCurrentConfig, NULL);
+    });
+
+    RemotePort = htons(1234);
+    FnMpIf.GetHwAddress(&LocalHw);
+    FnMpIf.GetRemoteHwAddress(&RemoteHw);
+    FnMpIf.GetIpv4Address(&LocalIp.Ipv4);
+    FnMpIf.GetRemoteIpv4Address(&RemoteIp.Ipv4);
+
+    UCHAR UdpPayload[] = "BasicRxOffload";
+    CHAR RecvPayload[sizeof(UdpPayload)];
+    UCHAR UdpFrame[UDP_HEADER_STORAGE + sizeof(UdpPayload)];
+    UINT32 UdpFrameLength = sizeof(UdpFrame);
+    TEST_TRUE(
+        PktBuildUdpFrame(
+            UdpFrame, &UdpFrameLength, UdpPayload, sizeof(UdpPayload), &LocalHw,
+            &RemoteHw, AF_INET, &LocalIp, &RemoteIp, LocalPort, RemotePort));
+
+    RX_FRAME RxFrame;
+    RxInitializeFrame(&RxFrame, FnMpIf.GetQueueId(), UdpFrame, UdpFrameLength);
+    TEST_HRESULT(MpRxIndicateFrame(SharedMp, &RxFrame));
+    TEST_EQUAL(sizeof(UdpPayload), recv(UdpSocket.get(), RecvPayload, sizeof(RecvPayload), 0));
+    TEST_TRUE(RtlEqualMemory(UdpPayload, RecvPayload, sizeof(UdpPayload)));
+
+    NDIS_OFFLOAD_PARAMETERS OffloadParams;
+    InitializeOffloadParameters(&OffloadParams);
+    OffloadParams.UDPIPv4Checksum = NDIS_OFFLOAD_PARAMETERS_RX_ENABLED_TX_DISABLED;
+    MpUpdateTaskOffload(SharedMp, FnOffloadCurrentConfig, &OffloadParams);
+
+    //
+    // Set the checksum succeeded OOB bit, and mangle the checksum. If the OOB
+    // is being respected, the UDP datagram will still be delivered.
+    //
+    RxFrame.Frame.Input.Checksum.Receive.UdpChecksumSucceeded = TRUE;
+    UDP_HDR *UdpHdr = (UDP_HDR *)&UdpFrame[UDP_HEADER_BACKFILL(AF_INET) - sizeof(*UdpHdr)];
+    UdpHdr->uh_sum++;
+    TEST_HRESULT(MpRxIndicateFrame(SharedMp, &RxFrame));
+    TEST_EQUAL(sizeof(UdpPayload), recv(UdpSocket.get(), RecvPayload, sizeof(RecvPayload), 0));
+    TEST_TRUE(RtlEqualMemory(UdpPayload, RecvPayload, sizeof(UdpPayload)));
+    RxFrame.Frame.Input.Checksum.Value = 0;
+    UdpHdr->uh_sum--;
+    MpUpdateTaskOffload(SharedMp, FnOffloadCurrentConfig, NULL);
+
+    //
+    // Try the same thing with the IP header.
+    //
+    InitializeOffloadParameters(&OffloadParams);
+    OffloadParams.IPv4Checksum = NDIS_OFFLOAD_PARAMETERS_RX_ENABLED_TX_DISABLED;
+    MpUpdateTaskOffload(SharedMp, FnOffloadCurrentConfig, &OffloadParams);
+
+    RxFrame.Frame.Input.Checksum.Receive.IpChecksumSucceeded = TRUE;
+    RxFrame.Frame.Input.Checksum.Receive.IpChecksumValueInvalid = TRUE;
+    IPV4_HEADER *IpHdr = (IPV4_HEADER *)&UdpFrame[sizeof(ETHERNET_HEADER)];
+    IpHdr->HeaderChecksum++;
+    TEST_HRESULT(MpRxIndicateFrame(SharedMp, &RxFrame));
+    TEST_EQUAL(sizeof(UdpPayload), recv(UdpSocket.get(), RecvPayload, sizeof(RecvPayload), 0));
+    TEST_TRUE(RtlEqualMemory(UdpPayload, RecvPayload, sizeof(UdpPayload)));
+    RxFrame.Frame.Input.Checksum.Value = 0;
+    IpHdr->HeaderChecksum--;
+}
+
+VOID
+BasicTxOffload()
+{
+    UINT16 LocalPort;
+    auto UdpSocket = CreateUdpSocket(AF_INET, NULL, &LocalPort);
+    auto SharedMp = MpOpenShared(FnMpIf.GetIfIndex());
+    auto MpTaskOffloadCleanup = wil::scope_exit([&]() {
+        MpUpdateTaskOffload(SharedMp, FnOffloadCurrentConfig, NULL);
+    });
+
+    UCHAR UdpPayload[] = "BasicTxOffload";
+    UCHAR Pattern[UDP_HEADER_BACKFILL(AF_INET) + sizeof(UdpPayload)];
+    UCHAR Mask[sizeof(Pattern)];
+
+    RtlZeroMemory(Pattern, sizeof(Pattern));
+    RtlCopyMemory(Pattern + UDP_HEADER_BACKFILL(AF_INET), UdpPayload, sizeof(UdpPayload));
+
+    RtlZeroMemory(Mask, sizeof(Mask));
+    for (int i = UDP_HEADER_BACKFILL(AF_INET); i < sizeof(Mask); i++) {
+        Mask[i] = 0xff;
+    }
+
+    MpTxFilter(SharedMp, Pattern, Mask, sizeof(Pattern));
+
+    SOCKADDR_STORAGE RemoteAddr;
+    SetSockAddr(FNMP_NEIGHBOR_IPV4_ADDRESS, 1234, AF_INET, &RemoteAddr);
+
+    TEST_EQUAL(
+        (int)sizeof(UdpPayload),
+        sendto(
+            UdpSocket.get(), (PCHAR)UdpPayload, sizeof(UdpPayload), 0,
+            (PSOCKADDR)&RemoteAddr, sizeof(RemoteAddr)));
+
+    auto MpTxFrame = MpTxAllocateAndGetFrame(SharedMp, 0);
+    TEST_FALSE(MpTxFrame->Output.Checksum.Transmit.UdpChecksum);
+    MpTxDequeueFrame(SharedMp, 0);
+    MpTxFlush(SharedMp);
+
+    NDIS_OFFLOAD_PARAMETERS OffloadParams;
+    InitializeOffloadParameters(&OffloadParams);
+    OffloadParams.UDPIPv4Checksum = NDIS_OFFLOAD_PARAMETERS_TX_ENABLED_RX_DISABLED;
+    MpUpdateTaskOffload(SharedMp, FnOffloadCurrentConfig, &OffloadParams);
+
+    TEST_EQUAL(
+        (int)sizeof(UdpPayload),
+        sendto(
+            UdpSocket.get(), (PCHAR)UdpPayload, sizeof(UdpPayload), 0,
+            (PSOCKADDR)&RemoteAddr, sizeof(RemoteAddr)));
+
+    MpTxFrame = MpTxAllocateAndGetFrame(SharedMp, 0);
+    TEST_TRUE(MpTxFrame->Output.Checksum.Transmit.UdpChecksum);
+    MpTxDequeueFrame(SharedMp, 0);
+    MpTxFlush(SharedMp);
+}
+
 using namespace Microsoft::VisualStudio::CppUnitTestFramework;
 
 VOID
@@ -801,5 +954,13 @@ public:
 
     TEST_METHOD(BasicTx) {
         ::BasicTx();
+    }
+
+    TEST_METHOD(BasicRxOffload) {
+        ::BasicRxOffload();
+    }
+
+    TEST_METHOD(BasicTxOffload) {
+        ::BasicTxOffload();
     }
 };

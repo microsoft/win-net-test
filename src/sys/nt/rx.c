@@ -97,9 +97,21 @@ SharedIrpRxEnqueue(
             goto Exit;
         }
         NET_BUFFER_LIST_SET_HASH_FUNCTION(Nbl, NdisHashFunctionToeplitz);
+        NET_BUFFER_LIST_SET_HASH_TYPE(Nbl, NDIS_HASH_IPV4);
         NET_BUFFER_LIST_SET_HASH_VALUE(
             Nbl, Adapter->RssQueues[EnqueueIn.Frame.Input.RssHashQueueId].RssHash);
-        NET_BUFFER_LIST_SET_HASH_TYPE(Nbl, NDIS_HASH_IPV4);
+    }
+
+    NET_BUFFER_LIST_INFO(Nbl, TcpIpChecksumNetBufferListInfo) =
+        EnqueueIn.Frame.Input.Checksum.Value;
+
+    if (EnqueueIn.Frame.Input.Rsc.Value != 0) {
+        if (EnqueueIn.Frame.Input.Rsc.Info.CoalescedSegCount < 1) {
+            Status = STATUS_INVALID_PARAMETER;
+            goto Exit;
+        }
+
+        NET_BUFFER_LIST_INFO(Nbl, TcpRecvSegCoalesceInfo) = EnqueueIn.Frame.Input.Rsc.Value;
     }
 
     KeAcquireSpinLock(&Rx->Shared->Lock, &OldIrql);

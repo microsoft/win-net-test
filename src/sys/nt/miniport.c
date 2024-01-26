@@ -20,7 +20,7 @@ typedef struct _OFFLOAD_REGKEY {
 
 #define DEFINE_OFFLOAD_REGISTRY_REGKEY(_RegKeyName) \
     static const OFFLOAD_REGKEY _RegKeyName = { \
-        .CurrentConfigName = NDIS_STRING_CONST("*" #_RegKeyName), \
+        .CurrentConfigName = NDIS_STRING_CONST(#_RegKeyName), \
         .HardwareCapabilityName = NDIS_STRING_CONST(#_RegKeyName "Capability") \
     }
 
@@ -225,8 +225,8 @@ MpReadOffload(
 
     TRY_READ_INT_CONFIGURATION(
         ConfigHandle, GetOffloadRegKeyName(&UDPChecksumOffloadIPv4, Store),
-        &Offload->UdpChecksumOffloadIPv4);
-    if ((UINT32)Offload->UdpChecksumOffloadIPv4 > ChecksumOffloadRxTx) {
+        &Offload->UDPChecksumOffloadIPv4);
+    if ((UINT32)Offload->UDPChecksumOffloadIPv4 > ChecksumOffloadRxTx) {
         Status = NDIS_STATUS_INVALID_PARAMETER;
         goto Exit;
     }
@@ -614,7 +614,8 @@ MpSetOffloadParameters(
     NDIS_OFFLOAD NdisOffload;
     NDIS_STATUS Status;
 
-    if (OffloadParametersLength < NDIS_SIZEOF_OFFLOAD_PARAMETERS_REVISION_1) {
+    if (OffloadParametersLength < NDIS_SIZEOF_OFFLOAD_PARAMETERS_REVISION_1 ||
+        OffloadParameters->Header.Type != NDIS_OBJECT_TYPE_DEFAULT) {
         Status = NDIS_STATUS_INVALID_PARAMETER;
         goto Exit;
     }
@@ -634,7 +635,7 @@ MpSetOffloadParameters(
         MpUpdateChecksumParameter(
             &AdapterOffload->TCPChecksumOffloadIPv6, OffloadParameters->TCPIPv6Checksum);
         MpUpdateChecksumParameter(
-            &AdapterOffload->UdpChecksumOffloadIPv4, OffloadParameters->UDPIPv4Checksum);
+            &AdapterOffload->UDPChecksumOffloadIPv4, OffloadParameters->UDPIPv4Checksum);
         MpUpdateChecksumParameter(
             &AdapterOffload->UDPChecksumOffloadIPv6, OffloadParameters->UDPIPv6Checksum);
         MpUpdateOffloadParameter(&AdapterOffload->LsoV2IPv4, OffloadParameters->LsoV2IPv4);
