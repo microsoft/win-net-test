@@ -11,6 +11,7 @@
     <UndockedSourceLink>true</UndockedSourceLink>
   </PropertyGroup>
   <Import Project="$(UndockedDir)vs\windows.undocked.props" />
+  <Import Project="$(SolutionDir)src\wnt.cpp.props" />
   <ItemGroup>
     <ProjectReference Include="$(SolutionDir)test\pkthlp\um\pkthlp_um.vcxproj">
       <Project>{e84ff937-7445-4b8e-ba40-dffacc09c060}</Project>

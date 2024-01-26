@@ -9,6 +9,7 @@
     <UndockedSourceLink>true</UndockedSourceLink>
   </PropertyGroup>
   <Import Project="$(UndockedDir)vs\windows.undocked.props" />
+  <Import Project="$(SolutionDir)src\wnt.cpp.props" />
   <ItemGroup>
     <ClCompile Include="ioctl.c" />
     <ClCompile Include="fnmpapi.c" />
