@@ -6,6 +6,11 @@
 #include <chrono>
 #include <cstdio>
 
+#pragma warning(push)
+#pragma warning(disable:5252) // Multiple different types resulted in the same XFG type-hash
+#include <xlocnum>
+#pragma warning(pop)
+
 // Windows and WIL includes need to be ordered in a certain way.
 #define NOMINMAX
 #include <winsock2.h>

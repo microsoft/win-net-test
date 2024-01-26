@@ -459,11 +459,6 @@ MpProcessSetOid(
             break;
 
         case OID_TCP_OFFLOAD_PARAMETERS:
-            if (InformationBufferLength < NDIS_SIZEOF_OFFLOAD_PARAMETERS_REVISION_1) {
-                Status = NDIS_STATUS_INVALID_LENGTH;
-                break;
-            }
-
             Status =
                 MpSetOffloadParameters(
                     Adapter, &Adapter->OffloadConfig, InformationBuffer, InformationBufferLength,
@@ -471,11 +466,6 @@ MpProcessSetOid(
             break;
 
         case OID_TCP_OFFLOAD_HW_PARAMETERS:
-            if (InformationBufferLength < NDIS_SIZEOF_OFFLOAD_PARAMETERS_REVISION_1) {
-                Status = NDIS_STATUS_INVALID_LENGTH;
-                break;
-            }
-
             Status =
                 MpSetOffloadParameters(
                     Adapter, &Adapter->OffloadCapabilities, InformationBuffer,
