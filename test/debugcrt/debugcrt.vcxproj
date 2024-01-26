@@ -11,6 +11,7 @@
   <PropertyGroup Label="Configuration">
     <ConfigurationType>Utility</ConfigurationType>
     <PlatformToolset>v143</PlatformToolset>
+    <PlatformToolset Condition="'$(VisualStudioVersion)' == '16.0'">v142</PlatformToolset>
   </PropertyGroup>
   <ImportGroup Label="ExtensionSettings" />
   <!-- Redistribute the debug CRT to test machines. -->
