@@ -17,6 +17,8 @@ Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "bounce", "src\sys\bounce\bo
 EndProject
 Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "fnio", "src\sys\fnio\fnio.vcxproj", "{D07EDEB2-006F-4B32-8CD1-2B8FABD5879E}"
 EndProject
+Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "debugcrt", "test\debugcrt\debugcrt.vcxproj", "{74f5716d-c62f-45d4-9cc2-4637440d5e4e}"
+EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
 		Debug|ARM64 = Debug|ARM64
@@ -97,6 +99,18 @@ Global
 		{D07EDEB2-006F-4B32-8CD1-2B8FABD5879E}.Release|x64.ActiveCfg = Release|x64
 		{D07EDEB2-006F-4B32-8CD1-2B8FABD5879E}.Release|x64.Build.0 = Release|x64
 		{D07EDEB2-006F-4B32-8CD1-2B8FABD5879E}.Release|x64.Deploy.0 = Release|x64
+		{74f5716d-c62f-45d4-9cc2-4637440d5e4e}.Debug|ARM64.ActiveCfg = Debug|ARM64
+		{74f5716d-c62f-45d4-9cc2-4637440d5e4e}.Debug|ARM64.Build.0 = Debug|ARM64
+		{74f5716d-c62f-45d4-9cc2-4637440d5e4e}.Debug|ARM64.Deploy.0 = Debug|ARM64
+		{74f5716d-c62f-45d4-9cc2-4637440d5e4e}.Debug|x64.ActiveCfg = Debug|x64
+		{74f5716d-c62f-45d4-9cc2-4637440d5e4e}.Debug|x64.Build.0 = Debug|x64
+		{74f5716d-c62f-45d4-9cc2-4637440d5e4e}.Debug|x64.Deploy.0 = Debug|x64
+		{74f5716d-c62f-45d4-9cc2-4637440d5e4e}.Release|ARM64.ActiveCfg = Release|ARM64
+		{74f5716d-c62f-45d4-9cc2-4637440d5e4e}.Release|ARM64.Build.0 = Release|ARM64
+		{74f5716d-c62f-45d4-9cc2-4637440d5e4e}.Release|ARM64.Deploy.0 = Release|ARM64
+		{74f5716d-c62f-45d4-9cc2-4637440d5e4e}.Release|x64.ActiveCfg = Release|x64
+		{74f5716d-c62f-45d4-9cc2-4637440d5e4e}.Release|x64.Build.0 = Release|x64
+		{74f5716d-c62f-45d4-9cc2-4637440d5e4e}.Release|x64.Deploy.0 = Release|x64
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE

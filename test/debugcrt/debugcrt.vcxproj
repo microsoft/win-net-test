@@ -1,0 +1,27 @@
+<?xml version="1.0" encoding="utf-8"?>
+<Project DefaultTargets="Build" ToolsVersion="12.0" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
+  <PropertyGroup Label="Globals">
+    <VCProjectVersion>16.0</VCProjectVersion>
+    <Keyword>Win32Proj</Keyword>
+    <ProjectGuid>{74f5716d-c62f-45d4-9cc2-4637440d5e4e}</ProjectGuid>
+    <RootNamespace>debugcrt</RootNamespace>
+    <UndockedType>dll</UndockedType>
+  </PropertyGroup>
+  <Import Project="$(SolutionDir)submodules\undocked\vs\windows.undocked.props" />
+  <PropertyGroup Label="Configuration">
+    <ConfigurationType>Utility</ConfigurationType>
+    <PlatformToolset>v143</PlatformToolset>
+    <PlatformToolset Condition="'$(VisualStudioVersion)' == '16.0'">v142</PlatformToolset>
+  </PropertyGroup>
+  <ImportGroup Label="ExtensionSettings" />
+  <!-- Redistribute the debug CRT to test machines. -->
+  <PropertyGroup Condition="'$(Configuration)'=='Debug'">
+    <VCRedistVersion Condition="exists('$(VCInstallDir)Auxiliary\Build\Microsoft.VCRedistVersion.default.txt')">$([System.IO.File]::ReadAllText($(VCInstallDir)Auxiliary\Build\Microsoft.VCRedistVersion.default.txt).Trim())</VCRedistVersion>
+  </PropertyGroup>
+  <ItemDefinitionGroup Condition="'$(Configuration)'=='Debug'">
+    <PostBuildEvent>
+      <Command>xcopy "$(VCInstallDir)redist\MSVC\$(VCRedistVersion)\onecore\debug_nonredist\$(PlatformShortName)\Microsoft.VC$(PlatformToolsetVersion).DebugCRT\*.dll" "$(OutDir)" /D /Y &amp;&amp; xcopy "$(UniversalDebugCRT_ExecutablePath_x64)\*.dll" "$(OutDir)" /D /Y </Command>
+    </PostBuildEvent>
+  </ItemDefinitionGroup>
+  <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
+</Project>
