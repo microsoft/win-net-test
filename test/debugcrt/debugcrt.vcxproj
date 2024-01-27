@@ -6,6 +6,7 @@
     <ProjectGuid>{74f5716d-c62f-45d4-9cc2-4637440d5e4e}</ProjectGuid>
     <RootNamespace>debugcrt</RootNamespace>
     <UndockedType>dll</UndockedType>
+    <UndockedOut>$(SolutionDir)artifacts\</UndockedOut>
   </PropertyGroup>
   <Import Project="$(SolutionDir)submodules\undocked\vs\windows.undocked.props" />
   <PropertyGroup Label="Configuration">

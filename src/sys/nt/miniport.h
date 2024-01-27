@@ -10,12 +10,14 @@
 #define MAX_MULTICAST_ADDRESSES 16
 
 #define MAX_RSS_QUEUES 64
+#define MAX_GSO_SIZE 0x20000
+#define MIN_GSO_SEG_COUNT 2
 
 #define TRY_READ_INT_CONFIGURATION(hConfig, Keyword, pValue) \
     { \
         NDIS_STATUS _Status; \
         PNDIS_CONFIGURATION_PARAMETER Parameter; \
-        NdisReadConfiguration(&_Status, &Parameter, (hConfig), &(Keyword), NdisParameterInteger); \
+        NdisReadConfiguration(&_Status, &Parameter, (hConfig), RTL_CONST_CAST(PNDIS_STRING)(Keyword), NdisParameterInteger); \
         if (_Status == NDIS_STATUS_SUCCESS) \
         { \
             *(pValue) = Parameter->ParameterData.IntegerData; \
@@ -42,7 +44,18 @@ C_ASSERT((ChecksumOffloadTx & ChecksumOffloadRx) == 0);
 C_ASSERT((ChecksumOffloadTx | ChecksumOffloadRx) == ChecksumOffloadRxTx);
 
 typedef struct _ADAPTER_OFFLOAD {
-    CHECKSUM_OFFLOAD_STATE UdpChecksumOffloadIPv4;
+    CHECKSUM_OFFLOAD_STATE IPChecksumOffloadIPv4;
+    CHECKSUM_OFFLOAD_STATE TCPChecksumOffloadIPv4;
+    CHECKSUM_OFFLOAD_STATE TCPChecksumOffloadIPv6;
+    CHECKSUM_OFFLOAD_STATE UDPChecksumOffloadIPv4;
+    CHECKSUM_OFFLOAD_STATE UDPChecksumOffloadIPv6;
+    UINT32 LsoV2IPv4;
+    UINT32 LsoV2IPv6;
+    UINT32 UsoIPv4;
+    UINT32 UsoIPv6;
+    UINT32 RscIPv4;
+    UINT32 RscIPv6;
+    UINT32 UdpRsc;
 } ADAPTER_OFFLOAD;
 
 typedef struct _ADAPTER_CONTEXT {
@@ -70,6 +83,7 @@ typedef struct _ADAPTER_CONTEXT {
     ADAPTER_OFFLOAD OffloadCapabilities;
 
     KSPIN_LOCK Lock;
+    EX_PUSH_LOCK PushLock;
     OID_KEY *OidFilterKeys;
     UINT32 OidFilterKeyCount;
     LIST_ENTRY FilteredOidRequestLists[OID_REQUEST_INTERFACE_MAX];
@@ -109,11 +123,45 @@ MpFindAdapter(
     _In_ UINT32 IfIndex
     );
 
+VOID
+MpIndicateStatus(
+    _In_ CONST ADAPTER_CONTEXT *Adapter,
+    _In_ VOID *Buffer,
+    _In_ UINT32 BufferSize,
+    _In_ UINT32 StatusCode
+    );
+
 NDIS_STATUS
 MpSetOffloadParameters(
-    _In_ CONST ADAPTER_CONTEXT *Adapter,
+    _Inout_ ADAPTER_CONTEXT *Adapter,
     _Inout_ ADAPTER_OFFLOAD *AdapterOffload,
     _In_ CONST NDIS_OFFLOAD_PARAMETERS *OffloadParameters,
     _In_ UINT32 OffloadParametersLength,
     _In_ UINT32 StatusCode
+    );
+
+NDIS_STATUS
+MpReadOffload(
+    _Inout_ ADAPTER_CONTEXT *Adapter,
+    _In_ NDIS_HANDLE ConfigHandle,
+    _In_ FN_OFFLOAD_TYPE Store
+    );
+
+NDIS_STATUS
+MpOpenConfiguration(
+    _Out_ NDIS_HANDLE *ConfigHandle,
+    _In_ ADAPTER_CONTEXT *Adapter
+    );
+
+ADAPTER_OFFLOAD *
+MpGetOffload(
+    _In_ ADAPTER_CONTEXT *Adapter,
+    _In_ FN_OFFLOAD_TYPE Store
+    );
+
+VOID
+MpFillOffload(
+    _Out_ NDIS_OFFLOAD *Offload,
+    _In_ ADAPTER_CONTEXT *Adapter,
+    _In_ ADAPTER_OFFLOAD *AdapterOffload
     );

@@ -285,3 +285,31 @@ FnMpOidCompleteRequest(
 
     return FnMpIoctl(Handle, IOCTL_OID_COMPLETE_REQUEST, &In, sizeof(In), NULL, 0, NULL, NULL);
 }
+
+FNMPAPI
+HRESULT
+FnMpUpdateTaskOffload(
+    _In_ HANDLE Handle,
+    _In_ FN_OFFLOAD_TYPE OffloadType,
+    _In_opt_ const NDIS_OFFLOAD_PARAMETERS *OffloadParameters,
+    _In_ UINT32 OffloadParametersLength
+    )
+{
+    MINIPORT_UPDATE_TASK_OFFLOAD_IN In = {0};
+
+    //
+    // Supports shared handles only. Updates the miniport task offload state and
+    // indicates the change to NDIS.
+    //
+    // If the offload parameters are not specified, the miniport reloads its
+    // configuration from the registry. If the offload parameters are specfied,
+    // the miniport handles this as if it were set via OID.
+    //
+
+    In.OffloadType = OffloadType;
+    In.OffloadParameters = OffloadParameters;
+    In.OffloadParametersLength = OffloadParametersLength;
+
+    return
+        FnMpIoctl(Handle, IOCTL_MINIPORT_UPDATE_TASK_OFFLOAD, &In, sizeof(In), NULL, 0, NULL, NULL);
+}

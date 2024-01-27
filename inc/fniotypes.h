@@ -22,6 +22,7 @@ EXTERN_C_START
 #include <winsock2.h>
 #include <ws2ipdef.h>
 #include <iphlpapi.h>
+#include <ndisoobtypes.h>
 #endif
 
 typedef struct _DATA_BUFFER {
@@ -43,6 +44,8 @@ typedef struct _DATA_FRAME {
         //
         struct {
             UINT32 RssHashQueueId;
+            NDIS_TCP_IP_CHECKSUM_NET_BUFFER_LIST_INFO Checksum;
+            NDIS_RSC_NBL_INFO Rsc;
         } Input;
         //
         // Used when retrieving filtered IO.
@@ -50,6 +53,9 @@ typedef struct _DATA_FRAME {
         struct {
             PROCESSOR_NUMBER ProcessorNumber;
             UINT32 RssHash;
+            NDIS_TCP_IP_CHECKSUM_NET_BUFFER_LIST_INFO Checksum;
+            NDIS_TCP_LARGE_SEND_OFFLOAD_NET_BUFFER_LIST_INFO Lso;
+            NDIS_UDP_SEGMENTATION_OFFLOAD_NET_BUFFER_LIST_INFO Uso;
         } Output;
     };
 #pragma warning(pop)
@@ -136,5 +142,14 @@ typedef struct _OID_KEY {
     NDIS_REQUEST_TYPE RequestType;
     OID_REQUEST_INTERFACE RequestInterface;
 } OID_KEY;
+
+//
+// Offload interface.
+//
+
+typedef enum _FN_OFFLOAD_TYPE {
+    FnOffloadCurrentConfig,
+    FnOffloadHardwareCapabilities,
+} FN_OFFLOAD_TYPE;
 
 EXTERN_C_END

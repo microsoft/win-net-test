@@ -85,14 +85,68 @@
  HKR, Ndi\Params\*MaxRssProcessors,   step,              0, "1"
  HKR, Ndi\Params\*MaxRssProcessors,   Optional,          0, "0"
 
-; *UDPChecksumOffloadIPv4
- HKR, Ndi\Params\*UDPChecksumOffloadIPv4,         ParamDesc,      0, "UDPChecksumOffloadIPv4"
- HKR, Ndi\Params\*UDPChecksumOffloadIPv4,         type,           0, "enum"
- HKR, Ndi\Params\*UDPChecksumOffloadIPv4,         default,        0, "0"
- HKR, Ndi\Params\*UDPChecksumOffloadIPv4\Enum,    "0",            0, %DISABLED_STR%
- HKR, Ndi\Params\*UDPChecksumOffloadIPv4\Enum,    "1",            0, %ENABLED_TX_STR%
- HKR, Ndi\Params\*UDPChecksumOffloadIPv4\Enum,    "2",            0, %ENABLED_RX_STR%
- HKR, Ndi\Params\*UDPChecksumOffloadIPv4\Enum,    "3",            0, %ENABLED_RX_TX_STR%
+; IPChecksumOffloadIPv4
+ HKR, Ndi\Params\IPChecksumOffloadIPv4,         ParamDesc,      0, "IPChecksumOffloadIPv4"
+ HKR, Ndi\Params\IPChecksumOffloadIPv4,         type,           0, "enum"
+ HKR, Ndi\Params\IPChecksumOffloadIPv4,         default,        0, "0"
+ HKR, Ndi\Params\IPChecksumOffloadIPv4\Enum,    "0",            0, %DISABLED_STR%
+ HKR, Ndi\Params\IPChecksumOffloadIPv4\Enum,    "1",            0, %ENABLED_TX_STR%
+ HKR, Ndi\Params\IPChecksumOffloadIPv4\Enum,    "2",            0, %ENABLED_RX_STR%
+ HKR, Ndi\Params\IPChecksumOffloadIPv4\Enum,    "3",            0, %ENABLED_RX_TX_STR%
+
+; IPChecksumOffloadIPv4Capability
+ HKR, Ndi\Params\IPChecksumOffloadIPv4Capability,         ParamDesc,      0, "IPChecksumOffloadIPv4Capability"
+ HKR, Ndi\Params\IPChecksumOffloadIPv4Capability,         type,           0, "enum"
+ HKR, Ndi\Params\IPChecksumOffloadIPv4Capability,         default,        0, "0"
+ HKR, Ndi\Params\IPChecksumOffloadIPv4Capability\Enum,    "0",            0, %DISABLED_STR%
+ HKR, Ndi\Params\IPChecksumOffloadIPv4Capability\Enum,    "1",            0, %ENABLED_TX_STR%
+ HKR, Ndi\Params\IPChecksumOffloadIPv4Capability\Enum,    "2",            0, %ENABLED_RX_STR%
+ HKR, Ndi\Params\IPChecksumOffloadIPv4Capability\Enum,    "3",            0, %ENABLED_RX_TX_STR%
+
+; TCPChecksumOffloadIPv4
+ HKR, Ndi\Params\TCPChecksumOffloadIPv4,         ParamDesc,      0, "TCPChecksumOffloadIPv4"
+ HKR, Ndi\Params\TCPChecksumOffloadIPv4,         type,           0, "enum"
+ HKR, Ndi\Params\TCPChecksumOffloadIPv4,         default,        0, "0"
+ HKR, Ndi\Params\TCPChecksumOffloadIPv4\Enum,    "0",            0, %DISABLED_STR%
+ HKR, Ndi\Params\TCPChecksumOffloadIPv4\Enum,    "1",            0, %ENABLED_TX_STR%
+ HKR, Ndi\Params\TCPChecksumOffloadIPv4\Enum,    "2",            0, %ENABLED_RX_STR%
+ HKR, Ndi\Params\TCPChecksumOffloadIPv4\Enum,    "3",            0, %ENABLED_RX_TX_STR%
+
+; TCPChecksumOffloadIPv4Capability
+ HKR, Ndi\Params\TCPChecksumOffloadIPv4Capability,         ParamDesc,      0, "TCPChecksumOffloadIPv4Capability"
+ HKR, Ndi\Params\TCPChecksumOffloadIPv4Capability,         type,           0, "enum"
+ HKR, Ndi\Params\TCPChecksumOffloadIPv4Capability,         default,        0, "0"
+ HKR, Ndi\Params\TCPChecksumOffloadIPv4Capability\Enum,    "0",            0, %DISABLED_STR%
+ HKR, Ndi\Params\TCPChecksumOffloadIPv4Capability\Enum,    "1",            0, %ENABLED_TX_STR%
+ HKR, Ndi\Params\TCPChecksumOffloadIPv4Capability\Enum,    "2",            0, %ENABLED_RX_STR%
+ HKR, Ndi\Params\TCPChecksumOffloadIPv4Capability\Enum,    "3",            0, %ENABLED_RX_TX_STR%
+
+; TCPChecksumOffloadIPv6
+ HKR, Ndi\Params\TCPChecksumOffloadIPv6,         ParamDesc,      0, "TCPChecksumOffloadIPv6"
+ HKR, Ndi\Params\TCPChecksumOffloadIPv6,         type,           0, "enum"
+ HKR, Ndi\Params\TCPChecksumOffloadIPv6,         default,        0, "0"
+ HKR, Ndi\Params\TCPChecksumOffloadIPv6\Enum,    "0",            0, %DISABLED_STR%
+ HKR, Ndi\Params\TCPChecksumOffloadIPv6\Enum,    "1",            0, %ENABLED_TX_STR%
+ HKR, Ndi\Params\TCPChecksumOffloadIPv6\Enum,    "2",            0, %ENABLED_RX_STR%
+ HKR, Ndi\Params\TCPChecksumOffloadIPv6\Enum,    "3",            0, %ENABLED_RX_TX_STR%
+
+; TCPChecksumOffloadIPv6Capability
+ HKR, Ndi\Params\TCPChecksumOffloadIPv6Capability,         ParamDesc,      0, "TCPChecksumOffloadIPv6Capability"
+ HKR, Ndi\Params\TCPChecksumOffloadIPv6Capability,         type,           0, "enum"
+ HKR, Ndi\Params\TCPChecksumOffloadIPv6Capability,         default,        0, "0"
+ HKR, Ndi\Params\TCPChecksumOffloadIPv6Capability\Enum,    "0",            0, %DISABLED_STR%
+ HKR, Ndi\Params\TCPChecksumOffloadIPv6Capability\Enum,    "1",            0, %ENABLED_TX_STR%
+ HKR, Ndi\Params\TCPChecksumOffloadIPv6Capability\Enum,    "2",            0, %ENABLED_RX_STR%
+ HKR, Ndi\Params\TCPChecksumOffloadIPv6Capability\Enum,    "3",            0, %ENABLED_RX_TX_STR%
+
+; UDPChecksumOffloadIPv4
+ HKR, Ndi\Params\UDPChecksumOffloadIPv4,         ParamDesc,      0, "UDPChecksumOffloadIPv4"
+ HKR, Ndi\Params\UDPChecksumOffloadIPv4,         type,           0, "enum"
+ HKR, Ndi\Params\UDPChecksumOffloadIPv4,         default,        0, "0"
+ HKR, Ndi\Params\UDPChecksumOffloadIPv4\Enum,    "0",            0, %DISABLED_STR%
+ HKR, Ndi\Params\UDPChecksumOffloadIPv4\Enum,    "1",            0, %ENABLED_TX_STR%
+ HKR, Ndi\Params\UDPChecksumOffloadIPv4\Enum,    "2",            0, %ENABLED_RX_STR%
+ HKR, Ndi\Params\UDPChecksumOffloadIPv4\Enum,    "3",            0, %ENABLED_RX_TX_STR%
 
 ; UDPChecksumOffloadIPv4Capability
  HKR, Ndi\Params\UDPChecksumOffloadIPv4Capability,         ParamDesc,      0, "UDPChecksumOffloadIPv4Capability"
@@ -102,6 +156,122 @@
  HKR, Ndi\Params\UDPChecksumOffloadIPv4Capability\Enum,    "1",            0, %ENABLED_TX_STR%
  HKR, Ndi\Params\UDPChecksumOffloadIPv4Capability\Enum,    "2",            0, %ENABLED_RX_STR%
  HKR, Ndi\Params\UDPChecksumOffloadIPv4Capability\Enum,    "3",            0, %ENABLED_RX_TX_STR%
+
+; UDPChecksumOffloadIPv6
+ HKR, Ndi\Params\UDPChecksumOffloadIPv6,         ParamDesc,      0, "UDPChecksumOffloadIPv6"
+ HKR, Ndi\Params\UDPChecksumOffloadIPv6,         type,           0, "enum"
+ HKR, Ndi\Params\UDPChecksumOffloadIPv6,         default,        0, "0"
+ HKR, Ndi\Params\UDPChecksumOffloadIPv6\Enum,    "0",            0, %DISABLED_STR%
+ HKR, Ndi\Params\UDPChecksumOffloadIPv6\Enum,    "1",            0, %ENABLED_TX_STR%
+ HKR, Ndi\Params\UDPChecksumOffloadIPv6\Enum,    "2",            0, %ENABLED_RX_STR%
+ HKR, Ndi\Params\UDPChecksumOffloadIPv6\Enum,    "3",            0, %ENABLED_RX_TX_STR%
+
+; UDPChecksumOffloadIPv6Capability
+ HKR, Ndi\Params\UDPChecksumOffloadIPv6Capability,         ParamDesc,      0, "UDPChecksumOffloadIPv6Capability"
+ HKR, Ndi\Params\UDPChecksumOffloadIPv6Capability,         type,           0, "enum"
+ HKR, Ndi\Params\UDPChecksumOffloadIPv6Capability,         default,        0, "0"
+ HKR, Ndi\Params\UDPChecksumOffloadIPv6Capability\Enum,    "0",            0, %DISABLED_STR%
+ HKR, Ndi\Params\UDPChecksumOffloadIPv6Capability\Enum,    "1",            0, %ENABLED_TX_STR%
+ HKR, Ndi\Params\UDPChecksumOffloadIPv6Capability\Enum,    "2",            0, %ENABLED_RX_STR%
+ HKR, Ndi\Params\UDPChecksumOffloadIPv6Capability\Enum,    "3",            0, %ENABLED_RX_TX_STR%
+
+; LsoV2IPv4
+ HKR, Ndi\Params\LsoV2IPv4,                ParamDesc,      0, "LsoV2IPv4"
+ HKR, Ndi\Params\LsoV2IPv4,                default,        0, "0"
+ HKR, Ndi\Params\LsoV2IPv4,                type,           0, "enum"
+ HKR, Ndi\Params\LsoV2IPv4\Enum,           "0",            0, %DISABLED_STR%
+ HKR, Ndi\Params\LsoV2IPv4\Enum,           "1",            0, %ENABLED_STR%
+
+; LsoV2IPv4Capability
+ HKR, Ndi\Params\LsoV2IPv4Capability,                ParamDesc,      0, "LsoV2IPv4Capability"
+ HKR, Ndi\Params\LsoV2IPv4Capability,                default,        0, "0"
+ HKR, Ndi\Params\LsoV2IPv4Capability,                type,           0, "enum"
+ HKR, Ndi\Params\LsoV2IPv4Capability\Enum,           "0",            0, %DISABLED_STR%
+ HKR, Ndi\Params\LsoV2IPv4Capability\Enum,           "1",            0, %ENABLED_STR%
+
+; LsoV2IPv6
+ HKR, Ndi\Params\LsoV2IPv6,                ParamDesc,      0, "LsoV2IPv6"
+ HKR, Ndi\Params\LsoV2IPv6,                default,        0, "0"
+ HKR, Ndi\Params\LsoV2IPv6,                type,           0, "enum"
+ HKR, Ndi\Params\LsoV2IPv6\Enum,           "0",            0, %DISABLED_STR%
+ HKR, Ndi\Params\LsoV2IPv6\Enum,           "1",            0, %ENABLED_STR%
+
+; LsoV2IPv6Capability
+ HKR, Ndi\Params\LsoV2IPv6Capability,                ParamDesc,      0, "LsoV2IPv6Capability"
+ HKR, Ndi\Params\LsoV2IPv6Capability,                default,        0, "0"
+ HKR, Ndi\Params\LsoV2IPv6Capability,                type,           0, "enum"
+ HKR, Ndi\Params\LsoV2IPv6Capability\Enum,           "0",            0, %DISABLED_STR%
+ HKR, Ndi\Params\LsoV2IPv6Capability\Enum,           "1",            0, %ENABLED_STR%
+
+; UsoIPv4
+ HKR, Ndi\Params\UsoIPv4,                ParamDesc,      0, "UsoIPv4"
+ HKR, Ndi\Params\UsoIPv4,                default,        0, "0"
+ HKR, Ndi\Params\UsoIPv4,                type,           0, "enum"
+ HKR, Ndi\Params\UsoIPv4\Enum,           "0",            0, %DISABLED_STR%
+ HKR, Ndi\Params\UsoIPv4\Enum,           "1",            0, %ENABLED_STR%
+
+; UsoIPv4Capability
+ HKR, Ndi\Params\UsoIPv4Capability,                ParamDesc,      0, "UsoIPv4Capability"
+ HKR, Ndi\Params\UsoIPv4Capability,                default,        0, "0"
+ HKR, Ndi\Params\UsoIPv4Capability,                type,           0, "enum"
+ HKR, Ndi\Params\UsoIPv4Capability\Enum,           "0",            0, %DISABLED_STR%
+ HKR, Ndi\Params\UsoIPv4Capability\Enum,           "1",            0, %ENABLED_STR%
+
+; UsoIPv6
+ HKR, Ndi\Params\UsoIPv6,                ParamDesc,      0, "UsoIPv6"
+ HKR, Ndi\Params\UsoIPv6,                default,        0, "0"
+ HKR, Ndi\Params\UsoIPv6,                type,           0, "enum"
+ HKR, Ndi\Params\UsoIPv6\Enum,           "0",            0, %DISABLED_STR%
+ HKR, Ndi\Params\UsoIPv6\Enum,           "1",            0, %ENABLED_STR%
+
+; UsoIPv6Capability
+ HKR, Ndi\Params\UsoIPv6Capability,                ParamDesc,      0, "UsoIPv6Capability"
+ HKR, Ndi\Params\UsoIPv6Capability,                default,        0, "0"
+ HKR, Ndi\Params\UsoIPv6Capability,                type,           0, "enum"
+ HKR, Ndi\Params\UsoIPv6Capability\Enum,           "0",            0, %DISABLED_STR%
+ HKR, Ndi\Params\UsoIPv6Capability\Enum,           "1",            0, %ENABLED_STR%
+
+; RscIPv4
+ HKR, Ndi\Params\RscIPv4,                ParamDesc,      0, "RscIPv4"
+ HKR, Ndi\Params\RscIPv4,                default,        0, "0"
+ HKR, Ndi\Params\RscIPv4,                type,           0, "enum"
+ HKR, Ndi\Params\RscIPv4\Enum,           "0",            0, %DISABLED_STR%
+ HKR, Ndi\Params\RscIPv4\Enum,           "1",            0, %ENABLED_STR%
+
+; RscIPv4Capability
+ HKR, Ndi\Params\RscIPv4Capability,                ParamDesc,      0, "RscIPv4Capability"
+ HKR, Ndi\Params\RscIPv4Capability,                default,        0, "0"
+ HKR, Ndi\Params\RscIPv4Capability,                type,           0, "enum"
+ HKR, Ndi\Params\RscIPv4Capability\Enum,           "0",            0, %DISABLED_STR%
+ HKR, Ndi\Params\RscIPv4Capability\Enum,           "1",            0, %ENABLED_STR%
+
+; RscIPv6
+ HKR, Ndi\Params\RscIPv6,                ParamDesc,      0, "RscIPv6"
+ HKR, Ndi\Params\RscIPv6,                default,        0, "0"
+ HKR, Ndi\Params\RscIPv6,                type,           0, "enum"
+ HKR, Ndi\Params\RscIPv6\Enum,           "0",            0, %DISABLED_STR%
+ HKR, Ndi\Params\RscIPv6\Enum,           "1",            0, %ENABLED_STR%
+
+; RscIPv6Capability
+ HKR, Ndi\Params\RscIPv6Capability,                ParamDesc,      0, "RscIPv6Capability"
+ HKR, Ndi\Params\RscIPv6Capability,                default,        0, "0"
+ HKR, Ndi\Params\RscIPv6Capability,                type,           0, "enum"
+ HKR, Ndi\Params\RscIPv6Capability\Enum,           "0",            0, %DISABLED_STR%
+ HKR, Ndi\Params\RscIPv6Capability\Enum,           "1",            0, %ENABLED_STR%
+
+; UdpRsc
+ HKR, Ndi\Params\UdpRsc,                ParamDesc,      0, "UdpRsc"
+ HKR, Ndi\Params\UdpRsc,                default,        0, "0"
+ HKR, Ndi\Params\UdpRsc,                type,           0, "enum"
+ HKR, Ndi\Params\UdpRsc\Enum,           "0",            0, %DISABLED_STR%
+ HKR, Ndi\Params\UdpRsc\Enum,           "1",            0, %ENABLED_STR%
+
+; UdpRscCapability
+ HKR, Ndi\Params\UdpRscCapability,                ParamDesc,      0, "UdpRscCapability"
+ HKR, Ndi\Params\UdpRscCapability,                default,        0, "0"
+ HKR, Ndi\Params\UdpRscCapability,                type,           0, "enum"
+ HKR, Ndi\Params\UdpRscCapability\Enum,           "0",            0, %DISABLED_STR%
+ HKR, Ndi\Params\UdpRscCapability\Enum,           "1",            0, %ENABLED_STR%
 
 [SourceDisksNames]
  ; diskid = description[, [tagfile] [, <unused>, subdir]]

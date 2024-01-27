@@ -227,6 +227,9 @@ FnIoGetFilteredFrame(
 
     Frame->Output.ProcessorNumber = NBL_PROCESSOR_NUMBER(Nbl);
     Frame->Output.RssHash = NET_BUFFER_LIST_GET_HASH_VALUE(Nbl);
+    Frame->Output.Checksum.Value = NET_BUFFER_LIST_INFO(Nbl, TcpIpChecksumNetBufferListInfo);
+    Frame->Output.Lso.Value = NET_BUFFER_LIST_INFO(Nbl, TcpLargeSendNetBufferListInfo);
+    Frame->Output.Uso.Value = NET_BUFFER_LIST_INFO(Nbl, UdpSegmentationOffloadInfo);
     Frame->BufferCount = BufferCount;
     Frame->Buffers = RTL_PTR_SUBTRACT(Buffer, Frame);
 

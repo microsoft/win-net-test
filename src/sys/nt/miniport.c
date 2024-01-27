@@ -8,12 +8,51 @@
 
 NDIS_STRING RegRSS = NDIS_STRING_CONST("*RSS");
 NDIS_STRING RegNumRssQueues = NDIS_STRING_CONST("*NumRssQueues");
-NDIS_STRING RegUdpChecksumOffloadIPv4 = NDIS_STRING_CONST("*UDPChecksumOffloadIPv4");
-NDIS_STRING RegUdpChecksumOffloadIPv4Capability = NDIS_STRING_CONST("UDPChecksumOffloadIPv4Capability");
 
 UCHAR MpMacAddressBase[MAC_ADDR_LEN] = {0x22, 0x22, 0x22, 0x22, 0x00, 0x00};
 
 GLOBAL_CONTEXT MpGlobalContext = {0};
+
+typedef struct _OFFLOAD_REGKEY {
+    NDIS_STRING CurrentConfigName;
+    NDIS_STRING HardwareCapabilityName;
+} OFFLOAD_REGKEY;
+
+#define DEFINE_OFFLOAD_REGISTRY_REGKEY(_RegKeyName) \
+    static const OFFLOAD_REGKEY _RegKeyName = { \
+        .CurrentConfigName = NDIS_STRING_CONST(#_RegKeyName), \
+        .HardwareCapabilityName = NDIS_STRING_CONST(#_RegKeyName "Capability") \
+    }
+
+DEFINE_OFFLOAD_REGISTRY_REGKEY(IPChecksumOffloadIPv4);
+DEFINE_OFFLOAD_REGISTRY_REGKEY(TCPChecksumOffloadIPv4);
+DEFINE_OFFLOAD_REGISTRY_REGKEY(TCPChecksumOffloadIPv6);
+DEFINE_OFFLOAD_REGISTRY_REGKEY(UDPChecksumOffloadIPv4);
+DEFINE_OFFLOAD_REGISTRY_REGKEY(UDPChecksumOffloadIPv6);
+DEFINE_OFFLOAD_REGISTRY_REGKEY(LsoV2IPv4);
+DEFINE_OFFLOAD_REGISTRY_REGKEY(LsoV2IPv6);
+DEFINE_OFFLOAD_REGISTRY_REGKEY(UsoIPv4);
+DEFINE_OFFLOAD_REGISTRY_REGKEY(UsoIPv6);
+DEFINE_OFFLOAD_REGISTRY_REGKEY(RscIPv4);
+DEFINE_OFFLOAD_REGISTRY_REGKEY(RscIPv6);
+DEFINE_OFFLOAD_REGISTRY_REGKEY(UdpRsc);
+
+static
+const NDIS_STRING *
+GetOffloadRegKeyName(
+    _In_ const OFFLOAD_REGKEY *RegKey,
+    _In_ FN_OFFLOAD_TYPE Store
+    )
+{
+    switch (Store) {
+    case FnOffloadCurrentConfig:
+        return &RegKey->CurrentConfigName;
+    case FnOffloadHardwareCapabilities:
+        return &RegKey->HardwareCapabilityName;
+    default:
+        FRE_ASSERT(FALSE);
+    }
+}
 
 static
 VOID
@@ -58,6 +97,7 @@ MpCreateAdapter(
     Adapter->ReferenceCount = 1;
     InitializeListHead(&Adapter->AdapterListLink);
     KeInitializeSpinLock(&Adapter->Lock);
+    ExInitializePushLock(&Adapter->PushLock);
 
     for (UINT32 i = 0; i < RTL_NUMBER_OF(Adapter->FilteredOidRequestLists); i++) {
         InitializeListHead(&Adapter->FilteredOidRequestLists[i]);
@@ -131,14 +171,161 @@ MpFindAdapter(
     return Adapter;
 }
 
-static
-BOOLEAN
-MpValidateChecksumConfig(
-    _In_ CHECKSUM_OFFLOAD_STATE HardwareCapability,
-    _In_ CHECKSUM_OFFLOAD_STATE CurrentConfig
+ADAPTER_OFFLOAD *
+MpGetOffload(
+    _In_ ADAPTER_CONTEXT *Adapter,
+    _In_ FN_OFFLOAD_TYPE Store
     )
 {
-    return (CurrentConfig & HardwareCapability) == CurrentConfig;
+    switch (Store) {
+    case FnOffloadCurrentConfig:
+        return &Adapter->OffloadConfig;
+    case FnOffloadHardwareCapabilities:
+        return &Adapter->OffloadCapabilities;
+    default:
+        FRE_ASSERT(FALSE);
+    }
+}
+
+NDIS_STATUS
+MpReadOffload(
+    _Inout_ ADAPTER_CONTEXT *Adapter,
+    _In_ NDIS_HANDLE ConfigHandle,
+    _In_ FN_OFFLOAD_TYPE Store
+    )
+{
+    NDIS_STATUS Status;
+    ADAPTER_OFFLOAD *Offload = MpGetOffload(Adapter, Store);
+
+    RtlAcquirePushLockExclusive(&Adapter->PushLock);
+
+    TRY_READ_INT_CONFIGURATION(
+        ConfigHandle, GetOffloadRegKeyName(&IPChecksumOffloadIPv4, Store),
+        &Offload->IPChecksumOffloadIPv4);
+    if ((UINT32)Offload->IPChecksumOffloadIPv4 > ChecksumOffloadRxTx) {
+        Status = NDIS_STATUS_INVALID_PARAMETER;
+        goto Exit;
+    }
+
+    TRY_READ_INT_CONFIGURATION(
+        ConfigHandle, GetOffloadRegKeyName(&TCPChecksumOffloadIPv4, Store),
+        &Offload->TCPChecksumOffloadIPv4);
+    if ((UINT32)Offload->TCPChecksumOffloadIPv4 > ChecksumOffloadRxTx) {
+        Status = NDIS_STATUS_INVALID_PARAMETER;
+        goto Exit;
+    }
+
+    TRY_READ_INT_CONFIGURATION(
+        ConfigHandle, GetOffloadRegKeyName(&TCPChecksumOffloadIPv6, Store),
+        &Offload->TCPChecksumOffloadIPv6);
+    if ((UINT32)Offload->TCPChecksumOffloadIPv6 > ChecksumOffloadRxTx) {
+        Status = NDIS_STATUS_INVALID_PARAMETER;
+        goto Exit;
+    }
+
+    TRY_READ_INT_CONFIGURATION(
+        ConfigHandle, GetOffloadRegKeyName(&UDPChecksumOffloadIPv4, Store),
+        &Offload->UDPChecksumOffloadIPv4);
+    if ((UINT32)Offload->UDPChecksumOffloadIPv4 > ChecksumOffloadRxTx) {
+        Status = NDIS_STATUS_INVALID_PARAMETER;
+        goto Exit;
+    }
+
+    TRY_READ_INT_CONFIGURATION(
+        ConfigHandle, GetOffloadRegKeyName(&UDPChecksumOffloadIPv6, Store),
+        &Offload->UDPChecksumOffloadIPv6);
+    if ((UINT32)Offload->UDPChecksumOffloadIPv6 > ChecksumOffloadRxTx) {
+        Status = NDIS_STATUS_INVALID_PARAMETER;
+        goto Exit;
+    }
+
+    TRY_READ_INT_CONFIGURATION(
+        ConfigHandle, GetOffloadRegKeyName(&LsoV2IPv4, Store), &Offload->LsoV2IPv4);
+    if ((UINT32)Offload->LsoV2IPv4 > TRUE) {
+        Status = NDIS_STATUS_INVALID_PARAMETER;
+        goto Exit;
+    }
+
+    TRY_READ_INT_CONFIGURATION(
+        ConfigHandle, GetOffloadRegKeyName(&LsoV2IPv6, Store), &Offload->LsoV2IPv6);
+    if ((UINT32)Offload->LsoV2IPv6 > TRUE) {
+        Status = NDIS_STATUS_INVALID_PARAMETER;
+        goto Exit;
+    }
+
+    TRY_READ_INT_CONFIGURATION(
+        ConfigHandle, GetOffloadRegKeyName(&UsoIPv4, Store), &Offload->UsoIPv4);
+    if ((UINT32)Offload->UsoIPv4 > TRUE) {
+        Status = NDIS_STATUS_INVALID_PARAMETER;
+        goto Exit;
+    }
+
+    TRY_READ_INT_CONFIGURATION(
+        ConfigHandle, GetOffloadRegKeyName(&UsoIPv6, Store), &Offload->UsoIPv6);
+    if ((UINT32)Offload->UsoIPv6 > TRUE) {
+        Status = NDIS_STATUS_INVALID_PARAMETER;
+        goto Exit;
+    }
+
+    TRY_READ_INT_CONFIGURATION(
+        ConfigHandle, GetOffloadRegKeyName(&RscIPv4, Store), &Offload->RscIPv4);
+    if ((UINT32)Offload->RscIPv4 > TRUE) {
+        Status = NDIS_STATUS_INVALID_PARAMETER;
+        goto Exit;
+    }
+
+    TRY_READ_INT_CONFIGURATION(
+        ConfigHandle, GetOffloadRegKeyName(&RscIPv6, Store), &Offload->RscIPv6);
+    if ((UINT32)Offload->RscIPv6 > TRUE) {
+        Status = NDIS_STATUS_INVALID_PARAMETER;
+        goto Exit;
+    }
+
+    TRY_READ_INT_CONFIGURATION(
+        ConfigHandle, GetOffloadRegKeyName(&UdpRsc, Store), &Offload->UdpRsc);
+    if ((UINT32)Offload->UdpRsc > TRUE) {
+        Status = NDIS_STATUS_INVALID_PARAMETER;
+        goto Exit;
+    }
+
+    Status = NDIS_STATUS_SUCCESS;
+
+Exit:
+
+    if (Status != NDIS_STATUS_SUCCESS) {
+        RtlZeroMemory(Offload, sizeof(*Offload));
+    }
+
+    RtlReleasePushLockExclusive(&Adapter->PushLock);
+
+    return Status;
+}
+
+NDIS_STATUS
+MpOpenConfiguration(
+    _Out_ NDIS_HANDLE *ConfigHandle,
+    _In_ ADAPTER_CONTEXT *Adapter
+    )
+{
+    NDIS_CONFIGURATION_OBJECT ConfigObject = {0};
+    NDIS_STATUS Status;
+
+    *ConfigHandle = NULL;
+
+    ConfigObject.Header.Type = NDIS_OBJECT_TYPE_CONFIGURATION_OBJECT;
+    ConfigObject.Header.Revision = NDIS_CONFIGURATION_OBJECT_REVISION_1;
+    ConfigObject.Header.Size = sizeof(NDIS_CONFIGURATION_OBJECT);
+    ConfigObject.NdisHandle = Adapter->MiniportHandle;
+    ConfigObject.Flags = 0;
+
+    Status = NdisOpenConfigurationEx(&ConfigObject, ConfigHandle);
+    if (Status != NDIS_STATUS_SUCCESS) {
+        goto Exit;
+    }
+
+Exit:
+
+    return Status;
 }
 
 static
@@ -149,15 +336,8 @@ MpReadConfiguration(
 {
     NDIS_HANDLE ConfigHandle = NULL;
     NDIS_STATUS Status;
-    NDIS_CONFIGURATION_OBJECT ConfigObject;
 
-    ConfigObject.Header.Type = NDIS_OBJECT_TYPE_CONFIGURATION_OBJECT;
-    ConfigObject.Header.Revision = NDIS_CONFIGURATION_OBJECT_REVISION_1;
-    ConfigObject.Header.Size = sizeof(NDIS_CONFIGURATION_OBJECT);
-    ConfigObject.NdisHandle = Adapter->MiniportHandle;
-    ConfigObject.Flags = 0;
-
-    Status = NdisOpenConfigurationEx(&ConfigObject, &ConfigHandle);
+    Status = MpOpenConfiguration(&ConfigHandle, Adapter);
     if (Status != NDIS_STATUS_SUCCESS) {
         goto Exit;
     }
@@ -167,36 +347,22 @@ MpReadConfiguration(
     Adapter->CurrentPacketFilter = 0;
 
     Adapter->RssEnabled = 0;
-    TRY_READ_INT_CONFIGURATION(ConfigHandle, RegRSS, &Adapter->RssEnabled);
+    TRY_READ_INT_CONFIGURATION(ConfigHandle, &RegRSS, &Adapter->RssEnabled);
 
     Adapter->NumRssQueues = FNMP_DEFAULT_RSS_QUEUES;
-    TRY_READ_INT_CONFIGURATION(ConfigHandle, RegNumRssQueues, &Adapter->NumRssQueues);
+    TRY_READ_INT_CONFIGURATION(ConfigHandle, &RegNumRssQueues, &Adapter->NumRssQueues);
     if (Adapter->NumRssQueues == 0 || Adapter->NumRssQueues > MAX_RSS_QUEUES) {
         Status = NDIS_STATUS_INVALID_PARAMETER;
         goto Exit;
     }
 
-    Adapter->OffloadCapabilities.UdpChecksumOffloadIPv4 = ChecksumOffloadDisabled;
-    TRY_READ_INT_CONFIGURATION(
-        ConfigHandle, RegUdpChecksumOffloadIPv4Capability,
-        &Adapter->OffloadCapabilities.UdpChecksumOffloadIPv4);
-    if ((UINT32)Adapter->OffloadCapabilities.UdpChecksumOffloadIPv4 > ChecksumOffloadRxTx) {
-        Status = NDIS_STATUS_INVALID_PARAMETER;
+    Status = MpReadOffload(Adapter, ConfigHandle, FnOffloadHardwareCapabilities);
+    if (Status != NDIS_STATUS_SUCCESS) {
         goto Exit;
     }
 
-    Adapter->OffloadConfig.UdpChecksumOffloadIPv4 = ChecksumOffloadDisabled;
-    TRY_READ_INT_CONFIGURATION(
-        ConfigHandle, RegUdpChecksumOffloadIPv4, &Adapter->OffloadConfig.UdpChecksumOffloadIPv4);
-    if ((UINT32)Adapter->OffloadConfig.UdpChecksumOffloadIPv4 > ChecksumOffloadRxTx) {
-        Status = NDIS_STATUS_INVALID_PARAMETER;
-        goto Exit;
-    }
-
-    if (!MpValidateChecksumConfig(
-            Adapter->OffloadCapabilities.UdpChecksumOffloadIPv4,
-            Adapter->OffloadConfig.UdpChecksumOffloadIPv4)) {
-        Status = NDIS_STATUS_INVALID_PARAMETER;
+    Status = MpReadOffload(Adapter, ConfigHandle, FnOffloadCurrentConfig);
+    if (Status != NDIS_STATUS_SUCCESS) {
         goto Exit;
     }
 
@@ -211,11 +377,11 @@ Exit:
     return Status;
 }
 
-static
 VOID
 MpFillOffload(
     _Out_ NDIS_OFFLOAD *Offload,
-    _In_ CONST ADAPTER_OFFLOAD *AdapterOffload
+    _In_ ADAPTER_CONTEXT *Adapter,
+    _In_ ADAPTER_OFFLOAD *AdapterOffload
     )
 {
     CONST UINT32 Encapsulation = NDIS_ENCAPSULATION_IEEE_802_3;
@@ -226,10 +392,102 @@ MpFillOffload(
     Offload->Header.Revision = NDIS_OFFLOAD_REVISION_7;
     Offload->Header.Size = NDIS_SIZEOF_NDIS_OFFLOAD_REVISION_7;
 
-    if (AdapterOffload->UdpChecksumOffloadIPv4 & ChecksumOffloadTx) {
+    RtlAcquirePushLockShared(&Adapter->PushLock);
+
+    if (AdapterOffload->IPChecksumOffloadIPv4 & ChecksumOffloadTx) {
+        Offload->Checksum.IPv4Transmit.Encapsulation = Encapsulation;
+        Offload->Checksum.IPv4Transmit.IpChecksum = NDIS_OFFLOAD_SUPPORTED;
+        Offload->Checksum.IPv4Transmit.IpOptionsSupported = NDIS_OFFLOAD_SUPPORTED;
+    }
+
+    if (AdapterOffload->IPChecksumOffloadIPv4 & ChecksumOffloadRx) {
+        Offload->Checksum.IPv4Receive.Encapsulation = Encapsulation;
+        Offload->Checksum.IPv4Receive.IpChecksum = NDIS_OFFLOAD_SUPPORTED;
+        Offload->Checksum.IPv4Receive.IpOptionsSupported = NDIS_OFFLOAD_SUPPORTED;
+    }
+
+    if (AdapterOffload->TCPChecksumOffloadIPv4 & ChecksumOffloadTx) {
+        Offload->Checksum.IPv4Transmit.Encapsulation = Encapsulation;
+        Offload->Checksum.IPv4Transmit.TcpChecksum = NDIS_OFFLOAD_SUPPORTED;
+        Offload->Checksum.IPv4Transmit.TcpOptionsSupported = NDIS_OFFLOAD_SUPPORTED;
+    }
+
+    if (AdapterOffload->TCPChecksumOffloadIPv4 & ChecksumOffloadRx) {
+        Offload->Checksum.IPv4Receive.Encapsulation = Encapsulation;
+        Offload->Checksum.IPv4Receive.TcpChecksum = NDIS_OFFLOAD_SUPPORTED;
+        Offload->Checksum.IPv4Receive.TcpOptionsSupported = NDIS_OFFLOAD_SUPPORTED;
+    }
+
+    if (AdapterOffload->TCPChecksumOffloadIPv6 & ChecksumOffloadTx) {
+        Offload->Checksum.IPv6Transmit.Encapsulation = Encapsulation;
+        Offload->Checksum.IPv6Transmit.TcpChecksum = NDIS_OFFLOAD_SUPPORTED;
+        Offload->Checksum.IPv6Transmit.TcpOptionsSupported = NDIS_OFFLOAD_SUPPORTED;
+    }
+
+    if (AdapterOffload->TCPChecksumOffloadIPv6 & ChecksumOffloadRx) {
+        Offload->Checksum.IPv6Receive.Encapsulation = Encapsulation;
+        Offload->Checksum.IPv6Receive.TcpChecksum = NDIS_OFFLOAD_SUPPORTED;
+        Offload->Checksum.IPv6Receive.TcpOptionsSupported = NDIS_OFFLOAD_SUPPORTED;
+    }
+
+    if (AdapterOffload->UDPChecksumOffloadIPv4 & ChecksumOffloadTx) {
         Offload->Checksum.IPv4Transmit.Encapsulation = Encapsulation;
         Offload->Checksum.IPv4Transmit.UdpChecksum = NDIS_OFFLOAD_SUPPORTED;
     }
+
+    if (AdapterOffload->UDPChecksumOffloadIPv4 & ChecksumOffloadRx) {
+        Offload->Checksum.IPv4Receive.Encapsulation = Encapsulation;
+        Offload->Checksum.IPv4Receive.UdpChecksum = NDIS_OFFLOAD_SUPPORTED;
+    }
+
+    if (AdapterOffload->UDPChecksumOffloadIPv6 & ChecksumOffloadTx) {
+        Offload->Checksum.IPv6Transmit.Encapsulation = Encapsulation;
+        Offload->Checksum.IPv6Transmit.UdpChecksum = NDIS_OFFLOAD_SUPPORTED;
+    }
+
+    if (AdapterOffload->UDPChecksumOffloadIPv6 & ChecksumOffloadRx) {
+        Offload->Checksum.IPv6Receive.Encapsulation = Encapsulation;
+        Offload->Checksum.IPv6Receive.UdpChecksum = NDIS_OFFLOAD_SUPPORTED;
+    }
+
+    if (AdapterOffload->LsoV2IPv4) {
+        Offload->LsoV2.IPv4.Encapsulation = Encapsulation;
+        Offload->LsoV2.IPv4.MaxOffLoadSize = MAX_GSO_SIZE;
+        Offload->LsoV2.IPv4.MinSegmentCount = MIN_GSO_SEG_COUNT;
+    }
+
+    if (AdapterOffload->LsoV2IPv6) {
+        Offload->LsoV2.IPv6.Encapsulation = Encapsulation;
+        Offload->LsoV2.IPv6.MaxOffLoadSize = MAX_GSO_SIZE;
+        Offload->LsoV2.IPv6.MinSegmentCount = MIN_GSO_SEG_COUNT;
+        Offload->LsoV2.IPv6.IpExtensionHeadersSupported = NDIS_OFFLOAD_SUPPORTED;
+        Offload->LsoV2.IPv6.TcpOptionsSupported = NDIS_OFFLOAD_SUPPORTED;
+    }
+
+    if (AdapterOffload->UsoIPv4) {
+        Offload->UdpSegmentation.IPv4.Encapsulation = Encapsulation;
+        Offload->UdpSegmentation.IPv4.MaxOffLoadSize = MAX_GSO_SIZE;
+        Offload->UdpSegmentation.IPv4.MinSegmentCount = MIN_GSO_SEG_COUNT;
+        Offload->UdpSegmentation.IPv4.SubMssFinalSegmentSupported = NDIS_OFFLOAD_SUPPORTED;
+    }
+
+    if (AdapterOffload->UsoIPv6) {
+        Offload->UdpSegmentation.IPv6.Encapsulation = Encapsulation;
+        Offload->UdpSegmentation.IPv6.MaxOffLoadSize = MAX_GSO_SIZE;
+        Offload->UdpSegmentation.IPv6.MinSegmentCount = MIN_GSO_SEG_COUNT;
+        Offload->UdpSegmentation.IPv6.IpExtensionHeadersSupported = NDIS_OFFLOAD_SUPPORTED;
+        Offload->UdpSegmentation.IPv6.SubMssFinalSegmentSupported = NDIS_OFFLOAD_SUPPORTED;
+    }
+
+    if (AdapterOffload->RscIPv4) {
+        Offload->Rsc.IPv4.Enabled = TRUE;
+    }
+
+    if (AdapterOffload->RscIPv4) {
+        Offload->Rsc.IPv6.Enabled = TRUE;
+    }
+
+    RtlReleasePushLockShared(&Adapter->PushLock);
 }
 
 static
@@ -242,8 +500,8 @@ MpSetOffloadAttributes(
     NDIS_OFFLOAD DefaultConfig;
     NDIS_OFFLOAD HwCapabilities;
 
-    MpFillOffload(&DefaultConfig, &Adapter->OffloadConfig);
-    MpFillOffload(&HwCapabilities, &Adapter->OffloadCapabilities);
+    MpFillOffload(&DefaultConfig, Adapter, &Adapter->OffloadConfig);
+    MpFillOffload(&HwCapabilities, Adapter, &Adapter->OffloadCapabilities);
 
     OffloadAttributes.Header.Type = NDIS_OBJECT_TYPE_MINIPORT_ADAPTER_OFFLOAD_ATTRIBUTES;
     OffloadAttributes.Header.Revision = NDIS_MINIPORT_ADAPTER_OFFLOAD_ATTRIBUTES_REVISION_1;
@@ -292,6 +550,35 @@ MpUpdateChecksumParameter(
 }
 
 static
+VOID
+MpUpdateOffloadParameter(
+    _Inout_ UINT32 *OffloadState,
+    _In_ UCHAR ParameterValue
+    )
+{
+    switch (ParameterValue) {
+    case NDIS_OFFLOAD_PARAMETERS_NO_CHANGE:
+        break;
+
+    case NDIS_OFFLOAD_PARAMETERS_LSOV2_DISABLED:
+        C_ASSERT(NDIS_OFFLOAD_PARAMETERS_LSOV2_DISABLED == NDIS_OFFLOAD_PARAMETERS_USO_DISABLED);
+        C_ASSERT(NDIS_OFFLOAD_PARAMETERS_LSOV2_DISABLED == NDIS_OFFLOAD_PARAMETERS_RSC_DISABLED);
+        *OffloadState = FALSE;
+        break;
+
+    case NDIS_OFFLOAD_PARAMETERS_LSOV2_ENABLED:
+        C_ASSERT(NDIS_OFFLOAD_PARAMETERS_LSOV2_ENABLED == NDIS_OFFLOAD_PARAMETERS_USO_ENABLED);
+        C_ASSERT(NDIS_OFFLOAD_PARAMETERS_LSOV2_ENABLED == NDIS_OFFLOAD_PARAMETERS_RSC_ENABLED);
+        *OffloadState = TRUE;
+        break;
+
+    default:
+        ASSERT(FALSE);
+        break;
+    }
+}
+
+VOID
 MpIndicateStatus(
     _In_ CONST ADAPTER_CONTEXT *Adapter,
     _In_ VOID *Buffer,
@@ -317,7 +604,7 @@ MpIndicateStatus(
 
 NDIS_STATUS
 MpSetOffloadParameters(
-    _In_ CONST ADAPTER_CONTEXT *Adapter,
+    _Inout_ ADAPTER_CONTEXT *Adapter,
     _Inout_ ADAPTER_OFFLOAD *AdapterOffload,
     _In_ CONST NDIS_OFFLOAD_PARAMETERS *OffloadParameters,
     _In_ UINT32 OffloadParametersLength,
@@ -325,22 +612,63 @@ MpSetOffloadParameters(
     )
 {
     NDIS_OFFLOAD NdisOffload;
+    NDIS_STATUS Status;
 
-    FRE_ASSERT(OffloadParametersLength >= NDIS_SIZEOF_OFFLOAD_PARAMETERS_REVISION_1);
+    if (OffloadParametersLength < NDIS_SIZEOF_OFFLOAD_PARAMETERS_REVISION_1 ||
+        OffloadParameters->Header.Type != NDIS_OBJECT_TYPE_DEFAULT) {
+        Status = NDIS_STATUS_INVALID_PARAMETER;
+        goto Exit;
+    }
 
     //
     // First, update our internal state.
     //
-    MpUpdateChecksumParameter(
-        &AdapterOffload->UdpChecksumOffloadIPv4, OffloadParameters->UDPIPv4Checksum);
+
+    RtlAcquirePushLockExclusive(&Adapter->PushLock);
+
+    if (OffloadParameters->Header.Revision >= NDIS_OFFLOAD_PARAMETERS_REVISION_1 &&
+        OffloadParametersLength >= NDIS_SIZEOF_OFFLOAD_PARAMETERS_REVISION_1) {
+        MpUpdateChecksumParameter(
+            &AdapterOffload->IPChecksumOffloadIPv4, OffloadParameters->IPv4Checksum);
+        MpUpdateChecksumParameter(
+            &AdapterOffload->TCPChecksumOffloadIPv4, OffloadParameters->TCPIPv4Checksum);
+        MpUpdateChecksumParameter(
+            &AdapterOffload->TCPChecksumOffloadIPv6, OffloadParameters->TCPIPv6Checksum);
+        MpUpdateChecksumParameter(
+            &AdapterOffload->UDPChecksumOffloadIPv4, OffloadParameters->UDPIPv4Checksum);
+        MpUpdateChecksumParameter(
+            &AdapterOffload->UDPChecksumOffloadIPv6, OffloadParameters->UDPIPv6Checksum);
+        MpUpdateOffloadParameter(&AdapterOffload->LsoV2IPv4, OffloadParameters->LsoV2IPv4);
+        MpUpdateOffloadParameter(&AdapterOffload->LsoV2IPv6, OffloadParameters->LsoV2IPv6);
+    }
+
+    if (OffloadParameters->Header.Revision >= NDIS_OFFLOAD_PARAMETERS_REVISION_3 &&
+        OffloadParametersLength >= NDIS_SIZEOF_OFFLOAD_PARAMETERS_REVISION_3) {
+        MpUpdateOffloadParameter(&AdapterOffload->RscIPv4, OffloadParameters->RscIPv4);
+        MpUpdateOffloadParameter(&AdapterOffload->RscIPv6, OffloadParameters->RscIPv6);
+    }
+
+    if (OffloadParameters->Header.Revision >= NDIS_OFFLOAD_PARAMETERS_REVISION_5 &&
+        OffloadParametersLength >= NDIS_SIZEOF_OFFLOAD_PARAMETERS_REVISION_5) {
+        MpUpdateOffloadParameter(&AdapterOffload->UsoIPv4, OffloadParameters->UdpSegmentation.IPv4);
+        MpUpdateOffloadParameter(&AdapterOffload->UsoIPv6, OffloadParameters->UdpSegmentation.IPv6);
+    }
+
+    RtlReleasePushLockExclusive(&Adapter->PushLock);
 
     //
-    // Then, build an NDIS offload struct and indicate up the stack.
+    // Then, build an NDIS offload struct and indicate up the stack. Note that
+    // this state may already have changed after releasing the write lock.
     //
-    MpFillOffload(&NdisOffload, AdapterOffload);
+
+    MpFillOffload(&NdisOffload, Adapter, AdapterOffload);
     MpIndicateStatus(Adapter, &NdisOffload, sizeof(NdisOffload), StatusCode);
 
-    return NDIS_STATUS_SUCCESS;
+    Status = NDIS_STATUS_SUCCESS;
+
+Exit:
+
+    return Status;
 }
 
 static
