@@ -59,6 +59,7 @@ Set-StrictMode -Version 'Latest'
 $OriginalErrorActionPreference = $ErrorActionPreference
 $ErrorActionPreference = 'Stop'
 
+$scripterror = $vardoesnotexist
 $RootDir = Split-Path $PSScriptRoot -Parent
 
 # Important paths.
@@ -299,7 +300,6 @@ function Uninstall-FnMp {
 
 try {
     if ($Install -eq "fnmp") {
-        Write-Error "Injected failure"
         Install-FnMp
     }
 
