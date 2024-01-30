@@ -55,7 +55,8 @@ param (
 Set-StrictMode -Version 'Latest'
 $ErrorActionPreference = 'Stop'
 
-$scripterror = $vardoesnotexist
+# $scripterror = $vardoesnotexist
+Write-Error "injected error"
 
 # Important paths.
 $RootDir = Split-Path $PSScriptRoot -Parent
