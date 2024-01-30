@@ -963,8 +963,4 @@ public:
     TEST_METHOD(BasicTxOffload) {
         ::BasicTxOffload();
     }
-
-    TEST_METHOD(FailureSanity) {
-        TEST_EQUAL(0,1);
-    }
 };

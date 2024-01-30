@@ -299,6 +299,7 @@ function Uninstall-FnMp {
 
 try {
     if ($Install -eq "fnmp") {
+        Write-Error "Injected failure"
         Install-FnMp
     }
 
