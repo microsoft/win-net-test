@@ -59,7 +59,6 @@ Set-StrictMode -Version 'Latest'
 $OriginalErrorActionPreference = $ErrorActionPreference
 $ErrorActionPreference = 'Stop'
 
-$scripterror = $vardoesnotexist
 $RootDir = Split-Path $PSScriptRoot -Parent
 
 # Important paths.
