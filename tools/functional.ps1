@@ -53,10 +53,11 @@ param (
 )
 
 Set-StrictMode -Version 'Latest'
+$OriginalErrorActionPreference = $ErrorActionPreference
 $ErrorActionPreference = 'Stop'
 
-# $scripterror = $vardoesnotexist
-Write-Error "injected error"
+try {
+$scripterror = $vardoesnotexist
 
 # Important paths.
 $RootDir = Split-Path $PSScriptRoot -Parent
@@ -142,4 +143,8 @@ for ($i = 1; $i -le $Iterations; $i++) {
 
 if ($IterationFailureCount -gt 0) {
     Write-Error "$IterationFailureCount of $Iterations test iterations failed"
+}
+
+} catch {
+    Write-Error $_ -ErrorAction $OriginalErrorActionPreference
 }
