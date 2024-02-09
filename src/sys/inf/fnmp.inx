@@ -19,6 +19,7 @@
  BusType         = 15
  Characteristics = 0x4; NCF_PHYSICAL
  CopyFiles       = fnmp.CopyFiles
+ CopyFiles       = fnmp.CopyDllFiles
 *IfType         = 6             ; IF_TYPE_ETHERNET_CSMACD
 *MediaType      = 0             ; NdisMedium802_3
 *PhysicalMediaType = 0          ; NdisPhysicalMediumUnspecified
@@ -279,9 +280,13 @@
 
 [SourceDisksFiles]
  fnmp.Sys = 1,,
+ fnmpapi.dll = 1,,
 
 [fnmp.CopyFiles]
  fnmp.sys,,,2
+
+[fnmp.CopyDllFiles]
+ fnmpapi.dll,,,2
 
 [fnmp.ndi.NT.Services]
  AddService = fnmp, 2, fnmp.Service, fnmp.AddEventLog
@@ -307,6 +312,7 @@
 [DestinationDirs]
  DefaultDestDir   = 13 ; Driver Store directory
  fnmp.CopyFiles  = 13
+ fnmp.CopyDllFiles = 11
 
 
 [Strings]

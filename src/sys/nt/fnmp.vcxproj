@@ -11,6 +11,9 @@
   <Import Project="$(UndockedDir)vs\windows.undocked.props" />
   <Import Project="$(SolutionDir)src\wnt.cpp.props" />
   <ItemGroup>
+    <ProjectReference Include="$(SolutionDir)src\lib\fnmpapi.vcxproj">
+      <Project>{15de7d30-6a0b-47c7-8ddc-1cfc658e8a1e}</Project>
+    </ProjectReference>
     <ProjectReference Include="$(SolutionDir)src\sys\bounce\bounce.vcxproj">
       <Project>{4a8c9c36-9b11-4bcf-9c48-0f33d4470d66}</Project>
     </ProjectReference>
