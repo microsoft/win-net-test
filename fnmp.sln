@@ -3,9 +3,9 @@ Microsoft Visual Studio Solution File, Format Version 12.00
 # Visual Studio Version 16
 VisualStudioVersion = 16.0.29728.190
 MinimumVisualStudioVersion = 10.0.40219.1
-Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "fnmp", "src\sys\nt\fnmp.vcxproj", "{AD2ED8D3-06F7-4B3B-89F4-E8E7065A6F82}"
+Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "fnmp", "src\mp\sys\fnmp.vcxproj", "{AD2ED8D3-06F7-4B3B-89F4-E8E7065A6F82}"
 EndProject
-Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "fnmpapi", "src\lib\fnmpapi.vcxproj", "{15DE7D30-6A0B-47C7-8DDC-1CFC658E8A1E}"
+Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "fnmpapi", "src\mp\lib\fnmpapi.vcxproj", "{15DE7D30-6A0B-47C7-8DDC-1CFC658E8A1E}"
 EndProject
 Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "fnmpfunctionaltests", "test\functional\fnmpfunctionaltests.vcxproj", "{02D631DF-E2E7-4A6E-9773-94A45B19C367}"
 EndProject
@@ -13,9 +13,9 @@ Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "pkthlp_um", "test\pkthlp\um
 EndProject
 Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "pkthlp_km", "test\pkthlp\km\pkthlp_km.vcxproj", "{091C094C-BF60-4BCB-9D38-1B439FC0AB7F}"
 EndProject
-Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "bounce", "src\sys\bounce\bounce.vcxproj", "{4A8C9C36-9B11-4BCF-9C48-0F33D4470D66}"
+Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "bounce", "src\common\lib\bounce\bounce.vcxproj", "{4A8C9C36-9B11-4BCF-9C48-0F33D4470D66}"
 EndProject
-Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "fnio", "src\sys\fnio\fnio.vcxproj", "{D07EDEB2-006F-4B32-8CD1-2B8FABD5879E}"
+Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "fnio", "src\common\lib\fnio\fnio.vcxproj", "{D07EDEB2-006F-4B32-8CD1-2B8FABD5879E}"
 EndProject
 Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "debugcrt", "test\debugcrt\debugcrt.vcxproj", "{74f5716d-c62f-45d4-9cc2-4637440d5e4e}"
 EndProject

@@ -11,13 +11,13 @@
   <Import Project="$(UndockedDir)vs\windows.undocked.props" />
   <Import Project="$(SolutionDir)src\wnt.cpp.props" />
   <ItemGroup>
-    <ProjectReference Include="$(SolutionDir)src\lib\fnmpapi.vcxproj">
+    <ProjectReference Include="$(SolutionDir)src\mp\lib\fnmpapi.vcxproj">
       <Project>{15de7d30-6a0b-47c7-8ddc-1cfc658e8a1e}</Project>
     </ProjectReference>
-    <ProjectReference Include="$(SolutionDir)src\sys\bounce\bounce.vcxproj">
+    <ProjectReference Include="$(SolutionDir)src\common\lib\bounce\bounce.vcxproj">
       <Project>{4a8c9c36-9b11-4bcf-9c48-0f33d4470d66}</Project>
     </ProjectReference>
-    <ProjectReference Include="$(SolutionDir)src\sys\fnio\fnio.vcxproj">
+    <ProjectReference Include="$(SolutionDir)src\common\lib\fnio\fnio.vcxproj">
       <Project>{d07edeb2-006f-4b32-8cd1-2b8fabd5879e}</Project>
     </ProjectReference>
   </ItemGroup>
@@ -34,7 +34,7 @@
     <ClInclude Include="precomp.h" />
     <FilesToPackage Include="$(TargetPath)" />
     <ResourceCompile Include="fnmp.rc" />
-    <Inf Include="..\inf\fnmp.inx">
+    <Inf Include="inf\fnmp.inx">
       <SpecifyDriverDirectiveVersion>true</SpecifyDriverDirectiveVersion>
     </Inf>
   </ItemGroup>
@@ -43,8 +43,8 @@
       <AdditionalIncludeDirectories>
         .;
         $(SolutionDir)inc;
-        $(SolutionDir)src\inc;
-        $(SolutionDir)src\sys\inc;
+        $(SolutionDir)src\common\inc;
+        $(SolutionDir)src\mp\inc;
         $(SolutionDir)submodules\ndis-driver-library\src\include;
         $(SolutionDir)submodules\net-offloads\include;
         %(AdditionalIncludeDirectories)

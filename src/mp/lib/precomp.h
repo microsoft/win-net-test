@@ -13,7 +13,7 @@
 #include <ifdef.h>
 #include <fnmpapi.h>
 #include <fnmpioctl.h>
-#include <fnmprtl.h>
+#include <fnrtl.h>
 
 #include "ioctl.h"
 

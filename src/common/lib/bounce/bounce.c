@@ -4,7 +4,7 @@
 //
 
 #include <ntddk.h>
-#include <fnmprtl.h>
+#include <fnrtl.h>
 #include "bounce.h"
 #include "pooltag.h"
 

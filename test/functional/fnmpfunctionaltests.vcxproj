@@ -16,7 +16,7 @@
     <ProjectReference Include="$(SolutionDir)test\pkthlp\um\pkthlp_um.vcxproj">
       <Project>{e84ff937-7445-4b8e-ba40-dffacc09c060}</Project>
     </ProjectReference>
-    <ProjectReference Include="$(SolutionDir)src\lib\fnmpapi.vcxproj">
+    <ProjectReference Include="$(SolutionDir)src\mp\lib\fnmpapi.vcxproj">
       <Project>{15de7d30-6a0b-47c7-8ddc-1cfc658e8a1e}</Project>
     </ProjectReference>
     <ProjectReference Include="$(SolutionDir)test\debugcrt\debugcrt.vcxproj">

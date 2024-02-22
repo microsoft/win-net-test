@@ -20,7 +20,8 @@
     <ClCompile>
       <AdditionalIncludeDirectories>
         $(SolutionDir)inc;
-        $(SolutionDir)src\inc;
+        $(SolutionDir)src\common\inc;
+        $(SolutionDir)src\mp\inc;
         $(IntDir);
         %(AdditionalIncludeDirectories)
       </AdditionalIncludeDirectories>

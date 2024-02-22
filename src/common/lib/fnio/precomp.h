@@ -13,8 +13,8 @@
 #include <ndis/ndl/nblqueue.h>
 #include <ntintsafe.h>
 
-#include <fnmpassert.h>
-#include <fnmprtl.h>
+#include <fnassert.h>
+#include <fnrtl.h>
 
 #include <bounce.h>
 #include <fnio.h>

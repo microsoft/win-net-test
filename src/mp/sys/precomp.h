@@ -10,8 +10,8 @@
 #include <ntintsafe.h>
 #include <ndis/ndl/nblqueue.h>
 #include <qeo_ndis.h>
-#include <fnmpassert.h>
-#include <fnmprtl.h>
+#include <fnassert.h>
+#include <fnrtl.h>
 
 #include <fnio.h>
 #include <fnoid.h>
