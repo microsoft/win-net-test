@@ -1,0 +1,78 @@
+; Copyright (c) 2020, Microsoft
+
+[Version]
+CatalogFile     = fnlwf.cat
+Signature       = "$WINDOWS NT$"
+Class           = NetService
+ClassGUID       = {4D36E974-E325-11CE-BFC1-08002BE10318}
+Provider        = %Msft%
+PnpLockdown     = 1
+
+[DestinationDirs]
+fnlwf.CopyFiles = %DIRID_DRIVERS%
+
+[SourceDisksNames]
+1 = disk
+
+[SourceDisksFiles]
+fnlwf.sys = 1
+
+[Manufacturer]
+%Msft% = MSFT,NT$ARCH$
+
+[MSFT.NT$ARCH$]
+%fnlwf.DeviceDesc% = Install, ms_fnlwf
+
+[Install]
+Characteristics     = %NCF_LW_FILTER%
+NetCfgInstanceId    = "{4b399bac-cfdf-477b-9c72-abed8717bc1a}"
+CopyFiles           = fnlwf.CopyFiles
+AddReg              = fnlwf.ndi.reg
+
+[fnlwf.CopyFiles]
+fnlwf.sys
+
+[fnlwf.ndi.reg]
+HKR, Ndi, Service,, "fnlwf"
+HKR, Ndi, CoServices, %REG_MULTI_SZ%, "fnlwf"
+HKR, Ndi, HelpText,, %fnlwf.DeviceDesc%
+HKR, Ndi, FilterClass,, ms_firewall_upper
+HKR, Ndi, FilterType, %REG_DWORD%, %FILTER_TYPE_MODIFYING%
+HKR, Ndi, FilterRunType, %REG_DWORD%, %FILTER_RUN_TYPE_OPTIONAL%
+HKR, Ndi\Interfaces, UpperRange,, "noupper"
+HKR, Ndi\Interfaces, LowerRange,, "ndisvf"
+HKR, Ndi\Interfaces, FilterMediaTypes,, "ethernet, ndisvf"
+
+[Install.Services]
+AddService=fnlwf,, AddService
+
+[AddService]
+DisplayName     = %fnlwf.DeviceDesc%
+ServiceType     = 1 ;SERVICE_KERNEL_DRIVER
+StartType       = 1 ;SERVICE_SYSTEM_START
+ErrorControl    = 1 ;SERVICE_ERROR_NORMAL
+ServiceBinary   = %12%\fnlwf.sys ; %DIRID_DRIVERS%\fnlwf.sys
+LoadOrderGroup  = NDIS
+AddReg          = AddServiceReg
+
+[AddServiceReg]
+; Enable circular log buffer at verbose level during development.
+HKR, "Parameters", "VerboseOn", %REG_DWORD%, 1
+HKR, "Parameters", "LogPages", %REG_DWORD%, 64
+
+[Install.Remove.Services]
+DelService = fnlwf, %SPSVCINST_STOPSERVICE%
+
+[Strings]
+; localizable strings
+Msft                 = "Microsoft Corporation"
+fnlwf.DeviceDesc  = "FNLWF"
+
+; non-localizable strings
+DIRID_DRIVERS               = 12
+FILTER_RUN_TYPE_OPTIONAL    = 2
+FILTER_TYPE_MODIFYING       = 2
+NCF_LW_FILTER               = 0x40000
+REG_MULTI_SZ                = 0x10000
+REG_DWORD                   = 0x10001
+SPSVCINST_STOPSERVICE       = 0x200
