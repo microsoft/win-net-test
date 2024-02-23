@@ -59,7 +59,7 @@ param (
 
     [Parameter(Mandatory = $false)]
     [SupportsWildcards()]
-    [string]$Name = "fnmp",
+    [string]$Name = "fn",
 
     [Parameter(Mandatory = $false)]
     [string]$EtlPath = $null,
@@ -80,7 +80,7 @@ Generate-WinConfig $Arch $Config
 
 $ArtifactsDir = "$RootDir\artifacts\bin\$($WinArch)$($WinConfig)"
 $TracePdb = Get-CoreNetCiArtifactPath -Name "tracepdb.exe"
-$WprpFile = "$RootDir\tools\fnmptrace.wprp"
+$WprpFile = "$RootDir\tools\fntrace.wprp"
 $TmfPath = "$ArtifactsDir\tmfs"
 $LogsDir = "$RootDir\artifacts\logs"
 

@@ -7,7 +7,7 @@ Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "fnmp", "src\mp\sys\fnmp.vcx
 EndProject
 Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "fnmpapi", "src\mp\lib\fnmpapi.vcxproj", "{15DE7D30-6A0B-47C7-8DDC-1CFC658E8A1E}"
 EndProject
-Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "fnmpfunctionaltests", "test\functional\fnmpfunctionaltests.vcxproj", "{02D631DF-E2E7-4A6E-9773-94A45B19C367}"
+Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "fnfunctionaltests", "test\functional\fnfunctionaltests.vcxproj", "{02D631DF-E2E7-4A6E-9773-94A45B19C367}"
 EndProject
 Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "pkthlp_um", "test\pkthlp\um\pkthlp_um.vcxproj", "{E84FF937-7445-4B8E-BA40-DFFACC09C060}"
 EndProject

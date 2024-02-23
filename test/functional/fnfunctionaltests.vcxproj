@@ -2,7 +2,7 @@
 <Project DefaultTargets="Build" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
   <PropertyGroup>
     <ProjectGuid>{02D631DF-E2E7-4A6E-9773-94A45B19C367}</ProjectGuid>
-    <TargetName>fnmpfunctionaltests</TargetName>
+    <TargetName>fnfunctionaltests</TargetName>
     <!-- Temporary hack to disable linking stage in official OneBranch builds, because it's broken -->
     <UndockedType Condition="'$(UndockedOfficial)' != 'true'">dll</UndockedType>
     <UndockedType Condition="'$(UndockedOfficial)' == 'true'">lib</UndockedType>
@@ -18,6 +18,9 @@
     </ProjectReference>
     <ProjectReference Include="$(SolutionDir)src\mp\lib\fnmpapi.vcxproj">
       <Project>{15de7d30-6a0b-47c7-8ddc-1cfc658e8a1e}</Project>
+    </ProjectReference>
+    <ProjectReference Include="$(SolutionDir)src\lwf\lib\fnlwfapi.vcxproj">
+      <Project>{e73b68e4-1ed8-462f-a084-b5f68bef765f}</Project>
     </ProjectReference>
     <ProjectReference Include="$(SolutionDir)test\debugcrt\debugcrt.vcxproj">
       <Project>{74f5716d-c62f-45d4-9cc2-4637440d5e4e}</Project>
@@ -59,7 +62,8 @@
       </PreprocessorDefinitions>
       <UseFullPaths>true</UseFullPaths>
       <!-- Disable C26812: The enum type '' is unscoped. Prefer 'enum class' over 'enum' -->
-      <DisableSpecificWarnings>26812;%(DisableSpecificWarnings)</DisableSpecificWarnings>
+      <!-- Disable C5252 : Multiple different types resulted in the same XFG type-hash -->
+      <DisableSpecificWarnings>26812;5252;%(DisableSpecificWarnings)</DisableSpecificWarnings>
     </ClCompile>
     <Link>
       <SubSystem>Windows</SubSystem>

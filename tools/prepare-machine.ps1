@@ -1,7 +1,7 @@
 <#
 
 .SYNOPSIS
-This prepares a machine for running FNMP.
+This prepares a machine for running FNMP/FNLWF.
 
 .PARAMETER ForBuild
     Installs all the build-time dependencies.
@@ -92,7 +92,7 @@ function Setup-TestSigning {
     }
 }
 
-# Installs the FNMP certificates.
+# Installs the FNMP/FNLWF certificates.
 function Install-Certs {
     $CodeSignCertPath = Get-CoreNetCiArtifactPath -Name "CoreNetSignRoot.cer"
     if (!(Test-Path $CodeSignCertPath)) {
@@ -102,7 +102,7 @@ function Install-Certs {
     CertUtil.exe -f -addstore trustedpublisher $CodeSignCertPath | Write-Verbose
 }
 
-# Uninstalls the FNMP certificates.
+# Uninstalls the FNMP/FNLWF certificates.
 function Uninstall-Certs {
     try { CertUtil.exe -delstore Root "CoreNetTestSigning" } catch { }
     try { CertUtil.exe -delstore trustedpublisher "CoreNetTestSigning" } catch { }
@@ -156,11 +156,11 @@ if ($Cleanup) {
 
     if ($ForFunctionalTest) {
         $ForTest = $true
-        # Verifier configuration: standard flags on all FNMP components, and NDIS.
+        # Verifier configuration: standard flags on FNMP, FNLWF, and NDIS.
         # The NDIS verifier is required, otherwise allocations NDIS makes on
-        # behalf of FNMP components (e.g. NBLs) will not be verified.
-        Write-Verbose "verifier.exe /standard /driver fnmp.sys ndis.sys"
-        verifier.exe /standard /driver fnmp.sys ndis.sys | Write-Verbose
+        # behalf of FNMP/FNLWF (e.g. NBLs) will not be verified.
+        Write-Verbose "verifier.exe /standard /driver fnmp.sys fnlwf.sys ndis.sys"
+        verifier.exe /standard /driver fnmp.sys fnlwf.sys ndis.sys | Write-Verbose
         if (!$?) {
             $Reboot = $true
         }

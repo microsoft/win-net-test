@@ -1,7 +1,7 @@
 <#
 
 .SYNOPSIS
-This script runs the FNMP functional tests.
+This script runs the FNMP/FNLWF functional tests.
 
 .PARAMETER Config
     Specifies the build configuration to use.
@@ -84,22 +84,26 @@ New-Item -ItemType Directory -Force -Path $LogsDir | Out-Null
 for ($i = 1; $i -le $Iterations; $i++) {
     try {
         $Watchdog = $null
-        $LogName = "fnmpfunc"
+        $LogName = "fnfunc"
         if ($Iterations -gt 1) {
             $LogName += "-$i"
         }
 
-        & "$RootDir\tools\log.ps1" -Start -Name $LogName -Profile FnMpFunctional.Verbose -Config $Config -Arch $Arch
+        & "$RootDir\tools\log.ps1" -Start -Name $LogName -Profile FnFunctional.Verbose -Config $Config -Arch $Arch
 
         Write-Verbose "installing fnmp..."
         & "$RootDir\tools\setup.ps1" -Install fnmp -Config $Config -Arch $Arch
         Write-Verbose "installed fnmp."
 
+        Write-Verbose "installing fnlwf..."
+        & "$RootDir\tools\setup.ps1" -Install fnlwf -Config $Config -Arch $Arch
+        Write-Verbose "installed fnlwf."
+
         $TestArgs = @()
         if (![string]::IsNullOrEmpty($TestBinaryPath)) {
             $TestArgs += $TestBinaryPath
         } else {
-            $TestArgs += "$ArtifactsDir\fnmpfunctionaltests.dll"
+            $TestArgs += "$ArtifactsDir\fnfunctionaltests.dll"
         }
         if (![string]::IsNullOrEmpty($TestCaseFilter)) {
             $TestArgs += "/TestCaseFilter:$TestCaseFilter"
@@ -125,13 +129,14 @@ for ($i = 1; $i -le $Iterations; $i++) {
         & $VsTestPath\vstest.console.exe $TestArgs
 
         if ($LastExitCode -ne 0) {
-            Write-Error "[$i/$Iterations] fnmpfunctionaltests failed with $LastExitCode" -ErrorAction Continue
+            Write-Error "[$i/$Iterations] fnfunctionaltests failed with $LastExitCode" -ErrorAction Continue
             $IterationFailureCount++
         }
     } finally {
         if ($Watchdog -ne $null) {
             Remove-Job -Job $Watchdog -Force
         }
+        & "$RootDir\tools\setup.ps1" -Uninstall fnlwf -Config $Config -Arch $Arch -ErrorAction 'Continue'
         & "$RootDir\tools\setup.ps1" -Uninstall fnmp -Config $Config -Arch $Arch -ErrorAction 'Continue'
         & "$RootDir\tools\log.ps1" -Stop -Name $LogName -Config $Config -Arch $Arch -ErrorAction 'Continue'
     }

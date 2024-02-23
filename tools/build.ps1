@@ -1,5 +1,5 @@
 #
-# Build script for FnMp project.
+# Build script.
 #
 
 param (
@@ -47,7 +47,7 @@ if ([string]::IsNullOrEmpty($Project)) {
 
 & $RootDir\tools\prepare-machine.ps1 -ForBuild -Force:$UpdateDeps
 
-msbuild.exe $RootDir\fnmp.sln `
+msbuild.exe $RootDir\wnt.sln `
     /t:restore `
     /p:RestorePackagesConfig=true `
     /p:RestoreConfigFile=src\nuget.config `
@@ -57,7 +57,7 @@ if (!$?) {
     Write-Error "Restoring NuGet packages failed: $LastExitCode"
 }
 
-msbuild.exe $RootDir\fnmp.sln `
+msbuild.exe $RootDir\wnt.sln `
     /p:Configuration=$Config `
     /p:Platform=$Platform `
     /t:$($Tasks -join ",") `

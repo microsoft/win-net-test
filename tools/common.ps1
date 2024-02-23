@@ -1,5 +1,5 @@
 #
-# Helper functions for FnMp project.
+# Helper functions.
 #
 
 # Disable Invoke-WebRequest progress bar to work around a bug that slows downloads.

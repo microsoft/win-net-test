@@ -5,11 +5,8 @@
 
 #include <chrono>
 #include <cstdio>
-
-#pragma warning(push)
-#pragma warning(disable:5252) // Multiple different types resulted in the same XFG type-hash
+#include <future>
 #include <xlocnum>
-#pragma warning(pop)
 
 // Windows and WIL includes need to be ordered in a certain way.
 #pragma warning(push)
@@ -27,9 +24,10 @@
 
 #include <pkthlp.h>
 #include <fnmpapi.h>
+#include <fnlwfapi.h>
 #include <fntrace.h>
 
-#include "fnmptest.h"
+#include "fntest.h"
 
 #include "tests.tmh"
 
@@ -290,6 +288,21 @@ public:
     }
 };
 
+static
+VOID
+InitializeOidKey(
+    _Out_ OID_KEY *Key,
+    _In_ NDIS_OID Oid,
+    _In_ NDIS_REQUEST_TYPE RequestType,
+    _In_opt_ OID_REQUEST_INTERFACE RequestInterface = OID_REQUEST_INTERFACE_REGULAR
+    )
+{
+    RtlZeroMemory(Key, sizeof(*Key));
+    Key->Oid = Oid;
+    Key->RequestType = RequestType;
+    Key->RequestInterface = RequestInterface;
+}
+
 static TestInterface FnMpIf(FNMP_IF_DESC, FNMP_IPV4_ADDRESS, FNMP_IPV6_ADDRESS);
 
 struct RX_FRAME {
@@ -320,6 +333,20 @@ VOID
 RxInitializeFrame(
     _Out_ RX_FRAME *Frame,
     _In_ UINT32 HashQueueId,
+    _In_ DATA_BUFFER *Buffer
+    )
+{
+    RtlZeroMemory(Frame, sizeof(*Frame));
+    Frame->Frame.BufferCount = 1;
+    Frame->Frame.Input.RssHashQueueId = HashQueueId;
+    Frame->Frame.Buffers = Buffer;
+}
+
+static
+VOID
+RxInitializeFrame(
+    _Out_ RX_FRAME *Frame,
+    _In_ UINT32 HashQueueId,
     _In_ const UCHAR *FrameBuffer,
     _In_ UINT32 FrameLength
     )
@@ -343,6 +370,17 @@ MpOpenShared(
 {
     wil::unique_handle Handle;
     TEST_HRESULT(FnMpOpenShared(IfIndex, &Handle));
+    return Handle;
+}
+
+static
+wil::unique_handle
+MpOpenExclusive(
+    _In_ UINT32 IfIndex
+    )
+{
+    wil::unique_handle Handle;
+    TEST_HRESULT(FnMpOpenExclusive(IfIndex, &Handle));
     return Handle;
 }
 
@@ -485,6 +523,226 @@ MpUpdateTaskOffload(
 
 static
 VOID
+MpOidFilter(
+    _In_ const wil::unique_handle& Handle,
+    _In_ const OID_KEY *Keys,
+    _In_ UINT32 KeyCount
+    )
+{
+    TEST_HRESULT(FnMpOidFilter(Handle.get(), Keys, KeyCount));
+}
+
+static
+HRESULT
+MpOidGetRequest(
+    _In_ const wil::unique_handle& Handle,
+    _In_ OID_KEY Key,
+    _Inout_ UINT32 *InformationBufferLength,
+    _Out_opt_ VOID *InformationBuffer
+    )
+{
+    return FnMpOidGetRequest(Handle.get(), Key, InformationBufferLength, InformationBuffer);
+}
+
+template<typename T=decltype(TEST_TIMEOUT_ASYNC)>
+static
+unique_malloc_ptr<VOID>
+MpOidAllocateAndGetRequest(
+    _In_ const wil::unique_handle& Handle,
+    _In_ OID_KEY Key,
+    _Out_ UINT32 *InformationBufferLength,
+    _In_opt_ T Timeout = TEST_TIMEOUT_ASYNC
+    )
+{
+    unique_malloc_ptr<VOID> InformationBuffer;
+    UINT32 Length = 0;
+    HRESULT Result;
+    Stopwatch<T> Watchdog(Timeout);
+
+    //
+    // Poll FNMP for an OID: the driver doesn't support overlapped IO.
+    //
+    do {
+        Result = MpOidGetRequest(Handle, Key, &Length, NULL);
+        if (Result != HRESULT_FROM_WIN32(ERROR_NOT_FOUND)) {
+            break;
+        }
+    } while (Sleep(POLL_INTERVAL_MS), !Watchdog.IsExpired());
+
+    TEST_EQUAL(HRESULT_FROM_WIN32(ERROR_MORE_DATA), Result);
+    TEST_TRUE(Length > 0);
+    InformationBuffer.reset(malloc(Length));
+    TEST_TRUE(InformationBuffer != NULL);
+
+    TEST_HRESULT(MpOidGetRequest(Handle, Key, &Length, InformationBuffer.get()));
+
+    *InformationBufferLength = Length;
+    return InformationBuffer;
+}
+
+static
+wil::unique_handle
+LwfOpenDefault(
+    _In_ UINT32 IfIndex
+    )
+{
+    wil::unique_handle Handle;
+    HRESULT Result;
+
+    //
+    // The LWF may not be bound immediately after an adapter restart completes,
+    // so poll for readiness.
+    //
+
+    Stopwatch<std::chrono::milliseconds> Watchdog(TEST_TIMEOUT_ASYNC);
+    do {
+        Result = FnLwfOpenDefault(IfIndex, &Handle);
+        if (SUCCEEDED(Result)) {
+            break;
+        } else {
+            TEST_EQUAL(HRESULT_FROM_WIN32(ERROR_NOT_FOUND), Result);
+        }
+    } while (Sleep(POLL_INTERVAL_MS), !Watchdog.IsExpired());
+
+    TEST_HRESULT(Result);
+
+    return Handle;
+}
+
+static
+VOID
+LwfTxEnqueue(
+    _In_ const wil::unique_handle& Handle,
+    _In_ DATA_FRAME *Frame
+    )
+{
+    TEST_HRESULT(FnLwfTxEnqueue(Handle.get(), Frame));
+}
+
+static
+VOID
+LwfTxFlush(
+    _In_ const wil::unique_handle& Handle,
+    _In_opt_ DATA_FLUSH_OPTIONS *Options = nullptr
+    )
+{
+    HRESULT Result;
+    Stopwatch<std::chrono::milliseconds> Watchdog(TEST_TIMEOUT_ASYNC);
+
+    //
+    // Retry if the interface is not ready: the NDIS data path may be paused.
+    //
+    do {
+        Result = FnLwfTxFlush(Handle.get(), Options);
+        if (Result != HRESULT_FROM_WIN32(ERROR_NOT_READY)) {
+            break;
+        }
+    } while (Sleep(POLL_INTERVAL_MS), !Watchdog.IsExpired());
+
+    TEST_HRESULT(Result);
+}
+
+static
+VOID
+LwfRxFilter(
+    _In_ const wil::unique_handle& Handle,
+    _In_ const VOID *Pattern,
+    _In_ const VOID *Mask,
+    _In_ UINT32 Length
+    )
+{
+    TEST_HRESULT(FnLwfRxFilter(Handle.get(), Pattern, Mask, Length));
+}
+
+static
+HRESULT
+LwfRxGetFrame(
+    _In_ const wil::unique_handle& Handle,
+    _In_ UINT32 Index,
+    _Inout_ UINT32 *FrameBufferLength,
+    _Out_opt_ DATA_FRAME *Frame
+    )
+{
+    return FnLwfRxGetFrame(Handle.get(), Index, FrameBufferLength, Frame);
+}
+
+static
+unique_malloc_ptr<DATA_FRAME>
+LwfRxAllocateAndGetFrame(
+    _In_ const wil::unique_handle& Handle,
+    _In_ UINT32 Index
+    )
+{
+    unique_malloc_ptr<DATA_FRAME> FrameBuffer;
+    UINT32 FrameLength = 0;
+    HRESULT Result;
+    Stopwatch<std::chrono::milliseconds> Watchdog(TEST_TIMEOUT_ASYNC);
+
+    //
+    // Poll FNLWF for RX: the driver doesn't support overlapped IO.
+    //
+    do {
+        Result = LwfRxGetFrame(Handle, Index, &FrameLength, NULL);
+        if (Result != HRESULT_FROM_WIN32(ERROR_NOT_FOUND)) {
+            break;
+        }
+    } while (Sleep(POLL_INTERVAL_MS), !Watchdog.IsExpired());
+
+    TEST_EQUAL(HRESULT_FROM_WIN32(ERROR_MORE_DATA), Result);
+    TEST_TRUE(FrameLength >= sizeof(DATA_FRAME));
+    FrameBuffer.reset((DATA_FRAME *)malloc(FrameLength));
+    TEST_TRUE(FrameBuffer != NULL);
+
+    TEST_HRESULT(LwfRxGetFrame(Handle, Index, &FrameLength, FrameBuffer.get()));
+
+    return FrameBuffer;
+}
+
+static
+VOID
+LwfRxDequeueFrame(
+    _In_ const wil::unique_handle& Handle,
+    _In_ UINT32 Index
+    )
+{
+    HRESULT Result;
+    Stopwatch<std::chrono::milliseconds> Watchdog(TEST_TIMEOUT_ASYNC);
+
+    //
+    // Poll FNLWF for RX: the driver doesn't support overlapped IO.
+    //
+    do {
+        Result = FnLwfRxDequeueFrame(Handle.get(), Index);
+    } while (!Watchdog.IsExpired() && Result == HRESULT_FROM_WIN32(ERROR_NOT_FOUND));
+
+    TEST_HRESULT(Result);
+}
+
+static
+VOID
+LwfRxFlush(
+    _In_ const wil::unique_handle& Handle
+    )
+{
+    TEST_HRESULT(FnLwfRxFlush(Handle.get()));
+}
+
+static
+HRESULT
+LwfOidSubmitRequest(
+    _In_ const wil::unique_handle& Handle,
+    _In_ OID_KEY Key,
+    _Inout_ UINT32 *InformationBufferLength,
+    _Inout_opt_ VOID *InformationBuffer
+    )
+{
+    return
+        FnLwfOidSubmitRequest(
+            Handle.get(), Key, InformationBufferLength, InformationBuffer);
+}
+
+static
+VOID
 WaitForWfpQuarantine(
     _In_ const TestInterface& If
     );
@@ -622,7 +880,7 @@ TestCleanup()
 }
 
 VOID
-BasicRx()
+MpBasicRx()
 {
     UINT16 LocalPort, RemotePort;
     ETHERNET_ADDRESS LocalHw, RemoteHw;
@@ -653,7 +911,7 @@ BasicRx()
 }
 
 VOID
-BasicTx()
+MpBasicTx()
 {
     UINT16 LocalPort;
     auto UdpSocket = CreateUdpSocket(AF_INET, NULL, &LocalPort);
@@ -749,7 +1007,7 @@ InitializeOffloadParameters(
 }
 
 VOID
-BasicRxOffload()
+MpBasicRxOffload()
 {
     UINT16 LocalPort, RemotePort;
     ETHERNET_ADDRESS LocalHw, RemoteHw;
@@ -819,7 +1077,7 @@ BasicRxOffload()
 }
 
 VOID
-BasicTxOffload()
+MpBasicTxOffload()
 {
     UINT16 LocalPort;
     auto UdpSocket = CreateUdpSocket(AF_INET, NULL, &LocalPort);
@@ -871,6 +1129,154 @@ BasicTxOffload()
     TEST_TRUE(MpTxFrame->Output.Checksum.Transmit.UdpChecksum);
     MpTxDequeueFrame(SharedMp, 0);
     MpTxFlush(SharedMp);
+}
+
+VOID
+LwfBasicRx()
+{
+    auto GenericMp = MpOpenShared(FnMpIf.GetIfIndex());
+    auto DefaultLwf = LwfOpenDefault(FnMpIf.GetIfIndex());
+
+    const UINT32 DataOffset = 3;
+    const UCHAR Payload[] = "FnLwfRx";
+    UINT64 Pattern = 0x2865A18EE4DB02F0ui64;
+    UINT64 Mask = ~0ui64;
+    const UINT32 BufferVaSize = DataOffset + sizeof(Pattern) + sizeof(Payload);
+    UCHAR BufferVa[BufferVaSize];
+
+    DATA_BUFFER Buffer = {0};
+    Buffer.DataOffset = DataOffset;
+    Buffer.DataLength = sizeof(Pattern) + sizeof(Payload);
+    Buffer.BufferLength = BufferVaSize;
+    Buffer.VirtualAddress = BufferVa;
+
+    RtlCopyMemory(BufferVa + DataOffset, &Pattern, sizeof(Pattern));
+    RtlCopyMemory(BufferVa + DataOffset + sizeof(Pattern), Payload, sizeof(Payload));
+
+    LwfRxFilter(DefaultLwf, &Pattern, &Mask, sizeof(Pattern));
+
+    RX_FRAME Frame;
+    RxInitializeFrame(&Frame, FnMpIf.GetQueueId(), &Buffer);
+    TEST_HRESULT(MpRxEnqueueFrame(GenericMp, &Frame));
+    TEST_HRESULT(TryMpRxFlush(GenericMp));
+
+    auto LwfRxFrame = LwfRxAllocateAndGetFrame(DefaultLwf, 0);
+    TEST_EQUAL(LwfRxFrame->BufferCount, Frame.Frame.BufferCount);
+
+    const DATA_BUFFER *LwfRxBuffer = &LwfRxFrame->Buffers[0];
+    TEST_EQUAL(LwfRxBuffer->BufferLength, Buffer.BufferLength);
+    TEST_EQUAL(LwfRxBuffer->DataOffset, Buffer.DataOffset);
+    TEST_TRUE(
+        RtlEqualMemory(
+            Buffer.VirtualAddress + Buffer.DataOffset,
+            LwfRxBuffer->VirtualAddress + LwfRxBuffer->DataOffset,
+            Buffer.DataLength));
+
+    LwfRxDequeueFrame(DefaultLwf, 0);
+    LwfRxFlush(DefaultLwf);
+}
+
+VOID
+LwfBasicTx()
+{
+    auto GenericMp = MpOpenShared(FnMpIf.GetIfIndex());
+    auto DefaultLwf = LwfOpenDefault(FnMpIf.GetIfIndex());
+
+    const UINT32 DataOffset = 3;
+    const UCHAR Payload[] = "FnLwfTx";
+    UINT64 Pattern = 0x39E8534AA85B4A98ui64;
+    UINT64 Mask = ~0ui64;
+    const UINT32 BufferVaSize = DataOffset + sizeof(Pattern) + sizeof(Payload);
+    UCHAR BufferVa[BufferVaSize];
+
+    DATA_FRAME Frame = {0};
+    DATA_BUFFER Buffer = {0};
+    Frame.BufferCount = 1;
+    Buffer.DataOffset = DataOffset;
+    Buffer.DataLength = sizeof(Pattern) + sizeof(Payload);
+    Buffer.BufferLength = BufferVaSize;
+    Buffer.VirtualAddress = BufferVa;
+    Frame.Buffers = &Buffer;
+
+    RtlCopyMemory(BufferVa + DataOffset, &Pattern, sizeof(Pattern));
+    RtlCopyMemory(BufferVa + DataOffset + sizeof(Pattern), Payload, sizeof(Payload));
+
+    MpTxFilter(GenericMp, &Pattern, &Mask, sizeof(Pattern));
+
+    LwfTxEnqueue(DefaultLwf, &Frame);
+    LwfTxFlush(DefaultLwf);
+
+    auto MpTxFrame = MpTxAllocateAndGetFrame(GenericMp, 0);
+    TEST_EQUAL(MpTxFrame->BufferCount, Frame.BufferCount);
+
+    const DATA_BUFFER *MpTxBuffer = &MpTxFrame->Buffers[0];
+    TEST_EQUAL(MpTxBuffer->BufferLength, Buffer.BufferLength);
+    TEST_EQUAL(MpTxBuffer->DataOffset, Buffer.DataOffset);
+    TEST_TRUE(
+        RtlEqualMemory(
+            Buffer.VirtualAddress + Buffer.DataOffset,
+            MpTxBuffer->VirtualAddress + MpTxBuffer->DataOffset,
+            Buffer.DataLength));
+
+    MpTxDequeueFrame(GenericMp, 0);
+    MpTxFlush(GenericMp);
+}
+
+VOID
+LwfBasicOid()
+{
+    OID_KEY OidKeys[2];
+    UINT32 MpInfoBufferLength;
+    unique_malloc_ptr<VOID> MpInfoBuffer;
+    UINT32 LwfInfoBufferLength;
+    ULONG LwfInfoBuffer;
+    ULONG OriginalPacketFilter = 0;
+    auto DefaultLwf = LwfOpenDefault(FnMpIf.GetIfIndex());
+
+    //
+    // Get the existing packet filter from NDIS so we can tweak it to make sure
+    // the set OID makes it to the miniport. N.B. this get OID is handled by
+    // NDIS, not the miniport.
+    //
+    InitializeOidKey(&OidKeys[0], OID_GEN_CURRENT_PACKET_FILTER, NdisRequestQueryInformation);
+    LwfInfoBufferLength = sizeof(OriginalPacketFilter);
+    TEST_HRESULT(
+        LwfOidSubmitRequest(DefaultLwf, OidKeys[0], &LwfInfoBufferLength, &OriginalPacketFilter));
+
+    //
+    // Get.
+    //
+    InitializeOidKey(&OidKeys[0], OID_GEN_RECEIVE_BLOCK_SIZE, NdisRequestQueryInformation);
+
+    //
+    // Set.
+    //
+    InitializeOidKey(&OidKeys[1], OID_GEN_CURRENT_PACKET_FILTER, NdisRequestSetInformation);
+
+    for (UINT32 Index = 0; Index < RTL_NUMBER_OF(OidKeys); Index++) {
+        auto ExclusiveMp = MpOpenExclusive(FnMpIf.GetIfIndex());
+
+        MpOidFilter(ExclusiveMp, &OidKeys[Index], 1);
+
+        LwfInfoBuffer = OriginalPacketFilter ^ (0x00000001);
+        LwfInfoBufferLength = sizeof(LwfInfoBuffer);
+        auto AsyncThread = std::async(
+            std::launch::async,
+            [&] {
+                return
+                    LwfOidSubmitRequest(
+                        DefaultLwf, OidKeys[Index], &LwfInfoBufferLength, &LwfInfoBuffer);
+            }
+        );
+
+        MpInfoBuffer = MpOidAllocateAndGetRequest(ExclusiveMp, OidKeys[Index], &MpInfoBufferLength);
+        ExclusiveMp.reset();
+
+        TEST_EQUAL(AsyncThread.wait_for(TEST_TIMEOUT_ASYNC), std::future_status::ready);
+        TEST_HRESULT(AsyncThread.get());
+
+        TEST_EQUAL(LwfInfoBufferLength, sizeof(ULONG));
+    }
 }
 
 using namespace Microsoft::VisualStudio::CppUnitTestFramework;
@@ -948,19 +1354,35 @@ TEST_MODULE_CLEANUP(ModuleCleanup)
 TEST_CLASS(fnmpfunctionaltests)
 {
 public:
-    TEST_METHOD(BasicRx) {
-        ::BasicRx();
+    TEST_METHOD(MpBasicRx) {
+        ::MpBasicRx();
     }
 
-    TEST_METHOD(BasicTx) {
-        ::BasicTx();
+    TEST_METHOD(MpBasicTx) {
+        ::MpBasicTx();
     }
 
-    TEST_METHOD(BasicRxOffload) {
-        ::BasicRxOffload();
+    TEST_METHOD(MpBasicRxOffload) {
+        ::MpBasicRxOffload();
     }
 
-    TEST_METHOD(BasicTxOffload) {
-        ::BasicTxOffload();
+    TEST_METHOD(MpBasicTxOffload) {
+        ::MpBasicTxOffload();
+    }
+};
+
+TEST_CLASS(fnlwffunctionaltests)
+{
+public:
+    TEST_METHOD(LwfBasicRx) {
+        ::LwfBasicRx();
+    }
+
+    TEST_METHOD(LwfBasicTx) {
+        ::LwfBasicTx();
+    }
+
+    TEST_METHOD(LwfBasicOid) {
+        ::LwfBasicOid();
     }
 };
