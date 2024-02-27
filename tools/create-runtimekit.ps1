@@ -1,5 +1,5 @@
 #
-# Assembles a runtime kit for FNMP execution.
+# Assembles a runtime kit for FNMP/FNLWF execution.
 # Code must be built before running this script.
 #
 
@@ -20,7 +20,7 @@ $RootDir = Split-Path $PSScriptRoot -Parent
 . $RootDir\tools\common.ps1
 Generate-WinConfig $Platform $Config
 
-$Name = "fnmp-runtime-$Platform"
+$Name = "fn-runtime-$Platform"
 if ($Config -eq "Debug") {
     $Name += "-debug"
 }
@@ -32,10 +32,14 @@ New-Item -Path $DstPath -ItemType Directory > $null
 New-Item -Path $DstPath\bin -ItemType Directory > $null
 copy -Recurse "artifacts\bin\$($WinArch)$($WinConfig)\fnmp\" $DstPath\bin
 copy -Recurse "artifacts\bin\$($WinArch)$($WinConfig)\fnmpapi.dll" $DstPath\bin
+copy -Recurse "artifacts\bin\$($WinArch)$($WinConfig)\fnlwf\" $DstPath\bin
+copy -Recurse "artifacts\bin\$($WinArch)$($WinConfig)\fnlwfapi.dll" $DstPath\bin
 
 New-Item -Path $DstPath\symbols -ItemType Directory > $null
 copy "artifacts\bin\$($WinArch)$($WinConfig)\fnmp.pdb" $DstPath\symbols
 copy "artifacts\bin\$($WinArch)$($WinConfig)\fnmpapi.pdb" $DstPath\symbols
+copy "artifacts\bin\$($WinArch)$($WinConfig)\fnlwf.pdb" $DstPath\symbols
+copy "artifacts\bin\$($WinArch)$($WinConfig)\fnlwfapi.pdb" $DstPath\symbols
 
 New-Item -Path $DstPath\tools -ItemType Directory > $null
 copy ".\tools\common.ps1" $DstPath\tools

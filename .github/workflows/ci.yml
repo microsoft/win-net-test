@@ -42,9 +42,9 @@ jobs:
       shell: PowerShell
       run: tools/prepare-machine.ps1 -ForBuild -Verbose
     - name: Nuget Restore
-      run: nuget.exe restore fnmp.sln -ConfigFile src/nuget.config
+      run: nuget.exe restore wnt.sln -ConfigFile src/nuget.config
     - name: Build
-      run: msbuild fnmp.sln /m /p:configuration=${{ matrix.configuration }} /p:platform=${{ matrix.platform }}
+      run: msbuild wnt.sln /m /p:configuration=${{ matrix.configuration }} /p:platform=${{ matrix.platform }}
     - name: Sign Binaries
       shell: PowerShell
       run: tools/sign.ps1 -Config ${{ matrix.configuration }} -Arch ${{ matrix.platform }}
@@ -103,7 +103,7 @@ jobs:
       if: ${{ always() }}
       timeout-minutes: 5
       shell: PowerShell
-      run: tools/log.ps1 -Convert -Name fnmpfunc* -Verbose -Config ${{ matrix.configuration }} -Arch ${{ matrix.platform }}
+      run: tools/log.ps1 -Convert -Name fnfunc* -Verbose -Config ${{ matrix.configuration }} -Arch ${{ matrix.platform }}
     - name: Upload Logs
       uses: actions/upload-artifact@a8a3f3ad30e3422c9c7b888a15615d19a852ae32
       if: ${{ always() }}

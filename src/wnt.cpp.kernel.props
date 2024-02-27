@@ -1,0 +1,23 @@
+<!-- Kernel mode specific properties -->
+<Project xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
+  <!-- Project-wide compile properties (e.g. defines, includes) -->
+  <ItemDefinitionGroup>
+    <ClCompile>
+      <AdditionalIncludeDirectories>
+        $(SolutionDir)submodules\ndis-driver-library\src\include;
+        $(SolutionDir)submodules\net-offloads\include;
+        %(AdditionalIncludeDirectories)
+      </AdditionalIncludeDirectories>
+      <PreprocessorDefinitions>
+        POOL_NX_OPTIN_AUTO=1;
+        POOL_ZERO_DOWN_LEVEL_SUPPORT=1;
+        %(PreprocessorDefinitions)
+      </PreprocessorDefinitions>
+    </ClCompile>
+  </ItemDefinitionGroup>
+<!--   <PropertyGroup>
+    <InfVerif_AdditionalOptions>/msft</InfVerif_AdditionalOptions>
+    <SignMode>Off</SignMode>
+    <EnableInf2cat>false</EnableInf2cat>
+  </PropertyGroup> -->
+</Project>

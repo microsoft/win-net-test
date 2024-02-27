@@ -1,0 +1,68 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<Project DefaultTargets="Build" ToolsVersion="12.0" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
+  <PropertyGroup>
+    <ProjectGuid>{f819a7ae-2641-4275-a3ba-cf9283c9d519}</ProjectGuid>
+    <TargetName>fnlwf</TargetName>
+    <UndockedType>sys</UndockedType>
+    <UndockedDir>$(SolutionDir)submodules\undocked\</UndockedDir>
+    <UndockedOut>$(SolutionDir)artifacts\</UndockedOut>
+    <UndockedSourceLink>true</UndockedSourceLink>
+  </PropertyGroup>
+  <Import Project="$(UndockedDir)vs\windows.undocked.props" />
+  <Import Project="$(SolutionDir)src\wnt.cpp.props" />
+  <Import Project="$(SolutionDir)src\wnt.cpp.kernel.props" />
+  <ItemGroup>
+    <ProjectReference Include="$(SolutionDir)src\lwf\lib\fnlwfapi.vcxproj">
+      <Project>{e73b68e4-1ed8-462f-a084-b5f68bef765f}</Project>
+    </ProjectReference>
+    <ProjectReference Include="$(SolutionDir)src\common\lib\bounce\bounce.vcxproj">
+      <Project>{4a8c9c36-9b11-4bcf-9c48-0f33d4470d66}</Project>
+    </ProjectReference>
+    <ProjectReference Include="$(SolutionDir)src\common\lib\fnio\fnio.vcxproj">
+      <Project>{d07edeb2-006f-4b32-8cd1-2b8fabd5879e}</Project>
+    </ProjectReference>
+  </ItemGroup>
+  <ItemGroup>
+    <ClCompile Include="default.c" />
+    <ClCompile Include="dispatch.c" />
+    <ClCompile Include="filter.c" />
+    <ClCompile Include="oid.c" />
+    <ClCompile Include="rx.c" />
+    <ClCompile Include="status.c" />
+    <ClCompile Include="trace.c" />
+    <ClCompile Include="tx.c" />
+    <ClInclude Include="precomp.h" />
+    <FilesToPackage Include="$(TargetPath)" />
+    <ResourceCompile Include="fnlwf.rc" />
+    <Inf Include="inf\fnlwf.inx">
+      <SpecifyDriverDirectiveVersion>true</SpecifyDriverDirectiveVersion>
+    </Inf>
+  </ItemGroup>
+  <ItemDefinitionGroup>
+    <ClCompile>
+      <AdditionalIncludeDirectories>
+        $(SolutionDir)inc;
+        $(SolutionDir)src\common\inc;
+        $(SolutionDir)src\lwf\inc;
+        %(AdditionalIncludeDirectories)
+      </AdditionalIncludeDirectories>
+      <PreprocessorDefinitions>
+        NDIS_MINIPORT_DRIVER;
+        NDIS685_MINIPORT=1;
+        %(PreprocessorDefinitions)
+      </PreprocessorDefinitions>
+      <WppEnabled>true</WppEnabled>
+      <WppScanConfigurationData>$(ProjectDir)trace.h</WppScanConfigurationData>
+      <WppRecorderEnabled>true</WppRecorderEnabled>
+      <WppAdditionalOptions>-p:fnlwf</WppAdditionalOptions>
+    </ClCompile>
+    <Link>
+      <AdditionalDependencies>
+        ndis.lib;
+        netio.lib;
+        %(AdditionalDependencies)
+      </AdditionalDependencies>
+    </Link>
+  </ItemDefinitionGroup>
+  <Import Project="$(UndockedDir)vs\windows.undocked.targets" />
+</Project>

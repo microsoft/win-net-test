@@ -1,7 +1,7 @@
 <#
 
 .SYNOPSIS
-This script installs or uninstalls various FNMP components.
+This script installs or uninstalls various project components.
 
 .PARAMETER Config
     Specifies the build configuration to use.
@@ -10,13 +10,13 @@ This script installs or uninstalls various FNMP components.
     The CPU architecture to use.
 
 .PARAMETER Install
-    Specifies an FNMP component to install.
+    Specifies a component to install.
 
 .PARAMETER Uninstall
-    Attempts to uninstall all FNMP components.
+    Attempts to uninstall all project components.
 
 .PARAMETER ArtifactsDir
-    Supplies an optional directory containing FNMP component artifacts.
+    Supplies an optional directory containing component artifacts.
     Supply this if you are running this script outside of the FNMP repo.
 
 .PARAMETER LogsDir
@@ -38,11 +38,11 @@ param (
     [string]$Arch = "x64",
 
     [Parameter(Mandatory = $false)]
-    [ValidateSet("", "fnmp")]
+    [ValidateSet("", "fnmp", "fnlwf")]
     [string]$Install = "",
 
     [Parameter(Mandatory = $false)]
-    [ValidateSet("", "fnmp")]
+    [ValidateSet("", "fnmp", "fnlwf")]
     [string]$Uninstall = "",
 
     [Parameter(Mandatory = $false)]
@@ -85,6 +85,9 @@ $FnMpInf = "$ArtifactsDir\fnmp\fnmp.inf"
 $FnMpComponentId = "ms_fnmp"
 $FnMpDeviceId0 = "fnmp0"
 $FnMpServiceName = "FNMP"
+$FnLwfSys = "$ArtifactsDir\fnlwf\fnlwf.sys"
+$FnLwfInf = "$ArtifactsDir\fnlwf\fnlwf.inf"
+$FnLwfComponentId = "ms_fnlwf"
 
 # Ensure the output path exists.
 New-Item -ItemType Directory -Force -Path $LogsDir | Out-Null
@@ -297,13 +300,51 @@ function Uninstall-FnMp {
     Write-Verbose "fnmp.sys uninstall complete!"
 }
 
+# Installs the fnlwf driver.
+function Install-FnLwf {
+    if (!(Test-Path $FnLwfSys)) {
+        Write-Error "$FnLwfSys does not exist!"
+    }
+
+    Write-Verbose "netcfg.exe -v -l $FnLwfInf -c s -i $FnLwfComponentId"
+    netcfg.exe -v -l $FnLwfInf -c s -i $FnLwfComponentId | Write-Verbose
+    if ($LastExitCode) {
+        Write-Error "netcfg.exe exit code: $LastExitCode"
+    }
+
+    Start-Service-With-Retry fnlwf
+
+    Write-Verbose "fnlwf.sys install complete!"
+}
+
+# Uninstalls the fnlwf driver.
+function Uninstall-FnLwf {
+    Write-Verbose "netcfg.exe -u $FnLwfComponentId"
+    cmd.exe /c "netcfg.exe -u $FnLwfComponentId 2>&1" | Write-Verbose
+    if (!$?) {
+        Write-Host "netcfg.exe failed: $LastExitCode"
+    }
+
+    Uninstall-Driver "fnlwf.inf"
+
+    Cleanup-Service fnlwf
+
+    Write-Verbose "fnlwf.sys uninstall complete!"
+}
+
 try {
     if ($Install -eq "fnmp") {
         Install-FnMp
     }
+    if ($Install -eq "fnlwf") {
+        Install-FnLwf
+    }
 
     if ($Uninstall -eq "fnmp") {
         Uninstall-FnMp
+    }
+    if ($Uninstall -eq "fnlwf") {
+        Uninstall-FnLwf
     }
 } catch {
     Write-Error $_ -ErrorAction $OriginalErrorActionPreference

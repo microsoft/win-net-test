@@ -1,5 +1,5 @@
 #
-# Assembles a dev kit for FNMP client development.
+# Assembles a dev kit for FNMP/FNLWF client development.
 # Code must be built before running this script.
 #
 
@@ -20,7 +20,7 @@ $RootDir = Split-Path $PSScriptRoot -Parent
 . $RootDir\tools\common.ps1
 Generate-WinConfig $Platform $Config
 
-$Name = "fnmp-devkit-$Platform"
+$Name = "fn-devkit-$Platform"
 if ($Config -eq "Debug") {
     $Name += "-debug"
 }
@@ -35,5 +35,7 @@ copy -Recurse inc\* $DstPath\include
 New-Item -Path $DstPath\lib -ItemType Directory > $null
 copy "artifacts\bin\$($WinArch)$($WinConfig)\fnmpapi.lib" $DstPath\lib
 copy "artifacts\bin\$($WinArch)$($WinConfig)\fnmpapi.pdb" $DstPath\lib
+copy "artifacts\bin\$($WinArch)$($WinConfig)\fnlwfapi.lib" $DstPath\lib
+copy "artifacts\bin\$($WinArch)$($WinConfig)\fnlwfapi.pdb" $DstPath\lib
 
 Compress-Archive -DestinationPath "$DstPath\$Name.zip" -Path $DstPath\*
