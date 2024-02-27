@@ -10,6 +10,7 @@
   </PropertyGroup>
   <Import Project="$(UndockedDir)vs\windows.undocked.props" />
   <Import Project="$(SolutionDir)src\wnt.cpp.props" />
+  <Import Project="$(SolutionDir)src\wnt.cpp.kernel.props" />
   <ItemGroup>
     <ProjectReference Include="$(SolutionDir)src\lwf\lib\fnlwfapi.vcxproj">
       <Project>{e73b68e4-1ed8-462f-a084-b5f68bef765f}</Project>
@@ -40,16 +41,12 @@
   <ItemDefinitionGroup>
     <ClCompile>
       <AdditionalIncludeDirectories>
-        .;
         $(SolutionDir)inc;
         $(SolutionDir)src\common\inc;
         $(SolutionDir)src\lwf\inc;
-        $(SolutionDir)submodules\ndis-driver-library\src\include;
         %(AdditionalIncludeDirectories)
       </AdditionalIncludeDirectories>
       <PreprocessorDefinitions>
-        POOL_NX_OPTIN_AUTO=1;
-        POOL_ZERO_DOWN_LEVEL_SUPPORT=1;
         NDIS_MINIPORT_DRIVER;
         NDIS685_MINIPORT=1;
         %(PreprocessorDefinitions)
