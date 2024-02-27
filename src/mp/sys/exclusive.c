@@ -63,7 +63,7 @@ ExclusiveCleanup(
         MpDereferenceAdapter(UserContext->Adapter);
     }
 
-    ExFreePoolWithTag(UserContext, POOLTAG_EXCLUSIVE);
+    ExFreePoolWithTag(UserContext, POOLTAG_MP_EXCLUSIVE);
 }
 
 static
@@ -115,7 +115,7 @@ ExclusiveIrpCreate(
     OpenExclusive = InputBuffer;
     IfIndex = OpenExclusive->IfIndex;
 
-    UserContext = ExAllocatePoolZero(NonPagedPoolNx, sizeof(*UserContext), POOLTAG_EXCLUSIVE);
+    UserContext = ExAllocatePoolZero(NonPagedPoolNx, sizeof(*UserContext), POOLTAG_MP_EXCLUSIVE);
     if (UserContext == NULL) {
         Status = STATUS_INSUFFICIENT_RESOURCES;
         goto Exit;

@@ -230,7 +230,7 @@ FilterOidRequest(
 
     Status =
         NdisAllocateCloneOidRequest(
-            Filter->NdisFilterHandle, Request, POOLTAG_OID, &ClonedRequest);
+            Filter->NdisFilterHandle, Request, POOLTAG_LWF_OID, &ClonedRequest);
     if (Status != NDIS_STATUS_SUCCESS) {
         goto Exit;
     }

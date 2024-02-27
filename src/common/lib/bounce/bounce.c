@@ -31,7 +31,7 @@ BounceFree(
     )
 {
     if (Buffer != NULL) {
-        ExFreePoolWithTag((VOID *)Buffer, POOLTAG_BOUNCE);
+        ExFreePoolWithTag((VOID *)Buffer, POOLTAG_BOUNCE_BUFFER);
     }
 }
 
@@ -69,7 +69,7 @@ BounceBuffer(
     }
 
     Bounce->Buffer =
-        ExAllocatePoolZero(NonPagedPoolNx, BufferSize, POOLTAG_BOUNCE);
+        ExAllocatePoolZero(NonPagedPoolNx, BufferSize, POOLTAG_BOUNCE_BUFFER);
     if (Bounce->Buffer == NULL) {
         Status = STATUS_NO_MEMORY;
         goto Exit;

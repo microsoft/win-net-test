@@ -13,7 +13,7 @@
 //
 #define WPP_CONTROL_GUIDS                           \
     WPP_DEFINE_CONTROL_GUID(                        \
-        FnMpTraceGuid,                           \
+        FnMpTraceGuid,                              \
         (3207D515,BB97,4C97,9B49,5EB25829C43F),     \
         WPP_DEFINE_BIT(TRACE_CONTROL)               \
         WPP_DEFINE_BIT(TRACE_DATAPATH)              \

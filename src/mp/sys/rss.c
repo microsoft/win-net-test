@@ -14,7 +14,7 @@ MpCleanupRssQueues(
         return;
     }
 
-    ExFreePoolWithTag(Adapter->RssQueues, POOLTAG_RSS);
+    ExFreePoolWithTag(Adapter->RssQueues, POOLTAG_MP_RSS);
     Adapter->RssQueues = NULL;
 }
 
@@ -30,7 +30,7 @@ MpCreateRssQueues(
 
     Status = NdisGetRssProcessorInformation(Adapter->MiniportHandle, RssProcessorInfo, &Size);
     NT_FRE_ASSERT(Status == NDIS_STATUS_BUFFER_TOO_SHORT);
-    RssProcessorInfo = ExAllocatePoolZero(NonPagedPoolNx, Size, POOLTAG_RSS);
+    RssProcessorInfo = ExAllocatePoolZero(NonPagedPoolNx, Size, POOLTAG_MP_RSS);
     if (RssProcessorInfo == NULL) {
         Status = NDIS_STATUS_RESOURCES;
         goto Exit;
@@ -44,7 +44,7 @@ MpCreateRssQueues(
     Adapter->NumRssProcs = RssProcessorInfo->RssProcessorCount;
     AllocationSize = sizeof(*Adapter->RssQueues) * Adapter->NumRssQueues;
 
-    Adapter->RssQueues = ExAllocatePoolZero(NonPagedPoolNx, AllocationSize, POOLTAG_RSS);
+    Adapter->RssQueues = ExAllocatePoolZero(NonPagedPoolNx, AllocationSize, POOLTAG_MP_RSS);
     if (Adapter->RssQueues == NULL) {
         Status = NDIS_STATUS_RESOURCES;
         goto Exit;

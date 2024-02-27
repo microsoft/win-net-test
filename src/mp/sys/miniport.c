@@ -86,7 +86,7 @@ MpCreateAdapter(
         goto Exit;
     }
 
-    Adapter = ExAllocatePoolZero(NonPagedPoolNx, sizeof(ADAPTER_CONTEXT), POOLTAG_ADAPTER);
+    Adapter = ExAllocatePoolZero(NonPagedPoolNx, sizeof(ADAPTER_CONTEXT), POOLTAG_MP_ADAPTER);
     if (Adapter == NULL) {
         Status = STATUS_NO_MEMORY;
         goto Exit;

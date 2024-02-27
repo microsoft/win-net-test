@@ -42,7 +42,7 @@ FnLwfOpen(
 
 HRESULT
 FnLwfIoctl(
-    _In_ HANDLE XdpHandle,
+    _In_ HANDLE Handle,
     _In_ UINT32 Operation,
     _In_opt_ VOID *InBuffer,
     _In_ UINT32 InBufferSize,

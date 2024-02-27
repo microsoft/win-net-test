@@ -30,10 +30,10 @@ StatusIndicationCleanup(
     )
 {
     if (Indication->StatusBuffer != NULL) {
-        ExFreePoolWithTag(Indication->StatusBuffer, POOLTAG_DEFAULT_STATUS);
+        ExFreePoolWithTag(Indication->StatusBuffer, POOLTAG_LWF_DEFAULT_STATUS);
     }
 
-    ExFreePoolWithTag(Indication, POOLTAG_DEFAULT_STATUS);
+    ExFreePoolWithTag(Indication, POOLTAG_LWF_DEFAULT_STATUS);
 }
 
 static
@@ -73,7 +73,7 @@ StatusCleanup(
 
     KeReleaseSpinLock(&Filter->Lock, OldIrql);
 
-    ExFreePoolWithTag(StatusFile, POOLTAG_DEFAULT_STATUS);
+    ExFreePoolWithTag(StatusFile, POOLTAG_LWF_DEFAULT_STATUS);
 
     TraceExitSuccess(TRACE_CONTROL);
 }
@@ -88,7 +88,7 @@ StatusCreate(
 
     TraceEnter(TRACE_CONTROL, "Default=%p", Default);
 
-    StatusFile = ExAllocatePoolZero(NonPagedPoolNx, sizeof(*StatusFile), POOLTAG_DEFAULT_STATUS);
+    StatusFile = ExAllocatePoolZero(NonPagedPoolNx, sizeof(*StatusFile), POOLTAG_LWF_DEFAULT_STATUS);
     if (StatusFile == NULL) {
         Status = STATUS_NO_MEMORY;
         goto Exit;
@@ -249,7 +249,7 @@ FilterStatus(
             if (StatusFile->QueueIndications) {
                 CopyIndication =
                     ExAllocatePoolZero(
-                        NonPagedPoolNx, sizeof(*CopyIndication), POOLTAG_DEFAULT_STATUS);
+                        NonPagedPoolNx, sizeof(*CopyIndication), POOLTAG_LWF_DEFAULT_STATUS);
 
                 if (CopyIndication == NULL) {
                     break;
@@ -259,7 +259,7 @@ FilterStatus(
                     CopyIndication->StatusBuffer =
                         ExAllocatePoolZero(
                             NonPagedPoolNx, StatusIndication->StatusBufferSize,
-                            POOLTAG_DEFAULT_STATUS);
+                            POOLTAG_LWF_DEFAULT_STATUS);
 
                     if (CopyIndication->StatusBuffer == NULL) {
                         break;

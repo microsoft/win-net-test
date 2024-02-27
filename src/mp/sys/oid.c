@@ -684,7 +684,7 @@ MpOidClearFilter(
     )
 {
     if (Adapter->OidFilterKeys != NULL) {
-        ExFreePoolWithTag(Adapter->OidFilterKeys, POOLTAG_OID);
+        ExFreePoolWithTag(Adapter->OidFilterKeys, POOLTAG_MP_OID);
         Adapter->OidFilterKeys = NULL;
         Adapter->OidFilterKeyCount = 0;
     }
@@ -779,7 +779,7 @@ MpIrpOidSetFilter(
     }
 
     Adapter->OidFilterKeys =
-        ExAllocatePoolZero(NonPagedPoolNx, KeyCount * sizeof(*Adapter->OidFilterKeys), POOLTAG_OID);
+        ExAllocatePoolZero(NonPagedPoolNx, KeyCount * sizeof(*Adapter->OidFilterKeys), POOLTAG_MP_OID);
     if (Adapter->OidFilterKeys == NULL) {
         Status = STATUS_NO_MEMORY;
         goto Exit;

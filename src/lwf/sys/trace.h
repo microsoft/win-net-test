@@ -13,7 +13,7 @@
 //
 #define WPP_CONTROL_GUIDS                           \
     WPP_DEFINE_CONTROL_GUID(                        \
-        XdpFnLwfTraceGuid,                          \
+        FnLwfTraceGuid,                             \
         (D6143B61,9FD6,44BA,BA02,FAD9EA0C263D),     \
         WPP_DEFINE_BIT(TRACE_CONTROL)               \
         WPP_DEFINE_BIT(TRACE_DATAPATH)              \
@@ -55,11 +55,6 @@
 // USEPREFIX(TraceExitStatus,"%!STDPREFIX! %!FUNC!:%!LINE! <---%!SPACE!");
 // FUNC TraceExitStatus{LEVEL=TRACE_LEVEL_VERBOSE}(FLAGS);
 // USESUFFIX (TraceExitStatus, "%!STATUS!", Status);
-//
-// CUSTOM_TYPE(HOOK_LAYER, ItemEnum(_XDP_HOOK_LAYER));
-// CUSTOM_TYPE(HOOK_DIR, ItemEnum(_XDP_HOOK_DATAPATH_DIRECTION));
-// CUSTOM_TYPE(HOOK_SUBLAYER, ItemEnum(_XDP_HOOK_SUBLAYER));
-// CUSTOM_TYPE(EXTENSION_TYPE, ItemEnum(_XDP_EXTENSION_TYPE));
 //
 // DEFINE_CPLX_TYPE(HEXDUMP, WPP_LOGHEXDUMP, WPP_HEXDUMP, ItemHEXDump, "s", _HEX_, 0, 2);
 //

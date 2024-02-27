@@ -35,7 +35,7 @@ SharedRxCleanup(
 {
     SharedRxCleanupNblChain(NdisGetNblChainFromNblCountedQueue(&Rx->Nbls));
     NdisInitializeNblCountedQueue(&Rx->Nbls);
-    ExFreePoolWithTag(Rx, POOLTAG_SHARED_RX);
+    ExFreePoolWithTag(Rx, POOLTAG_MP_SHARED_RX);
 }
 
 SHARED_RX *
@@ -46,7 +46,7 @@ SharedRxCreate(
     SHARED_RX *Rx;
     NTSTATUS Status;
 
-    Rx = ExAllocatePoolZero(NonPagedPoolNx, sizeof(*Rx), POOLTAG_SHARED_RX);
+    Rx = ExAllocatePoolZero(NonPagedPoolNx, sizeof(*Rx), POOLTAG_MP_SHARED_RX);
     if (Rx == NULL) {
         Status = STATUS_NO_MEMORY;
         goto Exit;

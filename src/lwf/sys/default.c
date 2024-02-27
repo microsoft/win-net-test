@@ -90,7 +90,7 @@ DefaultCleanup(
         FilterDereferenceFilter(Default->Filter);
     }
 
-    ExFreePoolWithTag(Default, POOLTAG_DEFAULT);
+    ExFreePoolWithTag(Default, POOLTAG_LWF_DEFAULT);
 }
 
 static
@@ -135,7 +135,7 @@ DefaultIrpCreate(
     }
     OpenDefault = InputBuffer;
 
-    Default = ExAllocatePoolZero(NonPagedPoolNx, sizeof(*Default), POOLTAG_DEFAULT);
+    Default = ExAllocatePoolZero(NonPagedPoolNx, sizeof(*Default), POOLTAG_LWF_DEFAULT);
     if (Default == NULL) {
         Status = STATUS_INSUFFICIENT_RESOURCES;
         goto Exit;

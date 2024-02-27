@@ -11,9 +11,8 @@ typedef struct _DEFAULT_RX {
     //
     // This driver allows NBLs to be held indefinitely by user mode, which is a
     // bad practice. Unfortunately, it is necessary to hold NBLs for some
-    // configurable interval in order to test XDP (wait completion, poke
-    // optimization, etc.) so the only question is whether a watchdog is also
-    // necessary. For now, don't bother.
+    // configurable interval for testing purposes so the only question is
+    // whether a watchdog is also necessary. For now, don't bother.
     //
     LIST_ENTRY DataFilterLink;
     DATA_FILTER *DataFilter;
@@ -78,7 +77,7 @@ RxCleanup(
 
     KeReleaseSpinLock(&Filter->Lock, OldIrql);
 
-    ExFreePoolWithTag(Rx, POOLTAG_DEFAULT_RX);
+    ExFreePoolWithTag(Rx, POOLTAG_LWF_DEFAULT_RX);
 
     if (NblCount > 0) {
         ASSERT(NblCount <= MAXULONG);
@@ -96,7 +95,7 @@ RxCreate(
     DEFAULT_RX *Rx;
     NTSTATUS Status;
 
-    Rx = ExAllocatePoolZero(NonPagedPoolNx, sizeof(*Rx), POOLTAG_DEFAULT_RX);
+    Rx = ExAllocatePoolZero(NonPagedPoolNx, sizeof(*Rx), POOLTAG_LWF_DEFAULT_RX);
     if (Rx == NULL) {
         Status = STATUS_NO_MEMORY;
         goto Exit;

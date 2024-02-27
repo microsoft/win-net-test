@@ -24,7 +24,7 @@ FnIoCreateFilter(
     NTSTATUS Status;
     DATA_FILTER *Filter;
 
-    Filter = ExAllocatePoolZero(NonPagedPoolNx, sizeof(*Filter), POOLTAG_FILTER);
+    Filter = ExAllocatePoolZero(NonPagedPoolNx, sizeof(*Filter), POOLTAG_FNIO_FILTER);
     if (Filter == NULL) {
         Status = STATUS_NO_MEMORY;
         goto Exit;
@@ -41,7 +41,7 @@ FnIoCreateFilter(
     }
 
     Filter->ContiguousBuffer =
-        ExAllocatePoolZero(NonPagedPoolNx, Filter->Params.Length, POOLTAG_FILTER);
+        ExAllocatePoolZero(NonPagedPoolNx, Filter->Params.Length, POOLTAG_FNIO_BUFFER);
     if (Filter->ContiguousBuffer == NULL) {
         Status = STATUS_NO_MEMORY;
         goto Exit;
@@ -67,7 +67,7 @@ FnIoDeleteFilter(
     )
 {
     if (Filter->ContiguousBuffer != NULL) {
-        ExFreePoolWithTag(Filter->ContiguousBuffer, POOLTAG_FILTER);
+        ExFreePoolWithTag(Filter->ContiguousBuffer, POOLTAG_FNIO_BUFFER);
         Filter->ContiguousBuffer = NULL;
     }
 
@@ -79,7 +79,7 @@ FnIoDeleteFilter(
     ASSERT(NdisIsNblCountedQueueEmpty(&Filter->NblQueue));
     ASSERT(NdisIsNblCountedQueueEmpty(&Filter->NblReturn));
 
-    ExFreePoolWithTag(Filter, POOLTAG_FILTER);
+    ExFreePoolWithTag(Filter, POOLTAG_FNIO_FILTER);
 }
 
 static

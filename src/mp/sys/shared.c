@@ -225,7 +225,7 @@ SharedAdapterCleanup(
         NdisFreeNetBufferListPool(AdapterShared->NblPool);
     }
 
-    ExFreePoolWithTag(AdapterShared, POOLTAG_SHARED);
+    ExFreePoolWithTag(AdapterShared, POOLTAG_MP_SHARED);
 }
 
 ADAPTER_SHARED *
@@ -236,7 +236,7 @@ SharedAdapterCreate(
     ADAPTER_SHARED *AdapterShared;
     NTSTATUS Status;
 
-    AdapterShared = ExAllocatePoolZero(NonPagedPoolNx, sizeof(*AdapterShared), POOLTAG_SHARED);
+    AdapterShared = ExAllocatePoolZero(NonPagedPoolNx, sizeof(*AdapterShared), POOLTAG_MP_SHARED);
     if (AdapterShared == NULL) {
         Status = STATUS_NO_MEMORY;
         goto Exit;
@@ -253,7 +253,7 @@ SharedAdapterCreate(
     PoolParams.Header.Revision = NET_BUFFER_LIST_POOL_PARAMETERS_REVISION_1;
     PoolParams.Header.Size = sizeof(PoolParams);
     PoolParams.fAllocateNetBuffer = TRUE;
-    PoolParams.PoolTag = POOLTAG_SHARED_RX;
+    PoolParams.PoolTag = POOLTAG_MP_SHARED_RX;
     PoolParams.ContextSize = FNIO_ENQUEUE_NBL_CONTEXT_SIZE;
 
     AdapterShared->NblPool = NdisAllocateNetBufferListPool(NULL, &PoolParams);
@@ -353,7 +353,7 @@ SharedCleanup(
         MpDereferenceAdapter(Shared->Adapter);
     }
 
-    ExFreePoolWithTag(Shared, POOLTAG_SHARED);
+    ExFreePoolWithTag(Shared, POOLTAG_MP_SHARED);
 }
 
 static
@@ -398,7 +398,7 @@ SharedIrpCreate(
     }
     OpenShared = InputBuffer;
 
-    Shared = ExAllocatePoolZero(NonPagedPoolNx, sizeof(*Shared), POOLTAG_SHARED);
+    Shared = ExAllocatePoolZero(NonPagedPoolNx, sizeof(*Shared), POOLTAG_MP_SHARED);
     if (Shared == NULL) {
         Status = STATUS_INSUFFICIENT_RESOURCES;
         goto Exit;

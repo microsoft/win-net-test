@@ -35,7 +35,7 @@ TxCleanup(
 {
     TxCleanupNblChain(NdisGetNblChainFromNblCountedQueue(&Tx->Nbls));
     NdisInitializeNblCountedQueue(&Tx->Nbls);
-    ExFreePoolWithTag(Tx, POOLTAG_DEFAULT_TX);
+    ExFreePoolWithTag(Tx, POOLTAG_LWF_DEFAULT_TX);
 }
 
 DEFAULT_TX *
@@ -46,7 +46,7 @@ TxCreate(
     DEFAULT_TX *Tx;
     NTSTATUS Status;
 
-    Tx = ExAllocatePoolZero(NonPagedPoolNx, sizeof(*Tx), POOLTAG_DEFAULT_TX);
+    Tx = ExAllocatePoolZero(NonPagedPoolNx, sizeof(*Tx), POOLTAG_LWF_DEFAULT_TX);
     if (Tx == NULL) {
         Status = STATUS_NO_MEMORY;
         goto Exit;

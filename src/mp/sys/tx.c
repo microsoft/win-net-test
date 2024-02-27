@@ -68,7 +68,7 @@ SharedTxCleanup(
 
     KeReleaseSpinLock(&AdapterShared->Lock, OldIrql);
 
-    ExFreePoolWithTag(Tx, POOLTAG_SHARED_TX);
+    ExFreePoolWithTag(Tx, POOLTAG_MP_SHARED_TX);
 
     if (NblCount > 0) {
         SharedTxCompleteNbls(AdapterShared, NblChain, NblCount);
@@ -83,7 +83,7 @@ SharedTxCreate(
     SHARED_TX *Tx;
     NTSTATUS Status;
 
-    Tx = ExAllocatePoolZero(NonPagedPoolNx, sizeof(*Tx), POOLTAG_SHARED_TX);
+    Tx = ExAllocatePoolZero(NonPagedPoolNx, sizeof(*Tx), POOLTAG_MP_SHARED_TX);
     if (Tx == NULL) {
         Status = STATUS_NO_MEMORY;
         goto Exit;

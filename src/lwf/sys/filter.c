@@ -36,7 +36,7 @@ FilterDereferenceFilter(
         if (Filter->NblPool != NULL) {
             NdisFreeNetBufferListPool(Filter->NblPool);
         }
-        ExFreePoolWithTag(Filter, POOLTAG_FILTER);
+        ExFreePoolWithTag(Filter, POOLTAG_LWF_FILTER);
     }
 }
 
@@ -182,7 +182,7 @@ FilterAttach(
 
     NDIS_DECLARE_FILTER_MODULE_CONTEXT(LWF_FILTER);
     Filter =
-        ExAllocatePoolZero(NonPagedPoolNx, sizeof(*Filter), POOLTAG_FILTER);
+        ExAllocatePoolZero(NonPagedPoolNx, sizeof(*Filter), POOLTAG_LWF_FILTER);
     if (Filter == NULL) {
         Status = NDIS_STATUS_RESOURCES;
         goto Exit;
@@ -212,7 +212,7 @@ FilterAttach(
     PoolParams.Header.Revision = NET_BUFFER_LIST_POOL_PARAMETERS_REVISION_1;
     PoolParams.Header.Size = sizeof(PoolParams);
     PoolParams.fAllocateNetBuffer = TRUE;
-    PoolParams.PoolTag = POOLTAG_NBL;
+    PoolParams.PoolTag = POOLTAG_LWF_NBL;
     PoolParams.ContextSize = FNIO_ENQUEUE_NBL_CONTEXT_SIZE;
 
     Filter->NblPool = NdisAllocateNetBufferListPool(NULL, &PoolParams);
