@@ -58,6 +58,7 @@
         POOL_NX_OPTIN_AUTO=1;
         POOL_ZERO_DOWN_LEVEL_SUPPORT=1;
         UM_NDIS687=1;
+        FNLWFAPI_DYNAMIC_LOAD=1;
         %(PreprocessorDefinitions)
       </PreprocessorDefinitions>
       <UseFullPaths>true</UseFullPaths>

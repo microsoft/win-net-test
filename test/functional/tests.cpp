@@ -37,6 +37,8 @@
 #define FNMP_IPV6_ADDRESS "fc00::200:1"
 #define FNMP_NEIGHBOR_IPV6_ADDRESS "fc00::200:2"
 
+FNLWF_LOAD_API_CONTEXT *FnLwfLoadApiContext;
+
 //
 // A timeout value that allows for a little latency, e.g. async threads to
 // execute.
