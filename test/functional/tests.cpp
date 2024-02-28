@@ -868,6 +868,7 @@ TestSetup()
     WPP_INIT_TRACING(NULL);
     TEST_EQUAL(0, WSAStartup(MAKEWORD(2,2), &WsaData));
     TEST_EQUAL(0, InvokeSystem("netsh advfirewall firewall add rule name=fnmptest dir=in action=allow protocol=any remoteip=any localip=any"));
+    TEST_HRESULT(FnLwfLoadApi());
     WaitForWfpQuarantine(FnMpIf);
     return true;
 }
@@ -875,6 +876,7 @@ TestSetup()
 bool
 TestCleanup()
 {
+    FnLwfUnloadApi();
     TEST_EQUAL(0, InvokeSystem("netsh advfirewall firewall delete rule name=fnmptest"));
     TEST_EQUAL(0, WSACleanup());
     WPP_CLEANUP();
