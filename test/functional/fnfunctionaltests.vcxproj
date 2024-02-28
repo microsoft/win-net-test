@@ -16,9 +16,6 @@
     <ProjectReference Include="$(SolutionDir)test\pkthlp\um\pkthlp_um.vcxproj">
       <Project>{e84ff937-7445-4b8e-ba40-dffacc09c060}</Project>
     </ProjectReference>
-    <ProjectReference Include="$(SolutionDir)src\mp\lib\fnmpapi.vcxproj">
-      <Project>{15de7d30-6a0b-47c7-8ddc-1cfc658e8a1e}</Project>
-    </ProjectReference>
     <ProjectReference Include="$(SolutionDir)test\debugcrt\debugcrt.vcxproj">
       <Project>{74f5716d-c62f-45d4-9cc2-4637440d5e4e}</Project>
       <Private>false</Private>
@@ -55,6 +52,7 @@
         POOL_NX_OPTIN_AUTO=1;
         POOL_ZERO_DOWN_LEVEL_SUPPORT=1;
         UM_NDIS687=1;
+        FNMPAPI_DYNAMIC_LOAD=1;
         FNLWFAPI_DYNAMIC_LOAD=1;
         %(PreprocessorDefinitions)
       </PreprocessorDefinitions>
