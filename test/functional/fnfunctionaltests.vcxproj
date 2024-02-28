@@ -19,9 +19,6 @@
     <ProjectReference Include="$(SolutionDir)src\mp\lib\fnmpapi.vcxproj">
       <Project>{15de7d30-6a0b-47c7-8ddc-1cfc658e8a1e}</Project>
     </ProjectReference>
-    <ProjectReference Include="$(SolutionDir)src\lwf\lib\fnlwfapi.vcxproj">
-      <Project>{e73b68e4-1ed8-462f-a084-b5f68bef765f}</Project>
-    </ProjectReference>
     <ProjectReference Include="$(SolutionDir)test\debugcrt\debugcrt.vcxproj">
       <Project>{74f5716d-c62f-45d4-9cc2-4637440d5e4e}</Project>
       <Private>false</Private>
