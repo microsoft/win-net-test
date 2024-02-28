@@ -96,7 +96,7 @@ FNLWF_DATAPATH_GET_STATE(
 
 typedef struct _FNLWF_LOAD_CONTEXT *FNLWF_LOAD_API_CONTEXT;
 
-extern FNLWF_LOAD_API_CONTEXT *FnLwfLoadApiContext;
+extern FNLWF_LOAD_API_CONTEXT FnLwfLoadApiContext;
 
 #define LOAD_FN(TYPE, Name) \
     static TYPE *Fn; \
@@ -244,13 +244,11 @@ FnLwfLoadApi(
     HRESULT Result;
     HMODULE ModuleHandle;
 
-    *FnLwfLoadApiContext = NULL;
-
     ModuleHandle = LoadLibraryA("fnlwfapi.dll");
     if (ModuleHandle == NULL) {
         Result = E_NOINTERFACE;
     } else {
-        *FnLwfLoadApiContext = (FNLWF_LOAD_API_CONTEXT)ModuleHandle;
+        FnLwfLoadApiContext = (FNLWF_LOAD_API_CONTEXT)ModuleHandle;
         Result = S_OK;
     }
 
