@@ -1,14 +1,14 @@
-# Project
+# Windows Network Testing
 
-> This repo has been populated by an initial template to help get you started. Please
-> make sure to update the content to build a great experience for community-building.
+[![CI](https://github.com/microsoft/win-net-test/actions/workflows/ci.yml/badge.svg)](https://github.com/microsoft/win-net-test/actions/workflows/ci.yml)
 
-As the maintainer of this project, please make a few updates:
+This repository hosts tools used to test networking on Windows.
 
-- Improving this README.MD file to provide a great experience
-- Updating SUPPORT.MD with content about this project's support experience
-- Understanding the security reporting process in SECURITY.MD
-- Remove this section from the README
+## Documentation
+
+* [Functional Miniport (FnMp)](./docs/fnmp.md)
+* [Functional Lwf (FnLwf)](./docs/fnlwf.md)
+* [Development](./docs/development.md)
 
 ## Contributing
 
