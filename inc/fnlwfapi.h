@@ -9,7 +9,10 @@ EXTERN_C_START
 
 #include <fniotypes.h>
 
-#ifndef FNLWFAPI
+#if defined(FNLWFAPI_DYNAMIC_LOAD)
+#include <fnlwfapi_dyn.h>
+#define FNLWFAPI inline
+#elif !defined(FNLWFAPI)
 #define FNLWFAPI __declspec(dllimport)
 #endif
 

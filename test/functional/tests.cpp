@@ -37,6 +37,9 @@
 #define FNMP_IPV6_ADDRESS "fc00::200:1"
 #define FNMP_NEIGHBOR_IPV6_ADDRESS "fc00::200:2"
 
+FNMP_LOAD_API_CONTEXT FnMpLoadApiContext;
+FNLWF_LOAD_API_CONTEXT FnLwfLoadApiContext;
+
 //
 // A timeout value that allows for a little latency, e.g. async threads to
 // execute.
@@ -866,6 +869,8 @@ TestSetup()
     WPP_INIT_TRACING(NULL);
     TEST_EQUAL(0, WSAStartup(MAKEWORD(2,2), &WsaData));
     TEST_EQUAL(0, InvokeSystem("netsh advfirewall firewall add rule name=fnmptest dir=in action=allow protocol=any remoteip=any localip=any"));
+    TEST_HRESULT(FnMpLoadApi());
+    TEST_HRESULT(FnLwfLoadApi());
     WaitForWfpQuarantine(FnMpIf);
     return true;
 }
@@ -873,6 +878,8 @@ TestSetup()
 bool
 TestCleanup()
 {
+    FnLwfUnloadApi();
+    FnMpUnloadApi();
     TEST_EQUAL(0, InvokeSystem("netsh advfirewall firewall delete rule name=fnmptest"));
     TEST_EQUAL(0, WSACleanup());
     WPP_CLEANUP();

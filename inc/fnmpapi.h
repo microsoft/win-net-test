@@ -9,7 +9,10 @@ EXTERN_C_START
 
 #include <fniotypes.h>
 
-#ifndef FNMPAPI
+#if defined(FNMPAPI_DYNAMIC_LOAD)
+#include <fnmpapi_dyn.h>
+#define FNMPAPI inline
+#elif !defined(FNMPAPI)
 #define FNMPAPI __declspec(dllimport)
 #endif
 
