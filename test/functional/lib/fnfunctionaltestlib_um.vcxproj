@@ -1,0 +1,50 @@
+<?xml version="1.0" encoding="utf-8"?>
+<Project DefaultTargets="Build" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
+  <PropertyGroup>
+    <ProjectGuid>{F37C088B-C801-46C4-B210-EAD7AF7FFAEE}</ProjectGuid>
+    <TargetName>fnfunctionaltestlib_um</TargetName>
+    <UndockedType>lib</UndockedType>
+    <UndockedDir>$(SolutionDir)submodules\undocked\</UndockedDir>
+    <UndockedOut>$(SolutionDir)artifacts\</UndockedOut>
+    <UndockedSourceLink>true</UndockedSourceLink>
+  </PropertyGroup>
+  <Import Project="$(UndockedDir)vs\windows.undocked.props" />
+  <Import Project="$(SolutionDir)src\wnt.cpp.props" />
+  <ItemGroup>
+    <ClCompile Include="tests.cpp" />
+  </ItemGroup>
+  <PropertyGroup Condition="'$(DisableRegistryUse)' == 'true'">
+    <!--
+      Workaround for EWDK build failures:
+      Microsoft.Cpp.VCTools.props sets these to invalid values if they're not
+      already set. -->
+    <VCInstallDir_160 Condition="'$(VCInstallDir_160)' == ''">$(VSInstallDir)VC\</VCInstallDir_160>
+    <VCToolsInstallDir_160 Condition="'$(VCToolsInstallDir_160)' == '' and '$(VCToolsVersion)' != ''">$(VCInstallDir_160)Tools\MSVC\$(VCToolsVersion)\</VCToolsInstallDir_160>
+  </PropertyGroup>
+  <ItemDefinitionGroup>
+    <PreBuildEvent>
+      <Command>
+        tracewpp.exe -odir:$(IntDir) -scan:$(SolutionDir)test\functional\fntrace.h $(ProjectDir)*.cpp -p:fntest -cfgdir:"$(WindowsSdkDir)bin\$(TargetPlatformVersion)\WppConfig\Rev1"
+      </Command>
+    </PreBuildEvent>
+    <ClCompile>
+      <AdditionalIncludeDirectories>
+        $(SolutionDir)inc;
+        $(SolutionDir)test\functional;
+        $(SolutionDir)submodules\net-offloads\include;
+        $(SolutionDir)submodules\wil\include;
+        $(SolutionDir)test\pkthlp;
+        %(AdditionalIncludeDirectories)
+      </AdditionalIncludeDirectories>
+      <PreprocessorDefinitions>
+        UM_NDIS687=1;
+        %(PreprocessorDefinitions)
+      </PreprocessorDefinitions>
+      <UseFullPaths>true</UseFullPaths>
+      <!-- Disable C26812: The enum type '' is unscoped. Prefer 'enum class' over 'enum' -->
+      <!-- Disable C5252 : Multiple different types resulted in the same XFG type-hash -->
+      <DisableSpecificWarnings>26812;5252;%(DisableSpecificWarnings)</DisableSpecificWarnings>
+    </ClCompile>
+  </ItemDefinitionGroup>
+  <Import Project="$(UndockedDir)vs\windows.undocked.targets" />
+</Project>
