@@ -16,6 +16,7 @@
 #include <fnio.h>
 #include <fnoid.h>
 #include <fnmpioctl.h>
+#include <fnmpapi_config.h>
 
 #include "dispatch.h"
 #include "miniport.h"

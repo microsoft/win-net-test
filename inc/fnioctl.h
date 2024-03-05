@@ -3,56 +3,57 @@
 // Licensed under the MIT License.
 //
 
-#include "precomp.h"
+#pragma once
+
+#include <windows.h>
+#include <winioctl.h>
+#include <winternl.h>
+#include <ifdef.h>
+
+EXTERN_C_START
+
+#ifndef STATUS_SUCCESS
+#define STATUS_SUCCESS ((NTSTATUS)0x00000000L)
+#endif
+
+#ifndef STATUS_UNSUCCESSFUL
+#define STATUS_UNSUCCESSFUL ((NTSTATUS)0xC0000001L)
+#endif
+
+typedef HANDLE FNIOCTL_HANDLE;
 
 //
 // This file implements common file handle and IOCTL helpers.
 //
 
-VOID *
-FnMpInitializeEa(
-    _In_ FNMP_FILE_TYPE FileType,
-    _Out_ VOID *EaBuffer,
-    _In_ UINT32 EaLength
-    )
-{
-    FILE_FULL_EA_INFORMATION *EaHeader = EaBuffer;
-    FNMP_OPEN_PACKET *OpenPacket;
-
-    if (EaLength < FNMP_OPEN_EA_LENGTH) {
-        __fastfail(FAST_FAIL_INVALID_ARG);
-    }
-
-    RtlZeroMemory(EaHeader, sizeof(*EaHeader));
-    EaHeader->EaNameLength = sizeof(FNMP_OPEN_PACKET_NAME) - 1;
-    RtlCopyMemory(EaHeader->EaName, FNMP_OPEN_PACKET_NAME, sizeof(FNMP_OPEN_PACKET_NAME));
-    EaHeader->EaValueLength = (USHORT)(EaLength - sizeof(*EaHeader) - sizeof(FNMP_OPEN_PACKET_NAME));
-
-    OpenPacket = (FNMP_OPEN_PACKET *)(EaHeader->EaName + sizeof(FNMP_OPEN_PACKET_NAME));
-    OpenPacket->ObjectType = FileType;
-
-    return OpenPacket + 1;
-}
+//
+// This struct is defined in public kernel headers, but not user mode headers.
+//
+typedef struct _FILE_FULL_EA_INFORMATION {
+    ULONG NextEntryOffset;
+    UCHAR Flags;
+    UCHAR EaNameLength;
+    USHORT EaValueLength;
+    CHAR EaName[1];
+} FILE_FULL_EA_INFORMATION;
 
 HRESULT
-FnMpOpen(
+FnIoctlOpen(
+    _In_ WCHAR *DeviceName,
     _In_ UINT32 Disposition,
     _In_opt_ VOID *EaBuffer,
     _In_ UINT32 EaLength,
-    _Out_ HANDLE *Handle
+    _Out_ FNIOCTL_HANDLE *Handle
     )
 {
-    UNICODE_STRING DeviceName;
+    UNICODE_STRING DeviceNameUnicode;
     OBJECT_ATTRIBUTES ObjectAttributes;
     IO_STATUS_BLOCK IoStatusBlock;
     NTSTATUS Status;
 
-    //
-    // Open a handle to the FNMP device.
-    //
-    RtlInitUnicodeString(&DeviceName, FNMP_DEVICE_NAME);
+    RtlInitUnicodeString(&DeviceNameUnicode, DeviceName);
     InitializeObjectAttributes(
-        &ObjectAttributes, &DeviceName, OBJ_CASE_INSENSITIVE, NULL, NULL);
+        &ObjectAttributes, &DeviceNameUnicode, OBJ_CASE_INSENSITIVE, NULL, NULL);
 
     Status =
         NtCreateFile(
@@ -71,9 +72,17 @@ FnMpOpen(
     return HRESULT_FROM_WIN32(RtlNtStatusToDosError(Status));
 }
 
+VOID
+FnIoctlClose(
+    _In_ FNIOCTL_HANDLE Handle
+    )
+{
+    CloseHandle(Handle);
+}
+
 HRESULT
-FnMpIoctl(
-    _In_ HANDLE Handle,
+FnIoctl(
+    _In_ FNIOCTL_HANDLE Handle,
     _In_ UINT32 Operation,
     _In_opt_ VOID *InBuffer,
     _In_ UINT32 InBufferSize,
@@ -137,3 +146,5 @@ Exit:
 
     return HRESULT_FROM_WIN32(RtlNtStatusToDosError(Status));
 }
+
+EXTERN_C_END

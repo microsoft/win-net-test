@@ -32,10 +32,4 @@ New-Item -Path $DstPath -ItemType Directory > $null
 New-Item -Path $DstPath\include -ItemType Directory > $null
 copy -Recurse inc\* $DstPath\include
 
-New-Item -Path $DstPath\lib -ItemType Directory > $null
-copy "artifacts\bin\$($WinArch)$($WinConfig)\fnmpapi.lib" $DstPath\lib
-copy "artifacts\bin\$($WinArch)$($WinConfig)\fnmpapi.pdb" $DstPath\lib
-copy "artifacts\bin\$($WinArch)$($WinConfig)\fnlwfapi.lib" $DstPath\lib
-copy "artifacts\bin\$($WinArch)$($WinConfig)\fnlwfapi.pdb" $DstPath\lib
-
 Compress-Archive -DestinationPath "$DstPath\$Name.zip" -Path $DstPath\*

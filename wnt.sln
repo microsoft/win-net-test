@@ -5,8 +5,6 @@ VisualStudioVersion = 16.0.29728.190
 MinimumVisualStudioVersion = 10.0.40219.1
 Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "fnmp", "src\mp\sys\fnmp.vcxproj", "{AD2ED8D3-06F7-4B3B-89F4-E8E7065A6F82}"
 EndProject
-Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "fnmpapi", "src\mp\lib\fnmpapi.vcxproj", "{15DE7D30-6A0B-47C7-8DDC-1CFC658E8A1E}"
-EndProject
 Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "fnfunctionaltests", "test\functional\fnfunctionaltests.vcxproj", "{02D631DF-E2E7-4A6E-9773-94A45B19C367}"
 EndProject
 Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "pkthlp_um", "test\pkthlp\um\pkthlp_um.vcxproj", "{E84FF937-7445-4B8E-BA40-DFFACC09C060}"
@@ -20,8 +18,6 @@ EndProject
 Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "debugcrt", "test\debugcrt\debugcrt.vcxproj", "{74f5716d-c62f-45d4-9cc2-4637440d5e4e}"
 EndProject
 Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "fnlwf", "src\lwf\sys\fnlwf.vcxproj", "{F819A7AE-2641-4275-A3BA-CF9283C9D519}"
-EndProject
-Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "fnlwfapi", "src\lwf\lib\fnlwfapi.vcxproj", "{E73B68E4-1ED8-462F-A084-B5F68BEF765F}"
 EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
@@ -43,14 +39,6 @@ Global
 		{AD2ED8D3-06F7-4B3B-89F4-E8E7065A6F82}.Release|x64.ActiveCfg = Release|x64
 		{AD2ED8D3-06F7-4B3B-89F4-E8E7065A6F82}.Release|x64.Build.0 = Release|x64
 		{AD2ED8D3-06F7-4B3B-89F4-E8E7065A6F82}.Release|x64.Deploy.0 = Release|x64
-		{15DE7D30-6A0B-47C7-8DDC-1CFC658E8A1E}.Debug|ARM64.ActiveCfg = Debug|ARM64
-		{15DE7D30-6A0B-47C7-8DDC-1CFC658E8A1E}.Debug|ARM64.Build.0 = Debug|ARM64
-		{15DE7D30-6A0B-47C7-8DDC-1CFC658E8A1E}.Debug|x64.ActiveCfg = Debug|x64
-		{15DE7D30-6A0B-47C7-8DDC-1CFC658E8A1E}.Debug|x64.Build.0 = Debug|x64
-		{15DE7D30-6A0B-47C7-8DDC-1CFC658E8A1E}.Release|ARM64.ActiveCfg = Release|ARM64
-		{15DE7D30-6A0B-47C7-8DDC-1CFC658E8A1E}.Release|ARM64.Build.0 = Release|ARM64
-		{15DE7D30-6A0B-47C7-8DDC-1CFC658E8A1E}.Release|x64.ActiveCfg = Release|x64
-		{15DE7D30-6A0B-47C7-8DDC-1CFC658E8A1E}.Release|x64.Build.0 = Release|x64
 		{02D631DF-E2E7-4A6E-9773-94A45B19C367}.Debug|ARM64.ActiveCfg = Debug|ARM64
 		{02D631DF-E2E7-4A6E-9773-94A45B19C367}.Debug|ARM64.Build.0 = Debug|ARM64
 		{02D631DF-E2E7-4A6E-9773-94A45B19C367}.Debug|x64.ActiveCfg = Debug|x64
@@ -127,18 +115,6 @@ Global
 		{F819A7AE-2641-4275-A3BA-CF9283C9D519}.Release|x64.ActiveCfg = Release|x64
 		{F819A7AE-2641-4275-A3BA-CF9283C9D519}.Release|x64.Build.0 = Release|x64
 		{F819A7AE-2641-4275-A3BA-CF9283C9D519}.Release|x64.Deploy.0 = Release|x64
-		{E73B68E4-1ED8-462F-A084-B5F68BEF765F}.Debug|ARM64.ActiveCfg = Debug|ARM64
-		{E73B68E4-1ED8-462F-A084-B5F68BEF765F}.Debug|ARM64.Build.0 = Debug|ARM64
-		{E73B68E4-1ED8-462F-A084-B5F68BEF765F}.Debug|ARM64.Deploy.0 = Debug|ARM64
-		{E73B68E4-1ED8-462F-A084-B5F68BEF765F}.Debug|x64.ActiveCfg = Debug|x64
-		{E73B68E4-1ED8-462F-A084-B5F68BEF765F}.Debug|x64.Build.0 = Debug|x64
-		{E73B68E4-1ED8-462F-A084-B5F68BEF765F}.Debug|x64.Deploy.0 = Debug|x64
-		{E73B68E4-1ED8-462F-A084-B5F68BEF765F}.Release|ARM64.ActiveCfg = Release|ARM64
-		{E73B68E4-1ED8-462F-A084-B5F68BEF765F}.Release|ARM64.Build.0 = Release|ARM64
-		{E73B68E4-1ED8-462F-A084-B5F68BEF765F}.Release|ARM64.Deploy.0 = Release|ARM64
-		{E73B68E4-1ED8-462F-A084-B5F68BEF765F}.Release|x64.ActiveCfg = Release|x64
-		{E73B68E4-1ED8-462F-A084-B5F68BEF765F}.Release|x64.Build.0 = Release|x64
-		{E73B68E4-1ED8-462F-A084-B5F68BEF765F}.Release|x64.Deploy.0 = Release|x64
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE
