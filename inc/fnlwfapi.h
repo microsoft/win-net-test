@@ -6,20 +6,18 @@
 #pragma once
 
 #include <fniotypes.h>
-#include <fnioctl.h>
+#if defined(_KERNEL_MODE)
+#include <fnioctl_km.h>
+#include <fnlwfapistatus_km.h>
+#else
+#include <fnioctl_um.h>
+#include <fnlwfapistatus_um.h>
+#endif
 #include <fnlwfioctl.h>
 
 EXTERN_C_START
 
 #define FNLWFAPI inline
-
-#define FNLWFAPI_STATUS HRESULT
-#define FNLWFAPI_FAILED(X) FAILED(X)
-#define FNLWFAPI_SUCCEEDED(X) SUCCEEDED(X)
-
-#define FNLWFAPI_STATUS_NOT_FOUND       HRESULT_FROM_WIN32(ERROR_NOT_FOUND)
-#define FNLWFAPI_STATUS_MORE_DATA       HRESULT_FROM_WIN32(ERROR_MORE_DATA)
-#define FNLWFAPI_STATUS_NOT_READY       HRESULT_FROM_WIN32(ERROR_NOT_READY)
 
 #define FNLWF_OPEN_EA_LENGTH \
     (sizeof(FILE_FULL_EA_INFORMATION) + \

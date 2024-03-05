@@ -6,20 +6,19 @@
 #pragma once
 
 #include <fniotypes.h>
-#include <fnioctl.h>
+#if defined(_KERNEL_MODE)
+#include <fnioctl_km.h>
+#include <fnmpapistatus_km.h>
+#else
+#include <fnioctl_um.h>
+#include <fnmpapistatus_um.h>
+#endif
 #include <fnmpioctl.h>
-#include <fnmpapi_config.h>
+#include <fnmpapiconfig.h>
 
 EXTERN_C_START
 
 #define FNMPAPI inline
-
-#define FNMPAPI_STATUS HRESULT
-#define FNMPAPI_FAILED(X) FAILED(X)
-#define FNMPAPI_SUCCEEDED(X) SUCCEEDED(X)
-
-#define FNMPAPI_STATUS_NOT_FOUND       HRESULT_FROM_WIN32(ERROR_NOT_FOUND)
-#define FNMPAPI_STATUS_MORE_DATA       HRESULT_FROM_WIN32(ERROR_MORE_DATA)
 
 #define FNMP_OPEN_EA_LENGTH \
     (sizeof(FILE_FULL_EA_INFORMATION) + \

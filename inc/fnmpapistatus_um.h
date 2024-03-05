@@ -1,0 +1,17 @@
+//
+// Copyright (c) Microsoft Corporation.
+// Licensed under the MIT License.
+//
+
+#pragma once
+
+EXTERN_C_START
+
+#define FNMPAPI_STATUS HRESULT
+#define FNMPAPI_FAILED(X) FAILED(X)
+#define FNMPAPI_SUCCEEDED(X) SUCCEEDED(X)
+
+#define FNMPAPI_STATUS_NOT_FOUND       HRESULT_FROM_WIN32(ERROR_NOT_FOUND)
+#define FNMPAPI_STATUS_MORE_DATA       HRESULT_FROM_WIN32(ERROR_MORE_DATA)
+
+EXTERN_C_END
