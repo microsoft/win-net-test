@@ -21,6 +21,8 @@ Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "fnlwf", "src\lwf\sys\fnlwf.
 EndProject
 Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "fnfunctionaltestlib_um", "test\functional\lib\fnfunctionaltestlib_um.vcxproj", "{F37C088B-C801-46C4-B210-EAD7AF7FFAEE}"
 EndProject
+Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "fnfunctionaltestdrv", "test\functional\bin\km\fnfunctionaltestdrv.vcxproj", "{FDAAB453-4E69-4933-BC27-A917637B0DF9}"
+EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
 		Debug|ARM64 = Debug|ARM64
@@ -129,6 +131,18 @@ Global
 		{F37C088B-C801-46C4-B210-EAD7AF7FFAEE}.Release|x64.ActiveCfg = Release|x64
 		{F37C088B-C801-46C4-B210-EAD7AF7FFAEE}.Release|x64.Build.0 = Release|x64
 		{F37C088B-C801-46C4-B210-EAD7AF7FFAEE}.Release|x64.Deploy.0 = Release|x64
+		{FDAAB453-4E69-4933-BC27-A917637B0DF9}.Debug|ARM64.ActiveCfg = Debug|ARM64
+		{FDAAB453-4E69-4933-BC27-A917637B0DF9}.Debug|ARM64.Build.0 = Debug|ARM64
+		{FDAAB453-4E69-4933-BC27-A917637B0DF9}.Debug|ARM64.Deploy.0 = Debug|ARM64
+		{FDAAB453-4E69-4933-BC27-A917637B0DF9}.Debug|x64.ActiveCfg = Debug|x64
+		{FDAAB453-4E69-4933-BC27-A917637B0DF9}.Debug|x64.Build.0 = Debug|x64
+		{FDAAB453-4E69-4933-BC27-A917637B0DF9}.Debug|x64.Deploy.0 = Debug|x64
+		{FDAAB453-4E69-4933-BC27-A917637B0DF9}.Release|ARM64.ActiveCfg = Release|ARM64
+		{FDAAB453-4E69-4933-BC27-A917637B0DF9}.Release|ARM64.Build.0 = Release|ARM64
+		{FDAAB453-4E69-4933-BC27-A917637B0DF9}.Release|ARM64.Deploy.0 = Release|ARM64
+		{FDAAB453-4E69-4933-BC27-A917637B0DF9}.Release|x64.ActiveCfg = Release|x64
+		{FDAAB453-4E69-4933-BC27-A917637B0DF9}.Release|x64.Build.0 = Release|x64
+		{FDAAB453-4E69-4933-BC27-A917637B0DF9}.Release|x64.Deploy.0 = Release|x64
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE

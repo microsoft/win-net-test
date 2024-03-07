@@ -79,17 +79,21 @@ $FnLwfDir = Join-Path $ArtifactsDir "fnlwf"
 $FnLwfSys = Join-Path $FnLwfDir "fnlwf.sys"
 $FnLwfInf = Join-Path $FnLwfDir "fnlwf.inf"
 $FnLwfCat = Join-Path $FnLwfDir "fnlwf.cat"
+$FnFunctionalTestDrvSys = Join-Path $ArtifactsDir "fnfunctionaltestdrv.sys"
 
 # Verify all the files are present.
 if (!(Test-Path $FnMpSys)) { Write-Error "$FnMpSys does not exist!" }
 if (!(Test-Path $FnMpInf)) { Write-Error "$FnMpInf does not exist!" }
 if (!(Test-Path $FnLwfSys)) { Write-Error "$FnLwfSys does not exist!" }
 if (!(Test-Path $FnLwfInf)) { Write-Error "$FnLwfInf does not exist!" }
+if (!(Test-Path $FnFunctionalTestDrvSys)) { Write-Error "$FnFunctionalTestDrvSys does not exist!" }
 
 # Sign the driver files.
 & $SignToolPath sign /f $CertPath -p "placeholder" /fd SHA256 $FnMpSys
 if ($LastExitCode) { Write-Error "signtool.exe exit code: $LastExitCode" }
 & $SignToolPath sign /f $CertPath -p "placeholder" /fd SHA256 $FnLwfSys
+if ($LastExitCode) { Write-Error "signtool.exe exit code: $LastExitCode" }
+& $SignToolPath sign /f $CertPath -p "placeholder" /fd SHA256 $FnFunctionalTestDrvSys
 if ($LastExitCode) { Write-Error "signtool.exe exit code: $LastExitCode" }
 
 # Build up the catalogs.

@@ -13,6 +13,9 @@
   <Import Project="$(UndockedDir)vs\windows.undocked.props" />
   <Import Project="$(SolutionDir)src\wnt.cpp.props" />
   <ItemGroup>
+    <ProjectReference Include="$(SolutionDir)test\functional\bin\km\fnfunctionaltestdrv.vcxproj">
+      <Project>{fdaab453-4e69-4933-bc27-a917637b0df9}</Project>
+    </ProjectReference>
     <ProjectReference Include="$(SolutionDir)test\functional\lib\fnfunctionaltestlib_um.vcxproj">
       <Project>{f37c088b-c801-46c4-b210-ead7af7ffaee}</Project>
     </ProjectReference>
@@ -44,6 +47,7 @@
     <ClCompile>
       <AdditionalIncludeDirectories>
         $(SolutionDir)test\functional;
+        $(SolutionDir)test\functional\bin\km;
         $(VCInstallDir)UnitTest\include;
         %(AdditionalIncludeDirectories)
       </AdditionalIncludeDirectories>

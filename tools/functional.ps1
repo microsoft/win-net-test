@@ -25,6 +25,9 @@ This script runs the FNMP/FNLWF functional tests.
 .PARAMETER TestBinaryPath
     Path to the functional test binary (the binary passed to VSTest).
 
+.PARAMETER KernelMode
+    Run kernel mode tests.
+
 #>
 
 param (
@@ -49,7 +52,10 @@ param (
     [int]$Timeout = 0,
 
     [Parameter(Mandatory = $false)]
-    [string]$TestBinaryPath = ""
+    [string]$TestBinaryPath = "",
+
+    [Parameter(Mandatory = $false)]
+    [switch]$KernelMode = $false
 )
 
 Set-StrictMode -Version 'Latest'
@@ -63,6 +69,7 @@ $ArtifactsDir = "$RootDir\artifacts\bin\$($WinArch)$($WinConfig)"
 $LogsDir = "$RootDir\artifacts\logs"
 $IterationFailureCount = 0
 $IterationTimeout = 0
+$SystemDriversPath = Join-Path $([Environment]::GetEnvironmentVariable("SystemRoot")) "System32\drivers"
 
 $VsTestPath = Get-VsTestPath
 if ($VsTestPath -eq $null) {
@@ -76,6 +83,20 @@ if ($Timeout -gt 0) {
     if ($IterationTimeout -le 0) {
         Write-Error "Timeout must allow at least $WatchdogReservedMinutes minutes per iteration"
     }
+}
+
+# Ensure clean slate.
+sc.exe stop fnfunctionaltestdrv | Write-Verbose
+sc.exe delete fnfunctionaltestdrv | Write-Verbose
+Remove-Item -Path "$SystemDriversPath\fnfunctionaltestdrv.sys" -ErrorAction SilentlyContinue
+[Environment]::SetEnvironmentVariable("fnfunctionaltests::KernelModeEnabled", $null)
+[Environment]::SetEnvironmentVariable("fnfunctionaltests::KernelModeDriverPath", $null)
+
+# Set up kernel mode testing.
+if ($KernelMode) {
+    [System.Environment]::SetEnvironmentVariable('fnfunctionaltests::KernelModeEnabled', '1')
+    [System.Environment]::SetEnvironmentVariable('fnfunctionaltests::KernelModeDriverPath', "$SystemDriversPath\")
+    Copy-Item -Path "$ArtifactsDir\fnfunctionaltestdrv.sys" $SystemDriversPath
 }
 
 # Ensure the output path exists.
