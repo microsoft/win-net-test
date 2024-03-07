@@ -6,7 +6,7 @@
 #pragma once
 
 #include <fniotypes.h>
-#if defined(_KERNEL_MODE)
+#if defined(KERNEL_MODE)
 #include <fnioctl_km.h>
 #include <fnlwfapistatus_km.h>
 #else
@@ -39,7 +39,7 @@ FnLwfLoadApi(
     )
 {
     *LoadApiContext = (FNLWF_LOAD_API_CONTEXT)(ULONG_PTR)0x12345678;
-    return S_OK;
+    return FNLWFAPI_STATUS_SUCCESS;
 }
 
 FNLWFAPI
@@ -194,7 +194,7 @@ FnLwfRxGetFrame(
             Handle, FNLWF_IOCTL_RX_GET_FRAME, &In, sizeof(In), Frame, *FrameBufferLength,
             FrameBufferLength, NULL);
 
-    if (SUCCEEDED(Result) && Frame != NULL) {
+    if (Result == 0 && Frame != NULL) {
         //
         // The IOCTL returns pointers relative to the output address; adjust
         // each pointer into this address space.

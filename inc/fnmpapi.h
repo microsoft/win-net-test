@@ -6,7 +6,7 @@
 #pragma once
 
 #include <fniotypes.h>
-#if defined(_KERNEL_MODE)
+#if defined(KERNEL_MODE)
 #include <fnioctl_km.h>
 #include <fnmpapistatus_km.h>
 #else
@@ -40,7 +40,7 @@ FnMpLoadApi(
     )
 {
     *LoadApiContext = (FNMP_LOAD_API_CONTEXT)(ULONG_PTR)0x12345678;
-    return S_OK;
+    return FNMPAPI_STATUS_SUCCESS;
 }
 
 FNMPAPI
@@ -218,7 +218,7 @@ FnMpTxGetFrame(
             Handle, FNMP_IOCTL_TX_GET_FRAME, &In, sizeof(In), Frame, *FrameBufferLength,
             FrameBufferLength, NULL);
 
-    if (SUCCEEDED(Result) && Frame != NULL) {
+    if (Result == 0 && Frame != NULL) {
         //
         // The IOCTL returns pointers relative to the output address; adjust
         // each pointer into this address space.

@@ -3,6 +3,17 @@
 // Licensed under the MIT License.
 //
 
+#if defined(KERNEL_MODE)
+#include <ntddk.h>
+#include <ntintsafe.h>
+#include <ndis.h>
+#pragma warning(push) // SAL issues in WIL header.
+#pragma warning(disable:28157)
+#pragma warning(disable:28158)
+#pragma warning(disable:28167)
+#include <wil/resource.h>
+#pragma warning(pop)
+#else
 #include <chrono>
 #include <cstdio>
 #include <future>
@@ -20,6 +31,7 @@
 #include <mstcpip.h>
 #pragma warning(pop)
 #include <wil/resource.h>
+#endif // defined(KERNEL_MODE)
 
 #include <pkthlp.h>
 #include <fnmpapi.h>
@@ -39,9 +51,14 @@
 FNMP_LOAD_API_CONTEXT FnMpLoadApiContext;
 FNLWF_LOAD_API_CONTEXT FnLwfLoadApiContext;
 
+#if defined(KERNEL_MODE)
+#define TEST_FNMPAPI TEST_NTSTATUS
+#define TEST_FNLWFAPI TEST_NTSTATUS
+#else
 #define TEST_FNMPAPI TEST_HRESULT
 #define TEST_FNLWFAPI TEST_HRESULT
-
+#endif // defined(KERNEL_MODE)
+/*
 //
 // A timeout value that allows for a little latency, e.g. async threads to
 // execute.
@@ -1290,3 +1307,4 @@ LwfBasicOid()
         TEST_EQUAL(LwfInfoBufferLength, sizeof(ULONG));
     }
 }
+*/

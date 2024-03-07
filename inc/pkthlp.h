@@ -8,10 +8,12 @@
 #pragma warning(push)
 #pragma warning(disable:4201)  // nonstandard extension used: nameless struct/union
 
+#if !defined(KERNEL_MODE)
 #include <ws2def.h>
 #include <ws2ipdef.h>
+#endif
 
-#if defined(_KERNEL_MODE) && !defined(htons)
+#if defined(KERNEL_MODE) && !defined(htons)
 #define __pkthlp_htons
 #define htons RtlUshortByteSwap
 #define ntohs RtlUshortByteSwap
@@ -471,6 +473,7 @@ PktParseTcpFrame(
     return TRUE;
 }
 
+#ifndef KERNEL_MODE
 inline
 BOOLEAN
 PktStringToInetAddressA(
@@ -505,6 +508,7 @@ PktStringToInetAddressA(
 
     return TRUE;
 }
+#endif
 
 EXTERN_C_END
 

@@ -10,7 +10,9 @@
 // use different test frameworks without changing test logic.
 //
 
+#if !defined(KERNEL_MODE)
 #include <windows.h>
+#endif
 
 VOID
 StopTest();

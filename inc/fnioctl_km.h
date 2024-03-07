@@ -64,7 +64,7 @@ FnIoctl(
     _Out_opt_ VOID *OutBuffer,
     _In_ UINT32 OutputBufferSize,
     _Out_opt_ UINT32 *BytesReturned,
-    _In_opt_ OVERLAPPED *Overlapped
+    _In_opt_ VOID *Overlapped
     )
 {
     UNREFERENCED_PARAMETER(Handle);
