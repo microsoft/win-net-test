@@ -17,9 +17,34 @@ CxPlatInitialize(
     void
     )
 {
+    int WsaError;
+    CXPLAT_STATUS Status;
+    WSADATA WsaData;
+    BOOLEAN WsaInitialized = FALSE;
+
     TraceError("CxPlatInitialize");
 
-    return CXPLAT_STATUS_SUCCESS;
+    if ((WsaError = WSAStartup(MAKEWORD(2, 2), &WsaData)) != 0) {
+        TraceError(
+            "[ lib] ERROR, %u, %s.",
+            WsaError,
+            "WSAStartup");
+        Status = HRESULT_FROM_WIN32(WsaError);
+        goto Error;
+    }
+    WsaInitialized = TRUE;
+
+    Status = CXPLAT_STATUS_SUCCESS;
+
+Error:
+
+    if (CXPLAT_FAILED(Status)) {
+        if (WsaInitialized) {
+            (void)WSACleanup();
+        }
+    }
+
+    return Status;
 }
 
 PAGEDX
@@ -29,4 +54,5 @@ CxPlatUninitialize(
     void
     )
 {
+    WSACleanup();
 }

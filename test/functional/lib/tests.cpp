@@ -890,8 +890,6 @@ bool
 TestSetup()
 {
     TEST_TRUE(CXPLAT_SUCCEEDED(CxPlatInitialize()));
-    // WSADATA WsaData;
-    // TEST_EQUAL(0, WSAStartup(MAKEWORD(2,2), &WsaData));
     // TEST_EQUAL(0, InvokeSystem("netsh advfirewall firewall add rule name=fnmptest dir=in action=allow protocol=any remoteip=any localip=any"));
     TEST_FNMPAPI(FnMpLoadApi(&FnMpLoadApiContext));
     TEST_FNLWFAPI(FnLwfLoadApi(&FnLwfLoadApiContext));
@@ -906,7 +904,6 @@ TestCleanup()
     FnLwfUnloadApi(FnLwfLoadApiContext);
     FnMpUnloadApi(FnMpLoadApiContext);
     // TEST_EQUAL(0, InvokeSystem("netsh advfirewall firewall delete rule name=fnmptest"));
-    // TEST_EQUAL(0, WSACleanup());
     CxPlatUninitialize();
     return true;
 }
