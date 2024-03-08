@@ -30,13 +30,13 @@ CxPlatInitialize(
             WsaError,
             "WSAStartup");
         Status = HRESULT_FROM_WIN32(WsaError);
-        goto Error;
+        goto Exit;
     }
     WsaInitialized = TRUE;
 
     Status = CXPLAT_STATUS_SUCCESS;
 
-Error:
+Exit:
 
     if (CXPLAT_FAILED(Status)) {
         if (WsaInitialized) {

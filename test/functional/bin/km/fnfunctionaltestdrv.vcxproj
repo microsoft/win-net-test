@@ -44,7 +44,11 @@
       <WppAdditionalOptions>-p:fntestdrv</WppAdditionalOptions>
     </ClCompile>
     <Link>
-      <AdditionalDependencies>wdmsec.lib;%(AdditionalDependencies)</AdditionalDependencies>
+      <AdditionalDependencies>
+        netio.lib;
+        wdmsec.lib;
+        %(AdditionalDependencies)
+      </AdditionalDependencies>
       <LinkTimeCodeGeneration>UseLinkTimeCodeGeneration</LinkTimeCodeGeneration>
     </Link>
   </ItemDefinitionGroup>
