@@ -1,8 +1,8 @@
 ﻿<?xml version="1.0" encoding="utf-8"?>
 <Project DefaultTargets="Build" ToolsVersion="12.0" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
   <PropertyGroup>
-    <ProjectGuid>{3539d1da-2355-4352-865f-5120a59846eb}</ProjectGuid>
-    <TargetName>fnfunctionaltestlib_km</TargetName>
+    <ProjectGuid>{06f8bd85-f946-40da-9173-e20fb69fedb0}</ProjectGuid>
+    <TargetName>cxplat_km</TargetName>
     <UndockedType>drvlib</UndockedType>
     <UndockedDir>$(SolutionDir)submodules\undocked\</UndockedDir>
     <UndockedOut>$(SolutionDir)artifacts\</UndockedOut>
@@ -12,27 +12,19 @@
   <Import Project="$(SolutionDir)src\wnt.cpp.props" />
   <Import Project="$(SolutionDir)src\wnt.cpp.kernel.props" />
   <ItemGroup>
-    <ClCompile Include="tests.cpp" />
+    <ClCompile Include="cxplat.cpp" />
   </ItemGroup>
   <ItemDefinitionGroup>
     <ClCompile>
       <AdditionalIncludeDirectories>
-        $(SolutionDir)inc;
+        $(SolutionDir)test\cxplat\lib;
         $(SolutionDir)test\cxplat\inc;
-        $(SolutionDir)test\functional;
-        $(SolutionDir)submodules\net-offloads\include;
-        $(SolutionDir)submodules\wil\include;
-        $(SolutionDir)test\pkthlp;
         %(AdditionalIncludeDirectories)
       </AdditionalIncludeDirectories>
-      <PreprocessorDefinitions>
-        NDIS687=1;
-        %(PreprocessorDefinitions)
-      </PreprocessorDefinitions>
       <WppEnabled>true</WppEnabled>
-      <WppScanConfigurationData>$(ProjectDir)..\bin\km\trace.h</WppScanConfigurationData>
+      <WppScanConfigurationData>$(ProjectDir)..\trace.h</WppScanConfigurationData>
       <WppRecorderEnabled>true</WppRecorderEnabled>
-      <WppAdditionalOptions>-p:fntestdrv</WppAdditionalOptions>
+      <WppAdditionalOptions>-p:cxplat</WppAdditionalOptions>
       <UseFullPaths>true</UseFullPaths>
       <!-- Disable C26812: The enum type '' is unscoped. Prefer 'enum class' over 'enum' -->
       <!-- Disable C5252 : Multiple different types resulted in the same XFG type-hash -->

@@ -5,6 +5,8 @@
 
 #pragma once
 
+EXTERN_C_START
+
 bool
 TestSetup();
 
@@ -31,3 +33,5 @@ LwfBasicTx();
 
 VOID
 LwfBasicOid();
+
+EXTERN_C_END

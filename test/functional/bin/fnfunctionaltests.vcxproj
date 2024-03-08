@@ -19,6 +19,9 @@
     <ProjectReference Include="$(SolutionDir)test\functional\lib\fnfunctionaltestlib_um.vcxproj">
       <Project>{f37c088b-c801-46c4-b210-ead7af7ffaee}</Project>
     </ProjectReference>
+    <ProjectReference Include="$(SolutionDir)test\cxplat\lib\um\cxplat_um.vcxproj">
+      <Project>{93edb3a0-c6e4-42cc-85a3-92bfc44964d0}</Project>
+    </ProjectReference>
     <ProjectReference Include="$(SolutionDir)test\pkthlp\um\pkthlp_um.vcxproj">
       <Project>{e84ff937-7445-4b8e-ba40-dffacc09c060}</Project>
     </ProjectReference>

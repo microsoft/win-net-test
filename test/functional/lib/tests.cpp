@@ -33,6 +33,7 @@
 #include <wil/resource.h>
 #endif // defined(KERNEL_MODE)
 
+#include <cxplat.h>
 #include <pkthlp.h>
 #include <fnmpapi.h>
 #include <fnlwfapi.h>
@@ -883,34 +884,40 @@ SetSockAddr(
 //
 // Test framework agnostic test suite(s).
 //
-
+*/
+EXTERN_C
 bool
 TestSetup()
 {
-    WSADATA WsaData;
-    WPP_INIT_TRACING(NULL);
-    TEST_EQUAL(0, WSAStartup(MAKEWORD(2,2), &WsaData));
-    TEST_EQUAL(0, InvokeSystem("netsh advfirewall firewall add rule name=fnmptest dir=in action=allow protocol=any remoteip=any localip=any"));
+    TEST_TRUE(CXPLAT_SUCCEEDED(CxPlatInitialize()));
+    // WSADATA WsaData;
+    // WPP_INIT_TRACING(NULL);
+    // TEST_EQUAL(0, WSAStartup(MAKEWORD(2,2), &WsaData));
+    // TEST_EQUAL(0, InvokeSystem("netsh advfirewall firewall add rule name=fnmptest dir=in action=allow protocol=any remoteip=any localip=any"));
     TEST_FNMPAPI(FnMpLoadApi(&FnMpLoadApiContext));
     TEST_FNLWFAPI(FnLwfLoadApi(&FnLwfLoadApiContext));
-    WaitForWfpQuarantine(FnMpIf);
+    // WaitForWfpQuarantine(FnMpIf);
     return true;
 }
 
+EXTERN_C
 bool
 TestCleanup()
 {
     FnLwfUnloadApi(FnLwfLoadApiContext);
     FnMpUnloadApi(FnMpLoadApiContext);
-    TEST_EQUAL(0, InvokeSystem("netsh advfirewall firewall delete rule name=fnmptest"));
-    TEST_EQUAL(0, WSACleanup());
-    WPP_CLEANUP();
+    // TEST_EQUAL(0, InvokeSystem("netsh advfirewall firewall delete rule name=fnmptest"));
+    // TEST_EQUAL(0, WSACleanup());
+    // WPP_CLEANUP();
+    CxPlatUninitialize();
     return true;
 }
 
+EXTERN_C
 VOID
 MpBasicRx()
 {
+/*
     UINT16 LocalPort, RemotePort;
     ETHERNET_ADDRESS LocalHw, RemoteHw;
     INET_ADDR LocalIp, RemoteIp;
@@ -937,11 +944,14 @@ MpBasicRx()
     TEST_FNMPAPI(MpRxIndicateFrame(SharedMp, &RxFrame));
     TEST_EQUAL(sizeof(UdpPayload), recv(UdpSocket.get(), RecvPayload, sizeof(RecvPayload), 0));
     TEST_TRUE(RtlEqualMemory(UdpPayload, RecvPayload, sizeof(UdpPayload)));
+*/
 }
 
+EXTERN_C
 VOID
 MpBasicTx()
 {
+/*
     UINT16 LocalPort;
     auto UdpSocket = CreateUdpSocket(AF_INET, NULL, &LocalPort);
     auto SharedMp = MpOpenShared(FnMpIf.GetIfIndex());
@@ -1021,8 +1031,9 @@ MpBasicTx()
         MpTxGetFrame(SharedMp, 0, &FrameLength, NULL, 1));
 
     MpTxFlush(SharedMp);
+*/
 }
-
+/*
 static
 VOID
 InitializeOffloadParameters(
@@ -1034,10 +1045,13 @@ InitializeOffloadParameters(
     OffloadParameters->Header.Size = NDIS_SIZEOF_OFFLOAD_PARAMETERS_REVISION_5;
     OffloadParameters->Header.Revision = NDIS_OFFLOAD_PARAMETERS_REVISION_5;
 }
+*/
 
+EXTERN_C
 VOID
 MpBasicRxOffload()
 {
+/*
     UINT16 LocalPort, RemotePort;
     ETHERNET_ADDRESS LocalHw, RemoteHw;
     INET_ADDR LocalIp, RemoteIp;
@@ -1103,11 +1117,14 @@ MpBasicRxOffload()
     TEST_TRUE(RtlEqualMemory(UdpPayload, RecvPayload, sizeof(UdpPayload)));
     RxFrame.Frame.Input.Checksum.Value = 0;
     IpHdr->HeaderChecksum--;
+*/
 }
 
+EXTERN_C
 VOID
 MpBasicTxOffload()
 {
+/*
     UINT16 LocalPort;
     auto UdpSocket = CreateUdpSocket(AF_INET, NULL, &LocalPort);
     auto SharedMp = MpOpenShared(FnMpIf.GetIfIndex());
@@ -1158,11 +1175,14 @@ MpBasicTxOffload()
     TEST_TRUE(MpTxFrame->Output.Checksum.Transmit.UdpChecksum);
     MpTxDequeueFrame(SharedMp, 0);
     MpTxFlush(SharedMp);
+    */
 }
 
+EXTERN_C
 VOID
 LwfBasicRx()
 {
+/*
     auto GenericMp = MpOpenShared(FnMpIf.GetIfIndex());
     auto DefaultLwf = LwfOpenDefault(FnMpIf.GetIfIndex());
 
@@ -1203,11 +1223,14 @@ LwfBasicRx()
 
     LwfRxDequeueFrame(DefaultLwf, 0);
     LwfRxFlush(DefaultLwf);
+*/
 }
 
+EXTERN_C
 VOID
 LwfBasicTx()
 {
+/*
     auto GenericMp = MpOpenShared(FnMpIf.GetIfIndex());
     auto DefaultLwf = LwfOpenDefault(FnMpIf.GetIfIndex());
 
@@ -1249,11 +1272,14 @@ LwfBasicTx()
 
     MpTxDequeueFrame(GenericMp, 0);
     MpTxFlush(GenericMp);
+*/
 }
 
+EXTERN_C
 VOID
 LwfBasicOid()
 {
+/*
     OID_KEY OidKeys[2];
     UINT32 MpInfoBufferLength;
     unique_malloc_ptr<VOID> MpInfoBuffer;
@@ -1306,5 +1332,5 @@ LwfBasicOid()
 
         TEST_EQUAL(LwfInfoBufferLength, sizeof(ULONG));
     }
-}
 */
+}

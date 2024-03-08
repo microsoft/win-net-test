@@ -14,6 +14,8 @@
 #include <windows.h>
 #endif
 
+EXTERN_C_START
+
 VOID
 StopTest();
 
@@ -34,3 +36,5 @@ LogTestWarning(
     _Printf_format_string_ PCWSTR Format,
     ...
     );
+
+EXTERN_C_END

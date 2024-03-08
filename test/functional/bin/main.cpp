@@ -419,17 +419,18 @@ TEST_MODULE_INITIALIZE(ModuleSetup)
         TEST_TRUE(TestDriverService.Start());
 
         TEST_TRUE(TestDriverClient.Initialize(FUNCTIONAL_TEST_DRIVER_NAME));
+    } else {
+        Assert::IsTrue(TestSetup());
     }
-    Assert::IsTrue(TestSetup());
 }
 
 TEST_MODULE_CLEANUP(ModuleCleanup)
 {
-    Assert::IsTrue(TestCleanup());
-
     if (TestingKernelMode) {
         TestDriverClient.Uninitialize();
         TestDriverService.Uninitialize();
+    } else {
+        Assert::IsTrue(TestCleanup());
     }
 }
 

@@ -5,7 +5,7 @@
 
 Abstract:
 
-    QUIC Kernel Mode Test Driver
+    Kernel Mode Test Driver
 
 --*/
 
@@ -35,44 +35,44 @@ Abstract:
 // Use on pageable functions.
 #define PAGEDX __declspec(code_seg(KRTL_PAGE_SEGMENT))
 
-DECLARE_CONST_UNICODE_STRING(QuicTestCtlDeviceName, L"\\Device\\" FUNCTIONAL_TEST_DRIVER_NAME);
-DECLARE_CONST_UNICODE_STRING(QuicTestCtlDeviceSymLink, L"\\DosDevices\\" FUNCTIONAL_TEST_DRIVER_NAME);
+DECLARE_CONST_UNICODE_STRING(TestDrvCtlDeviceName, L"\\Device\\" FUNCTIONAL_TEST_DRIVER_NAME);
+DECLARE_CONST_UNICODE_STRING(TestDrvCtlDeviceSymLink, L"\\DosDevices\\" FUNCTIONAL_TEST_DRIVER_NAME);
 
-typedef struct QUIC_DEVICE_EXTENSION {
+typedef struct DEVICE_EXTENSION {
     EX_PUSH_LOCK Lock;
 
     _Guarded_by_(Lock)
     LIST_ENTRY ClientList;
     ULONG ClientListSize;
 
-} QUIC_DEVICE_EXTENSION;
+} DEVICE_EXTENSION;
 
-WDF_DECLARE_CONTEXT_TYPE_WITH_NAME(QUIC_DEVICE_EXTENSION, QuicTestCtlGetDeviceContext);
+WDF_DECLARE_CONTEXT_TYPE_WITH_NAME(DEVICE_EXTENSION, TestDrvCtlGetDeviceContext);
 
-typedef struct QUIC_TEST_CLIENT
+typedef struct TEST_CLIENT
 {
     LIST_ENTRY Link;
     bool TestFailure;
 
-} QUIC_TEST_CLIENT;
+} TEST_CLIENT;
 
-WDF_DECLARE_CONTEXT_TYPE_WITH_NAME(QUIC_TEST_CLIENT, QuicTestCtlGetFileContext);
+WDF_DECLARE_CONTEXT_TYPE_WITH_NAME(TEST_CLIENT, TestDrvCtlGetFileContext);
 
-EVT_WDF_IO_QUEUE_IO_DEVICE_CONTROL QuicTestCtlEvtIoDeviceControl;
-EVT_WDF_IO_QUEUE_IO_CANCELED_ON_QUEUE QuicTestCtlEvtIoCanceled;
+EVT_WDF_IO_QUEUE_IO_DEVICE_CONTROL TestDrvCtlEvtIoDeviceControl;
+EVT_WDF_IO_QUEUE_IO_CANCELED_ON_QUEUE TestDrvCtlEvtIoCanceled;
 
-PAGEDX EVT_WDF_DEVICE_FILE_CREATE QuicTestCtlEvtFileCreate;
-PAGEDX EVT_WDF_FILE_CLOSE QuicTestCtlEvtFileClose;
-PAGEDX EVT_WDF_FILE_CLEANUP QuicTestCtlEvtFileCleanup;
+PAGEDX EVT_WDF_DEVICE_FILE_CREATE TestDrvCtlEvtFileCreate;
+PAGEDX EVT_WDF_FILE_CLOSE TestDrvCtlEvtFileClose;
+PAGEDX EVT_WDF_FILE_CLEANUP TestDrvCtlEvtFileCleanup;
 
-WDFDEVICE QuicTestCtlDevice = nullptr;
-QUIC_DEVICE_EXTENSION* QuicTestCtlExtension = nullptr;
-QUIC_TEST_CLIENT* QuicTestClient = nullptr;
+WDFDEVICE TestDrvCtlDevice = nullptr;
+DEVICE_EXTENSION* TestDrvCtlExtension = nullptr;
+TEST_CLIENT* TestDrvClient = nullptr;
 
 _No_competing_thread_
 INITCODE
 NTSTATUS
-QuicTestCtlInitialize(
+TestDrvCtlInitialize(
     _In_ WDFDRIVER Driver
     )
 {
@@ -81,7 +81,7 @@ QuicTestCtlInitialize(
     WDF_FILEOBJECT_CONFIG FileConfig;
     WDF_OBJECT_ATTRIBUTES Attribs;
     WDFDEVICE Device;
-    QUIC_DEVICE_EXTENSION* DeviceContext;
+    DEVICE_EXTENSION* DeviceContext;
     WDF_IO_QUEUE_CONFIG QueueConfig;
     WDFQUEUE Queue;
 
@@ -100,7 +100,7 @@ QuicTestCtlInitialize(
     Status =
         WdfDeviceInitAssignName(
             DeviceInit,
-            &QuicTestCtlDeviceName);
+            &TestDrvCtlDeviceName);
     if (!NT_SUCCESS(Status)) {
         TraceError(
             "[ lib] ERROR, %u, %s.",
@@ -111,17 +111,17 @@ QuicTestCtlInitialize(
 
     WDF_FILEOBJECT_CONFIG_INIT(
         &FileConfig,
-        QuicTestCtlEvtFileCreate,
-        QuicTestCtlEvtFileClose,
-        QuicTestCtlEvtFileCleanup);
+        TestDrvCtlEvtFileCreate,
+        TestDrvCtlEvtFileClose,
+        TestDrvCtlEvtFileCleanup);
     FileConfig.FileObjectClass = WdfFileObjectWdfCanUseFsContext2;
 
-    WDF_OBJECT_ATTRIBUTES_INIT_CONTEXT_TYPE(&Attribs, QUIC_TEST_CLIENT);
+    WDF_OBJECT_ATTRIBUTES_INIT_CONTEXT_TYPE(&Attribs, TEST_CLIENT);
     WdfDeviceInitSetFileObjectConfig(
         DeviceInit,
         &FileConfig,
         &Attribs);
-    WDF_OBJECT_ATTRIBUTES_INIT_CONTEXT_TYPE(&Attribs, QUIC_DEVICE_EXTENSION);
+    WDF_OBJECT_ATTRIBUTES_INIT_CONTEXT_TYPE(&Attribs, DEVICE_EXTENSION);
 
     Status =
         WdfDeviceCreate(
@@ -136,12 +136,12 @@ QuicTestCtlInitialize(
         goto Error;
     }
 
-    DeviceContext = QuicTestCtlGetDeviceContext(Device);
-    RtlZeroMemory(DeviceContext, sizeof(QUIC_DEVICE_EXTENSION));
+    DeviceContext = TestDrvCtlGetDeviceContext(Device);
+    RtlZeroMemory(DeviceContext, sizeof(DEVICE_EXTENSION));
     ExInitializePushLock(&DeviceContext->Lock);
     InitializeListHead(&DeviceContext->ClientList);
 
-    Status = WdfDeviceCreateSymbolicLink(Device, &QuicTestCtlDeviceSymLink);
+    Status = WdfDeviceCreateSymbolicLink(Device, &TestDrvCtlDeviceSymLink);
     if (!NT_SUCCESS(Status)) {
         TraceError(
             "[ lib] ERROR, %u, %s.",
@@ -151,8 +151,8 @@ QuicTestCtlInitialize(
     }
 
     WDF_IO_QUEUE_CONFIG_INIT_DEFAULT_QUEUE(&QueueConfig, WdfIoQueueDispatchParallel);
-    QueueConfig.EvtIoDeviceControl = QuicTestCtlEvtIoDeviceControl;
-    QueueConfig.EvtIoCanceledOnQueue = QuicTestCtlEvtIoCanceled;
+    QueueConfig.EvtIoDeviceControl = TestDrvCtlEvtIoDeviceControl;
+    QueueConfig.EvtIoCanceledOnQueue = TestDrvCtlEvtIoCanceled;
 
     __analysis_assume(QueueConfig.EvtIoStop != 0);
     Status =
@@ -171,10 +171,12 @@ QuicTestCtlInitialize(
         goto Error;
     }
 
-    QuicTestCtlDevice = Device;
-    QuicTestCtlExtension = DeviceContext;
+    TestDrvCtlDevice = Device;
+    TestDrvCtlExtension = DeviceContext;
 
     WdfControlFinishInitializing(Device);
+
+    TestSetup();
 
     TraceVerbose(
         "[test] Control interface initialized");
@@ -190,18 +192,20 @@ Error:
 
 _IRQL_requires_max_(PASSIVE_LEVEL)
 VOID
-QuicTestCtlUninitialize(
+TestDrvCtlUninitialize(
     )
 {
     TraceVerbose(
         "[test] Control interface uninitializing");
 
-    if (QuicTestCtlDevice != nullptr) {
-        NT_ASSERT(QuicTestCtlExtension != nullptr);
-        QuicTestCtlExtension = nullptr;
+    TestCleanup();
 
-        WdfObjectDelete(QuicTestCtlDevice);
-        QuicTestCtlDevice = nullptr;
+    if (TestDrvCtlDevice != nullptr) {
+        NT_ASSERT(TestDrvCtlExtension != nullptr);
+        TestDrvCtlExtension = nullptr;
+
+        WdfObjectDelete(TestDrvCtlDevice);
+        TestDrvCtlDevice = nullptr;
     }
 
     TraceVerbose(
@@ -211,7 +215,7 @@ QuicTestCtlUninitialize(
 PAGEDX
 _Use_decl_annotations_
 VOID
-QuicTestCtlEvtFileCreate(
+TestDrvCtlEvtFileCreate(
     _In_ WDFDEVICE /* Device */,
     _In_ WDFREQUEST Request,
     _In_ WDFFILEOBJECT FileObject
@@ -222,11 +226,11 @@ QuicTestCtlEvtFileCreate(
     PAGED_CODE();
 
     KeEnterGuardedRegion();
-    ExAcquirePushLockExclusive(&QuicTestCtlExtension->Lock);
+    ExAcquirePushLockExclusive(&TestDrvCtlExtension->Lock);
 
     do
     {
-        if (QuicTestCtlExtension->ClientListSize >= 1) {
+        if (TestDrvCtlExtension->ClientListSize >= 1) {
             TraceError(
                 "[ lib] ERROR, %s.",
                 "Already have max clients");
@@ -234,7 +238,7 @@ QuicTestCtlEvtFileCreate(
             break;
         }
 
-        QUIC_TEST_CLIENT* Client = QuicTestCtlGetFileContext(FileObject);
+        TEST_CLIENT* Client = TestDrvCtlGetFileContext(FileObject);
         if (Client == nullptr) {
             TraceError(
                 "[ lib] ERROR, %s.",
@@ -243,13 +247,13 @@ QuicTestCtlEvtFileCreate(
             break;
         }
 
-        RtlZeroMemory(Client, sizeof(QUIC_TEST_CLIENT));
+        RtlZeroMemory(Client, sizeof(TEST_CLIENT));
 
         //
         // Insert into the client list
         //
-        InsertTailList(&QuicTestCtlExtension->ClientList, &Client->Link);
-        QuicTestCtlExtension->ClientListSize++;
+        InsertTailList(&TestDrvCtlExtension->ClientList, &Client->Link);
+        TestDrvCtlExtension->ClientListSize++;
 
         TraceInfo(
             "[test] Client %p created",
@@ -258,11 +262,11 @@ QuicTestCtlEvtFileCreate(
         //
         // TODO: Add multiple device client support?
         //
-        QuicTestClient = Client;
+        TestDrvClient = Client;
     }
     while (false);
 
-    ExReleasePushLockExclusive(&QuicTestCtlExtension->Lock);
+    ExReleasePushLockExclusive(&TestDrvCtlExtension->Lock);
     KeLeaveGuardedRegion();
 
     WdfRequestComplete(Request, Status);
@@ -271,7 +275,7 @@ QuicTestCtlEvtFileCreate(
 PAGEDX
 _Use_decl_annotations_
 VOID
-QuicTestCtlEvtFileClose(
+TestDrvCtlEvtFileClose(
     _In_ WDFFILEOBJECT /* FileObject */
     )
 {
@@ -281,7 +285,7 @@ QuicTestCtlEvtFileClose(
 PAGEDX
 _Use_decl_annotations_
 VOID
-QuicTestCtlEvtFileCleanup(
+TestDrvCtlEvtFileCleanup(
     _In_ WDFFILEOBJECT FileObject
     )
 {
@@ -289,31 +293,31 @@ QuicTestCtlEvtFileCleanup(
 
     KeEnterGuardedRegion();
 
-    QUIC_TEST_CLIENT* Client = QuicTestCtlGetFileContext(FileObject);
+    TEST_CLIENT* Client = TestDrvCtlGetFileContext(FileObject);
     if (Client != nullptr) {
 
-        ExAcquirePushLockExclusive(&QuicTestCtlExtension->Lock);
+        ExAcquirePushLockExclusive(&TestDrvCtlExtension->Lock);
 
         //
         // Remove the device client from the list
         //
         RemoveEntryList(&Client->Link);
-        QuicTestCtlExtension->ClientListSize--;
+        TestDrvCtlExtension->ClientListSize--;
 
-        ExReleasePushLockExclusive(&QuicTestCtlExtension->Lock);
+        ExReleasePushLockExclusive(&TestDrvCtlExtension->Lock);
 
         TraceInfo(
             "[test] Client %p cleaning up",
             Client);
 
-        QuicTestClient = nullptr;
+        TestDrvClient = nullptr;
     }
 
     KeLeaveGuardedRegion();
 }
 
 VOID
-QuicTestCtlEvtIoCanceled(
+TestDrvCtlEvtIoCanceled(
     _In_ WDFQUEUE /* Queue */,
     _In_ WDFREQUEST Request
     )
@@ -326,7 +330,7 @@ QuicTestCtlEvtIoCanceled(
         goto error;
     }
 
-    QUIC_TEST_CLIENT* Client = QuicTestCtlGetFileContext(FileObject);
+    TEST_CLIENT* Client = TestDrvCtlGetFileContext(FileObject);
     if (Client == nullptr) {
         Status = STATUS_DEVICE_NOT_READY;
         goto error;
@@ -344,7 +348,7 @@ error:
     WdfRequestComplete(Request, Status);
 }
 
-size_t QUIC_IOCTL_BUFFER_SIZES[] =
+size_t IOCTL_BUFFER_SIZES[] =
 {
     0,
     0,
@@ -357,19 +361,19 @@ size_t QUIC_IOCTL_BUFFER_SIZES[] =
 };
 
 static_assert(
-    QUIC_MAX_IOCTL_FUNC_CODE + 1 == (sizeof(QUIC_IOCTL_BUFFER_SIZES)/sizeof(size_t)),
-    "QUIC_IOCTL_BUFFER_SIZES must be kept in sync with the IOCTLs");
+    MAX_IOCTL_FUNC_CODE + 1 == (sizeof(IOCTL_BUFFER_SIZES)/sizeof(size_t)),
+    "IOCTL_BUFFER_SIZES must be kept in sync with the IOCTLs");
 
 typedef union {
-} QUIC_IOCTL_PARAMS;
+} IOCTL_PARAMS;
 
-#define QuicTestCtlRun(X) \
+#define TestDrvCtlRun(X) \
     Client->TestFailure = false; \
     X; \
     Status = Client->TestFailure ? STATUS_FAIL_FAST_EXCEPTION : STATUS_SUCCESS;
 
 VOID
-QuicTestCtlEvtIoDeviceControl(
+TestDrvCtlEvtIoDeviceControl(
     _In_ WDFQUEUE /* Queue */,
     _In_ WDFREQUEST Request,
     _In_ size_t /* OutputBufferLength */,
@@ -379,7 +383,7 @@ QuicTestCtlEvtIoDeviceControl(
 {
     NTSTATUS Status = STATUS_SUCCESS;
     WDFFILEOBJECT FileObject = nullptr;
-    QUIC_TEST_CLIENT* Client = nullptr;
+    TEST_CLIENT* Client = nullptr;
 
     if (KeGetCurrentIrql() > PASSIVE_LEVEL) {
         Status = STATUS_NOT_SUPPORTED;
@@ -398,17 +402,17 @@ QuicTestCtlEvtIoDeviceControl(
         goto Error;
     }
 
-    Client = QuicTestCtlGetFileContext(FileObject);
+    Client = TestDrvCtlGetFileContext(FileObject);
     if (Client == nullptr) {
         Status = STATUS_DEVICE_NOT_READY;
         TraceError(
             "[ lib] ERROR, %s.",
-            "QuicTestCtlGetFileContext failed");
+            "TestDrvCtlGetFileContext failed");
         goto Error;
     }
 
     ULONG FunctionCode = IoGetFunctionCodeFromCtlCode(IoControlCode);
-    if (FunctionCode == 0 || FunctionCode > QUIC_MAX_IOCTL_FUNC_CODE) {
+    if (FunctionCode == 0 || FunctionCode > MAX_IOCTL_FUNC_CODE) {
         Status = STATUS_NOT_IMPLEMENTED;
         TraceError(
             "[ lib] ERROR, %u, %s.",
@@ -417,7 +421,7 @@ QuicTestCtlEvtIoDeviceControl(
         goto Error;
     }
 
-    if (InputBufferLength < QUIC_IOCTL_BUFFER_SIZES[FunctionCode]) {
+    if (InputBufferLength < IOCTL_BUFFER_SIZES[FunctionCode]) {
         Status = STATUS_INSUFFICIENT_RESOURCES;
         TraceError(
             "[ lib] ERROR, %u, %s.",
@@ -426,12 +430,12 @@ QuicTestCtlEvtIoDeviceControl(
         goto Error;
     }
 
-    QUIC_IOCTL_PARAMS* Params = nullptr;
-    if (QUIC_IOCTL_BUFFER_SIZES[FunctionCode] != 0) {
+    IOCTL_PARAMS* Params = nullptr;
+    if (IOCTL_BUFFER_SIZES[FunctionCode] != 0) {
         Status =
             WdfRequestRetrieveInputBuffer(
                 Request,
-                QUIC_IOCTL_BUFFER_SIZES[FunctionCode],
+                IOCTL_BUFFER_SIZES[FunctionCode],
                 (void**)&Params,
                 nullptr);
         if (!NT_SUCCESS(Status)) {
@@ -498,13 +502,20 @@ Error:
     WdfRequestComplete(Request, Status);
 }
 
+EXTERN_C
+VOID
+StopTest()
+{
+}
+
+EXTERN_C
 _IRQL_requires_max_(PASSIVE_LEVEL)
 void
 LogTestFailure(
-    _In_z_ const char *File,
-    _In_z_ const char *Function,
-    int Line,
-    _Printf_format_string_ const char *Format,
+    _In_z_ PCWSTR File,
+    _In_z_ PCWSTR Function,
+    INT Line,
+    _Printf_format_string_ PCWSTR Format,
     ...
     )
 /*++
@@ -527,26 +538,26 @@ Return Value:
 
 --*/
 {
-    char Buffer[128];
+    wchar_t Buffer[128];
 
     NT_ASSERT(KeGetCurrentIrql() == PASSIVE_LEVEL);
-    QuicTestClient->TestFailure = true;
+    TestDrvClient->TestFailure = true;
 
     va_list Args;
     va_start(Args, Format);
-    (void)_vsnprintf_s(Buffer, sizeof(Buffer), _TRUNCATE, Format, Args);
+    _vsnwprintf_s(Buffer, RTL_NUMBER_OF(Buffer), _TRUNCATE, Format, Args);
     va_end(Args);
 
     TraceError(
-        "[test] File: %s, Function: %s, Line: %d",
+        "[test] File: %S, Function: %S, Line: %d",
         File,
         Function,
         Line);
     TraceError(
-        "[test] FAIL: %s",
+        "[test] FAIL: %S",
         Buffer);
 
-#if QUIC_BREAK_TEST
+#if BREAK_TEST
     NT_FRE_ASSERT(FALSE);
 #endif
 }

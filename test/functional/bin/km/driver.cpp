@@ -5,7 +5,7 @@
 
 Abstract:
 
-    QUIC Kernel Mode Test Driver
+    Kernel Mode Test Driver
 
 --*/
 
@@ -32,50 +32,22 @@ Abstract:
 // Use on pageable functions.
 #define PAGEDX __declspec(code_seg(KRTL_PAGE_SEGMENT))
 
-#define QUIC_POOL_TEST 'rDtF' // FtDr
+#define TEST_DRV_POOL 'vDsT' // TsDv
 
-EVT_WDF_DRIVER_UNLOAD QuicTestDriverUnload;
+EVT_WDF_DRIVER_UNLOAD TestDrvDriverUnload;
 PDRIVER_OBJECT GlobalDriverObject;
 
 _No_competing_thread_
 INITCODE
 NTSTATUS
-QuicTestCtlInitialize(
+TestDrvCtlInitialize(
     _In_ WDFDRIVER Driver
     );
 
 _IRQL_requires_max_(PASSIVE_LEVEL)
 VOID
-QuicTestCtlUninitialize(
+TestDrvCtlUninitialize(
     );
-
-// _Ret_maybenull_ _Post_writable_byte_size_(_Size)
-// void* __cdecl operator new (size_t Size, const std::nothrow_t&) throw(){
-//     return ExAllocatePool2(POOL_FLAG_NON_PAGED, Size, QUIC_POOL_TEST);
-// }
-
-// void __cdecl operator delete (/*_In_opt_*/ void* Mem) noexcept {
-//     if (Mem != nullptr) {
-//         ExFreePoolWithTag(Mem, QUIC_POOL_TEST);
-//     }
-// }
-
-// void __cdecl operator delete (_In_opt_ void* Mem, _In_opt_ size_t) noexcept {
-//     if (Mem != nullptr) {
-//         ExFreePoolWithTag(Mem, QUIC_POOL_TEST);
-//     }
-// }
-
-// _Ret_maybenull_ _Post_writable_byte_size_(_Size)
-// void* __cdecl operator new[] (size_t Size, const std::nothrow_t&) throw(){
-//     return ExAllocatePool2(POOL_FLAG_NON_PAGED, Size, QUIC_POOL_TEST);
-// }
-
-// void __cdecl operator delete[] (/*_In_opt_*/ void* Mem) {
-//     if (Mem != nullptr) {
-//         ExFreePoolWithTag(Mem, QUIC_POOL_TEST);
-//     }
-// }
 
 extern "C"
 INITCODE
@@ -125,9 +97,9 @@ Return Value:
     // Create the WdfDriver Object
     //
     WDF_DRIVER_CONFIG_INIT(&Config, NULL);
-    Config.EvtDriverUnload = QuicTestDriverUnload;
+    Config.EvtDriverUnload = TestDrvDriverUnload;
     Config.DriverInitFlags = WdfDriverInitNonPnpDriver;
-    Config.DriverPoolTag = QUIC_POOL_TEST;
+    Config.DriverPoolTag = TEST_DRV_POOL;
 
     Status =
         WdfDriverCreate(
@@ -147,12 +119,12 @@ Return Value:
     //
     // Initialize the device control interface.
     //
-    Status = QuicTestCtlInitialize(Driver);
+    Status = TestDrvCtlInitialize(Driver);
     if (!NT_SUCCESS(Status)) {
         TraceError(
             "[ lib] ERROR, %u, %s.",
             Status,
-            "QuicTestCtlInitialize failed");
+            "TestDrvCtlInitialize failed");
         goto Error;
     }
 
@@ -168,14 +140,14 @@ _Function_class_(EVT_WDF_DRIVER_UNLOAD)
 _IRQL_requires_same_
 _IRQL_requires_max_(PASSIVE_LEVEL)
 void
-QuicTestDriverUnload(
+TestDrvDriverUnload(
     _In_ WDFDRIVER Driver
     )
 /*++
 
 Routine Description:
 
-    QuicTestDriverUnload will clean up any resources that were allocated for
+    TestDrvDriverUnload will clean up any resources that were allocated for
     this driver.
 
 Arguments:
@@ -187,7 +159,7 @@ Arguments:
     UNREFERENCED_PARAMETER(Driver);
     NT_ASSERT(KeGetCurrentIrql() == PASSIVE_LEVEL);
 
-    QuicTestCtlUninitialize();
+    TestDrvCtlUninitialize();
 
     TraceInfo(
         "[test] Stopped");
