@@ -30,5 +30,4 @@ CxPlatUninitialize(
     )
 {
     PAGED_CODE();
-    TraceError("CxPlatUninitialize");
 }

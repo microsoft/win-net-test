@@ -17,6 +17,8 @@ CxPlatInitialize(
     void
     )
 {
+    TraceError("CxPlatInitialize");
+
     return CXPLAT_STATUS_SUCCESS;
 }
 

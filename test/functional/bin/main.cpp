@@ -420,6 +420,7 @@ TEST_MODULE_INITIALIZE(ModuleSetup)
 
         TEST_TRUE(TestDriverClient.Initialize(FUNCTIONAL_TEST_DRIVER_NAME));
     } else {
+        WPP_INIT_TRACING(NULL);
         Assert::IsTrue(TestSetup());
     }
 }
@@ -431,6 +432,7 @@ TEST_MODULE_CLEANUP(ModuleCleanup)
         TestDriverService.Uninitialize();
     } else {
         Assert::IsTrue(TestCleanup());
+        WPP_CLEANUP();
     }
 }
 
