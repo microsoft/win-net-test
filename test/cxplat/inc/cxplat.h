@@ -5,11 +5,15 @@
 
 #pragma once
 
+EXTERN_C_START
+
 #if defined(KERNEL_MODE)
+
 #define CXPLAT_STATUS NTSTATUS
 #define CXPLAT_FAILED(X) !NT_SUCCESS(X)
 #define CXPLAT_SUCCEEDED(X) NT_SUCCESS(X)
 #define CXPLAT_STATUS_SUCCESS STATUS_SUCCESS
+#define CXPLAT_STATUS_FAIL STATUS_UNSUCCESSFUL
 #ifndef KRTL_INIT_SEGMENT
 #define KRTL_INIT_SEGMENT "INIT"
 #endif
@@ -23,28 +27,187 @@
 #define INITCODE __declspec(code_seg(KRTL_INIT_SEGMENT))
 // Use on pageable functions.
 #define PAGEDX __declspec(code_seg(KRTL_PAGE_SEGMENT))
-#else
+
+#else // defined(KERNEL_MODE)
+
 #define CXPLAT_STATUS HRESULT
 #define CXPLAT_FAILED(X) FAILED(X)
 #define CXPLAT_SUCCEEDED(X) SUCCEEDED(X)
 #define CXPLAT_STATUS_SUCCESS S_OK
+#define CXPLAT_STATUS_FAIL E_FAIL
 #define PAGEDX
-#endif
 
-EXTERN_C_START
+#endif // defined(KERNEL_MODE)
+
+DECLARE_HANDLE(CXPLAT_SOCKET);
 
 PAGEDX
 _IRQL_requires_max_(PASSIVE_LEVEL)
 CXPLAT_STATUS
 CxPlatInitialize(
-    void
+    VOID
     );
 
 PAGEDX
 _IRQL_requires_max_(PASSIVE_LEVEL)
-void
+VOID
 CxPlatUninitialize(
-    void
+    VOID
+    );
+
+//
+// Sockets API.
+//
+
+/*
+ * WinSock error codes are also defined in winerror.h
+ * Hence the IFDEF.
+ */
+#ifndef WSABASEERR
+
+/*
+ * All Windows Sockets error constants are biased by WSABASEERR from
+ * the "normal"
+ */
+#define WSABASEERR              10000
+
+/*
+ * Windows Sockets definitions of regular Microsoft C error constants
+ */
+#define WSAEINTR                (WSABASEERR+4)
+#define WSAEBADF                (WSABASEERR+9)
+#define WSAEACCES               (WSABASEERR+13)
+#define WSAEFAULT               (WSABASEERR+14)
+#define WSAEINVAL               (WSABASEERR+22)
+#define WSAEMFILE               (WSABASEERR+24)
+
+/*
+ * Windows Sockets definitions of regular Berkeley error constants
+ */
+#define WSAEWOULDBLOCK          (WSABASEERR+35)
+#define WSAEINPROGRESS          (WSABASEERR+36)
+#define WSAEALREADY             (WSABASEERR+37)
+#define WSAENOTSOCK             (WSABASEERR+38)
+#define WSAEDESTADDRREQ         (WSABASEERR+39)
+#define WSAEMSGSIZE             (WSABASEERR+40)
+#define WSAEPROTOTYPE           (WSABASEERR+41)
+#define WSAENOPROTOOPT          (WSABASEERR+42)
+#define WSAEPROTONOSUPPORT      (WSABASEERR+43)
+#define WSAESOCKTNOSUPPORT      (WSABASEERR+44)
+#define WSAEOPNOTSUPP           (WSABASEERR+45)
+#define WSAEPFNOSUPPORT         (WSABASEERR+46)
+#define WSAEAFNOSUPPORT         (WSABASEERR+47)
+#define WSAEADDRINUSE           (WSABASEERR+48)
+#define WSAEADDRNOTAVAIL        (WSABASEERR+49)
+#define WSAENETDOWN             (WSABASEERR+50)
+#define WSAENETUNREACH          (WSABASEERR+51)
+#define WSAENETRESET            (WSABASEERR+52)
+#define WSAECONNABORTED         (WSABASEERR+53)
+#define WSAECONNRESET           (WSABASEERR+54)
+#define WSAENOBUFS              (WSABASEERR+55)
+#define WSAEISCONN              (WSABASEERR+56)
+#define WSAENOTCONN             (WSABASEERR+57)
+#define WSAESHUTDOWN            (WSABASEERR+58)
+#define WSAETOOMANYREFS         (WSABASEERR+59)
+#define WSAETIMEDOUT            (WSABASEERR+60)
+#define WSAECONNREFUSED         (WSABASEERR+61)
+#define WSAELOOP                (WSABASEERR+62)
+#define WSAENAMETOOLONG         (WSABASEERR+63)
+#define WSAEHOSTDOWN            (WSABASEERR+64)
+#define WSAEHOSTUNREACH         (WSABASEERR+65)
+#define WSAENOTEMPTY            (WSABASEERR+66)
+#define WSAEPROCLIM             (WSABASEERR+67)
+#define WSAEUSERS               (WSABASEERR+68)
+#define WSAEDQUOT               (WSABASEERR+69)
+#define WSAESTALE               (WSABASEERR+70)
+#define WSAEREMOTE              (WSABASEERR+71)
+
+/*
+ * Extended Windows Sockets error constant definitions
+ */
+#define WSASYSNOTREADY          (WSABASEERR+91)
+#define WSAVERNOTSUPPORTED      (WSABASEERR+92)
+#define WSANOTINITIALISED       (WSABASEERR+93)
+#define WSAEDISCON              (WSABASEERR+101)
+#define WSAENOMORE              (WSABASEERR+102)
+#define WSAECANCELLED           (WSABASEERR+103)
+#define WSAEINVALIDPROCTABLE    (WSABASEERR+104)
+#define WSAEINVALIDPROVIDER     (WSABASEERR+105)
+#define WSAEPROVIDERFAILEDINIT  (WSABASEERR+106)
+#define WSASYSCALLFAILURE       (WSABASEERR+107)
+#define WSASERVICE_NOT_FOUND    (WSABASEERR+108)
+#define WSATYPE_NOT_FOUND       (WSABASEERR+109)
+#define WSA_E_NO_MORE           (WSABASEERR+110)
+#define WSA_E_CANCELLED         (WSABASEERR+111)
+#define WSAEREFUSED             (WSABASEERR+112)
+
+#endif
+
+_IRQL_requires_max_(PASSIVE_LEVEL)
+CXPLAT_STATUS
+CxPlatSocketCreate(
+    _In_ INT AddressFamily,
+    _In_ INT SocketType,
+    _In_ INT Protocol,
+    _Out_ CXPLAT_SOCKET* Socket
+    );
+
+_IRQL_requires_max_(PASSIVE_LEVEL)
+VOID
+CxPlatSocketClose(
+    _In_ CXPLAT_SOCKET Socket
+    );
+
+_IRQL_requires_max_(PASSIVE_LEVEL)
+CXPLAT_STATUS
+CxPlatSocketBind(
+    _In_ CXPLAT_SOCKET Socket,
+    _In_reads_bytes_(AddressLength) const struct sockaddr* Address,
+    _In_ INT AddressLength
+    );
+
+_IRQL_requires_max_(PASSIVE_LEVEL)
+CXPLAT_STATUS
+CxPlatSocketGetSockName(
+    _In_ CXPLAT_SOCKET Socket,
+    _Out_writes_bytes_(*AddressLength) struct sockaddr* Address,
+    _Inout_ INT* AddressLength
+    );
+
+_IRQL_requires_max_(PASSIVE_LEVEL)
+CXPLAT_STATUS
+CxPlatSocketSetSockOpt(
+    _In_ CXPLAT_SOCKET Socket,
+    _In_ ULONG Level,
+    _In_ ULONG OptionName,
+    _In_reads_bytes_opt_(OptionLength) VOID* OptionValue,
+    _In_ SIZE_T OptionLength
+    );
+
+_IRQL_requires_max_(PASSIVE_LEVEL)
+INT
+CxPlatSocketSendto(
+    _In_ CXPLAT_SOCKET Socket,
+    _In_reads_bytes_(BufferLength) const CHAR* Buffer,
+    _In_ INT BufferLength,
+    _In_ INT Flags,
+    _In_reads_bytes_(AddressLength) const struct sockaddr* Address,
+    _In_ INT AddressLength
+    );
+
+_IRQL_requires_max_(PASSIVE_LEVEL)
+INT
+CxPlatSocketRecv(
+    _In_ CXPLAT_SOCKET Socket,
+    _Out_writes_bytes_to_(BufferLength, return) CHAR* Buffer,
+    _In_ INT BufferLength,
+    _In_ INT Flags
+    );
+
+_IRQL_requires_max_(PASSIVE_LEVEL)
+INT
+CxPlatSocketGetLastError(
+    VOID
     );
 
 EXTERN_C_END

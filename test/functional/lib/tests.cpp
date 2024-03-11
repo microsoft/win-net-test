@@ -7,6 +7,10 @@
 #include <ntddk.h>
 #include <ntintsafe.h>
 #include <ndis.h>
+#include <ws2def.h>
+#include <ws2ipdef.h>
+#include <netiodef.h>
+#include <mstcpip.h>
 #pragma warning(push) // SAL issues in WIL header.
 #pragma warning(disable:28157)
 #pragma warning(disable:28158)
@@ -25,10 +29,11 @@
 #define NOMINMAX
 #include <winsock2.h>
 #include <windows.h>
+#include <ws2def.h>
 #include <ws2ipdef.h>
-#include <iphlpapi.h>
-#include <ws2tcpip.h>
+#include <netiodef.h>
 #include <mstcpip.h>
+#include <iphlpapi.h>
 #pragma warning(pop)
 #include <wil/resource.h>
 #endif // defined(KERNEL_MODE)
@@ -59,12 +64,13 @@ FNLWF_LOAD_API_CONTEXT FnLwfLoadApiContext;
 #define TEST_FNMPAPI TEST_HRESULT
 #define TEST_FNLWFAPI TEST_HRESULT
 #endif // defined(KERNEL_MODE)
-/*
+
 //
 // A timeout value that allows for a little latency, e.g. async threads to
 // execute.
 //
 #define TEST_TIMEOUT_ASYNC_MS 1000
+/*
 #define TEST_TIMEOUT_ASYNC std::chrono::milliseconds(TEST_TIMEOUT_ASYNC_MS)
 
 //
@@ -79,12 +85,12 @@ FNLWF_LOAD_API_CONTEXT FnLwfLoadApiContext;
 C_ASSERT(POLL_INTERVAL_MS * 5 <= TEST_TIMEOUT_ASYNC_MS);
 C_ASSERT(POLL_INTERVAL_MS * 5 <= std::chrono::milliseconds(MP_RESTART_TIMEOUT).count());
 
-
+*/
 template <typename T>
 using unique_malloc_ptr = wistd::unique_ptr<T, wil::function_deleter<decltype(&::free), ::free>>;
-
 using unique_fnmp_handle = wil::unique_any<FNMP_HANDLE, decltype(::FnMpClose), ::FnMpClose>;
 using unique_fnlwf_handle = wil::unique_any<FNLWF_HANDLE, decltype(::FnLwfClose), ::FnLwfClose>;
+using unique_cxplat_socket = wil::unique_any<CXPLAT_SOCKET, decltype(::CxPlatSocketClose), ::CxPlatSocketClose>;
 
 static CONST CHAR *PowershellPrefix = "powershell -noprofile -ExecutionPolicy Bypass";
 
@@ -94,6 +100,7 @@ static CONST CHAR *PowershellPrefix = "powershell -noprofile -ExecutionPolicy By
 
 class TestInterface;
 
+/*
 static
 INT
 InvokeSystem(
@@ -108,6 +115,7 @@ InvokeSystem(
 
     return Result;
 }
+*/
 
 class TestInterface {
 private:
@@ -120,6 +128,7 @@ private:
     VOID
     Query() const
     {
+/*
         IP_ADAPTER_INFO *Adapter;
         ULONG OutBufLen;
 
@@ -151,6 +160,7 @@ private:
         }
 
         TEST_NOT_EQUAL(NET_IFINDEX_UNSPECIFIED, _IfIndex);
+//*/
     }
 
 public:
@@ -203,7 +213,7 @@ public:
         ) const
     {
         GetHwAddress(HwAddress);
-        HwAddress->Bytes[sizeof(_HwAddress) - 1]++;
+        HwAddress->Byte[sizeof(_HwAddress) - 1]++;
     }
 
     VOID
@@ -239,7 +249,7 @@ public:
         GetIpv6Address(Ipv6Address);
         Ipv6Address->u.Byte[sizeof(*Ipv6Address) - 1]++;
     }
-
+/*
     VOID
     Restart() const
     {
@@ -248,6 +258,7 @@ public:
         sprintf_s(CmdBuff, "%s /c Restart-NetAdapter -ifDesc \"%s\"", PowershellPrefix, _IfDesc);
         TEST_EQUAL(0, system(CmdBuff));
     }
+*/
 };
 
 template<class T>
@@ -278,6 +289,12 @@ public:
         ElapsedQpc = End.QuadPart - _StartQpc.QuadPart;
 
         return T((ElapsedQpc * T::period::den) / T::period::num / _FrequencyQpc.QuadPart);
+    }
+
+    T
+    Remaining()
+    {
+        return std::max(T(0), _TimeoutInterval - Elapsed());
     }
 
     bool
@@ -313,6 +330,7 @@ public:
         Reset();
     }
 };
+/*
 
 static
 VOID
@@ -766,7 +784,7 @@ LwfOidSubmitRequest(
         FnLwfOidSubmitRequest(
             Handle.get(), Key, InformationBufferLength, InformationBuffer);
 }
-
+*/
 static
 VOID
 WaitForWfpQuarantine(
@@ -774,7 +792,7 @@ WaitForWfpQuarantine(
     );
 
 static
-wil::unique_socket
+unique_cxplat_socket
 CreateUdpSocket(
     _In_ ADDRESS_FAMILY Af,
     _In_opt_ const TestInterface *If,
@@ -788,25 +806,26 @@ CreateUdpSocket(
         WaitForWfpQuarantine(*If);
     }
 
-    wil::unique_socket Socket(socket(Af, SOCK_DGRAM, IPPROTO_UDP));
+    unique_cxplat_socket Socket;
+    CxPlatSocketCreate(Af, SOCK_DGRAM, IPPROTO_UDP, &Socket);
     TEST_NOT_NULL(Socket.get());
 
     SOCKADDR_INET Address = {0};
     Address.si_family = Af;
-    TEST_EQUAL(0, bind(Socket.get(), (SOCKADDR *)&Address, sizeof(Address)));
+    TEST_EQUAL(CXPLAT_STATUS_SUCCESS, CxPlatSocketBind(Socket.get(), (SOCKADDR *)&Address, sizeof(Address)));
 
     INT AddressLength = sizeof(Address);
-    TEST_EQUAL(0, getsockname(Socket.get(), (SOCKADDR *)&Address, &AddressLength));
+    TEST_EQUAL(CXPLAT_STATUS_SUCCESS, CxPlatSocketGetSockName(Socket.get(), (SOCKADDR *)&Address, &AddressLength));
 
-    INT TimeoutMs = (INT)std::chrono::milliseconds(TEST_TIMEOUT_ASYNC).count();
+    INT TimeoutMs = TEST_TIMEOUT_ASYNC_MS;
     TEST_EQUAL(
-        0,
-        setsockopt(Socket.get(), SOL_SOCKET, SO_RCVTIMEO, (CHAR *)&TimeoutMs, sizeof(TimeoutMs)));
+        CXPLAT_STATUS_SUCCESS,
+        CxPlatSocketSetSockOpt(Socket.get(), SOL_SOCKET, SO_RCVTIMEO, (CHAR *)&TimeoutMs, sizeof(TimeoutMs)));
 
     *LocalPort = SS_PORT(&Address);
     return Socket;
 }
-
+/*
 static
 VOID
 WaitForWfpQuarantine(
@@ -847,7 +866,7 @@ WaitForWfpQuarantine(
         RX_FRAME RxFrame;
         RxInitializeFrame(&RxFrame, If.GetQueueId(), UdpFrame, UdpFrameLength);
         if (SUCCEEDED(MpRxIndicateFrame(SharedMp, &RxFrame))) {
-            Bytes = recv(UdpSocket.get(), RecvPayload, sizeof(RecvPayload), 0);
+            Bytes = CxPlatSocketRecv(UdpSocket.get(), RecvPayload, sizeof(RecvPayload), 0);
         } else {
             Bytes = (DWORD)-1;
         }
@@ -937,9 +956,9 @@ MpBasicRx()
     RX_FRAME RxFrame;
     RxInitializeFrame(&RxFrame, FnMpIf.GetQueueId(), UdpFrame, UdpFrameLength);
     TEST_FNMPAPI(MpRxIndicateFrame(SharedMp, &RxFrame));
-    TEST_EQUAL(sizeof(UdpPayload), recv(UdpSocket.get(), RecvPayload, sizeof(RecvPayload), 0));
+    TEST_EQUAL(sizeof(UdpPayload), CxPlatSocketRecv(UdpSocket.get(), RecvPayload, sizeof(RecvPayload), 0));
     TEST_TRUE(RtlEqualMemory(UdpPayload, RecvPayload, sizeof(UdpPayload)));
-*/
+//*/
 }
 
 EXTERN_C
@@ -971,13 +990,13 @@ MpBasicTx()
     SOCKADDR_STORAGE RemoteAddr;
     SetSockAddr(FNMP_NEIGHBOR_IPV4_ADDRESS, 1234, AF_INET, &RemoteAddr);
 
-    if (SOCKET_ERROR == WSASetUdpSendMessageSize(UdpSocket.get(), ExpectedUdpPayloadSize)) {
-        TEST_EQUAL(WSAEINVAL, WSAGetLastError());
+    if (CXPLAT_FAILED(CxPlatSocketSetSockOpt(UdpSocket.get(), IPPROTO_UDP, UDP_SEND_MSG_SIZE, &ExpectedUdpPayloadSize, sizeof(ExpectedUdpPayloadSize)))) {
+        TEST_EQUAL(WSAEINVAL, CxPlatSocketGetLastError());
         Uso = FALSE;
         SendSize = ExpectedUdpPayloadSize;
     }
 
-    TEST_EQUAL((int)SendSize, sendto(UdpSocket.get(), (PCHAR)UdpPayload, SendSize, 0, (PSOCKADDR)&RemoteAddr, sizeof(RemoteAddr)));
+    TEST_EQUAL((int)SendSize, CxPlatSocketSendto(UdpSocket.get(), (PCHAR)UdpPayload, SendSize, 0, (PSOCKADDR)&RemoteAddr, sizeof(RemoteAddr)));
 
     auto MpTxFrame = MpTxAllocateAndGetFrame(SharedMp, 0);
 
@@ -1074,7 +1093,7 @@ MpBasicRxOffload()
     RX_FRAME RxFrame;
     RxInitializeFrame(&RxFrame, FnMpIf.GetQueueId(), UdpFrame, UdpFrameLength);
     TEST_FNMPAPI(MpRxIndicateFrame(SharedMp, &RxFrame));
-    TEST_EQUAL(sizeof(UdpPayload), recv(UdpSocket.get(), RecvPayload, sizeof(RecvPayload), 0));
+    TEST_EQUAL(sizeof(UdpPayload), CxPlatSocketRecv(UdpSocket.get(), RecvPayload, sizeof(RecvPayload), 0));
     TEST_TRUE(RtlEqualMemory(UdpPayload, RecvPayload, sizeof(UdpPayload)));
 
     NDIS_OFFLOAD_PARAMETERS OffloadParams;
@@ -1090,7 +1109,7 @@ MpBasicRxOffload()
     UDP_HDR *UdpHdr = (UDP_HDR *)&UdpFrame[UDP_HEADER_BACKFILL(AF_INET) - sizeof(*UdpHdr)];
     UdpHdr->uh_sum++;
     TEST_FNMPAPI(MpRxIndicateFrame(SharedMp, &RxFrame));
-    TEST_EQUAL(sizeof(UdpPayload), recv(UdpSocket.get(), RecvPayload, sizeof(RecvPayload), 0));
+    TEST_EQUAL(sizeof(UdpPayload), CxPlatSocketRecv(UdpSocket.get(), RecvPayload, sizeof(RecvPayload), 0));
     TEST_TRUE(RtlEqualMemory(UdpPayload, RecvPayload, sizeof(UdpPayload)));
     RxFrame.Frame.Input.Checksum.Value = 0;
     UdpHdr->uh_sum--;
@@ -1108,7 +1127,7 @@ MpBasicRxOffload()
     IPV4_HEADER *IpHdr = (IPV4_HEADER *)&UdpFrame[sizeof(ETHERNET_HEADER)];
     IpHdr->HeaderChecksum++;
     TEST_FNMPAPI(MpRxIndicateFrame(SharedMp, &RxFrame));
-    TEST_EQUAL(sizeof(UdpPayload), recv(UdpSocket.get(), RecvPayload, sizeof(RecvPayload), 0));
+    TEST_EQUAL(sizeof(UdpPayload), CxPlatSocketRecv(UdpSocket.get(), RecvPayload, sizeof(RecvPayload), 0));
     TEST_TRUE(RtlEqualMemory(UdpPayload, RecvPayload, sizeof(UdpPayload)));
     RxFrame.Frame.Input.Checksum.Value = 0;
     IpHdr->HeaderChecksum--;
@@ -1146,7 +1165,7 @@ MpBasicTxOffload()
 
     TEST_EQUAL(
         (int)sizeof(UdpPayload),
-        sendto(
+        CxPlatSocketSendto(
             UdpSocket.get(), (PCHAR)UdpPayload, sizeof(UdpPayload), 0,
             (PSOCKADDR)&RemoteAddr, sizeof(RemoteAddr)));
 
@@ -1162,7 +1181,7 @@ MpBasicTxOffload()
 
     TEST_EQUAL(
         (int)sizeof(UdpPayload),
-        sendto(
+        CxPlatSocketSendto(
             UdpSocket.get(), (PCHAR)UdpPayload, sizeof(UdpPayload), 0,
             (PSOCKADDR)&RemoteAddr, sizeof(RemoteAddr)));
 
@@ -1170,7 +1189,7 @@ MpBasicTxOffload()
     TEST_TRUE(MpTxFrame->Output.Checksum.Transmit.UdpChecksum);
     MpTxDequeueFrame(SharedMp, 0);
     MpTxFlush(SharedMp);
-    */
+*/
 }
 
 EXTERN_C
