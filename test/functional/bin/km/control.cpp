@@ -38,20 +38,8 @@ Abstract:
 DECLARE_CONST_UNICODE_STRING(TestDrvCtlDeviceName, L"\\Device\\" FUNCTIONAL_TEST_DRIVER_NAME);
 DECLARE_CONST_UNICODE_STRING(TestDrvCtlDeviceSymLink, L"\\DosDevices\\" FUNCTIONAL_TEST_DRIVER_NAME);
 
-typedef struct DEVICE_EXTENSION {
-    EX_PUSH_LOCK Lock;
-
-    _Guarded_by_(Lock)
-    LIST_ENTRY ClientList;
-    ULONG ClientListSize;
-
-} DEVICE_EXTENSION;
-
-WDF_DECLARE_CONTEXT_TYPE_WITH_NAME(DEVICE_EXTENSION, TestDrvCtlGetDeviceContext);
-
 typedef struct TEST_CLIENT
 {
-    LIST_ENTRY Link;
     bool TestFailure;
 
 } TEST_CLIENT;
@@ -66,8 +54,8 @@ PAGEDX EVT_WDF_FILE_CLOSE TestDrvCtlEvtFileClose;
 PAGEDX EVT_WDF_FILE_CLEANUP TestDrvCtlEvtFileCleanup;
 
 WDFDEVICE TestDrvCtlDevice = nullptr;
-DEVICE_EXTENSION* TestDrvCtlExtension = nullptr;
 TEST_CLIENT* TestDrvClient = nullptr;
+CHAR TestDrvClientActive = FALSE;
 
 _No_competing_thread_
 INITCODE
@@ -81,7 +69,6 @@ TestDrvCtlInitialize(
     WDF_FILEOBJECT_CONFIG FileConfig;
     WDF_OBJECT_ATTRIBUTES Attribs;
     WDFDEVICE Device;
-    DEVICE_EXTENSION* DeviceContext;
     WDF_IO_QUEUE_CONFIG QueueConfig;
     WDFQUEUE Queue;
 
@@ -121,7 +108,6 @@ TestDrvCtlInitialize(
         DeviceInit,
         &FileConfig,
         &Attribs);
-    WDF_OBJECT_ATTRIBUTES_INIT_CONTEXT_TYPE(&Attribs, DEVICE_EXTENSION);
 
     Status =
         WdfDeviceCreate(
@@ -135,11 +121,6 @@ TestDrvCtlInitialize(
             "WdfDeviceCreate failed");
         goto Error;
     }
-
-    DeviceContext = TestDrvCtlGetDeviceContext(Device);
-    RtlZeroMemory(DeviceContext, sizeof(DEVICE_EXTENSION));
-    ExInitializePushLock(&DeviceContext->Lock);
-    InitializeListHead(&DeviceContext->ClientList);
 
     Status = WdfDeviceCreateSymbolicLink(Device, &TestDrvCtlDeviceSymLink);
     if (!NT_SUCCESS(Status)) {
@@ -172,7 +153,6 @@ TestDrvCtlInitialize(
     }
 
     TestDrvCtlDevice = Device;
-    TestDrvCtlExtension = DeviceContext;
 
     WdfControlFinishInitializing(Device);
 
@@ -197,9 +177,6 @@ TestDrvCtlUninitialize(
         "[test] Control interface uninitializing");
 
     if (TestDrvCtlDevice != nullptr) {
-        NT_ASSERT(TestDrvCtlExtension != nullptr);
-        TestDrvCtlExtension = nullptr;
-
         WdfObjectDelete(TestDrvCtlDevice);
         TestDrvCtlDevice = nullptr;
     }
@@ -221,12 +198,12 @@ TestDrvCtlEvtFileCreate(
 
     PAGED_CODE();
 
-    KeEnterGuardedRegion();
-    ExAcquirePushLockExclusive(&TestDrvCtlExtension->Lock);
-
     do
     {
-        if (TestDrvCtlExtension->ClientListSize >= 1) {
+        //
+        // Single client support.
+        //
+        if (InterlockedExchange8(&TestDrvClientActive, TRUE) == TRUE) {
             TraceError(
                 "[ lib] ERROR, %s.",
                 "Already have max clients");
@@ -245,21 +222,15 @@ TestDrvCtlEvtFileCreate(
 
         RtlZeroMemory(Client, sizeof(TEST_CLIENT));
 
-        //
-        // Insert into the client list
-        //
-        InsertTailList(&TestDrvCtlExtension->ClientList, &Client->Link);
-        TestDrvCtlExtension->ClientListSize++;
-
         TraceInfo(
             "[test] Client %p created",
             Client);
 
-        //
-        // TODO: Add multiple device client support?
-        //
         TestDrvClient = Client;
 
+        //
+        // TestSetup requires TestDrvClient to be initialized.
+        //
         if (!TestSetup()) {
             TestDrvClient = nullptr;
             Status = STATUS_UNSUCCESSFUL;
@@ -268,8 +239,9 @@ TestDrvCtlEvtFileCreate(
     }
     while (false);
 
-    ExReleasePushLockExclusive(&TestDrvCtlExtension->Lock);
-    KeLeaveGuardedRegion();
+    if (!NT_SUCCESS(Status) && Status != STATUS_TOO_MANY_SESSIONS) {
+        InterlockedExchange8(&TestDrvClientActive, FALSE);
+    }
 
     WdfRequestComplete(Request, Status);
 }
@@ -293,31 +265,22 @@ TestDrvCtlEvtFileCleanup(
 {
     PAGED_CODE();
 
-    KeEnterGuardedRegion();
-
     TEST_CLIENT* Client = TestDrvCtlGetFileContext(FileObject);
     if (Client != nullptr) {
-
-        ExAcquirePushLockExclusive(&TestDrvCtlExtension->Lock);
-
-        //
-        // Remove the device client from the list
-        //
-        RemoveEntryList(&Client->Link);
-        TestDrvCtlExtension->ClientListSize--;
-
-        ExReleasePushLockExclusive(&TestDrvCtlExtension->Lock);
 
         TraceInfo(
             "[test] Client %p cleaning up",
             Client);
 
+        //
+        // TestSetup requires TestDrvClient to be initialized.
+        //
         TestCleanup();
 
         TestDrvClient = nullptr;
-    }
 
-    KeLeaveGuardedRegion();
+        InterlockedExchange8(&TestDrvClientActive, FALSE);
+    }
 }
 
 VOID
