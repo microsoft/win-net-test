@@ -342,12 +342,6 @@ static DriverClient TestDriverClient;
 //
 
 VOID
-StopTest()
-{
-    Assert::Fail(L"Stop test execution.");
-}
-
-VOID
 LogTestFailure(
     _In_z_ PCWSTR File,
     _In_z_ PCWSTR Function,
@@ -370,6 +364,7 @@ LogTestFailure(
 
     TraceError("%S", Buffer);
     Logger::WriteMessage(Buffer);
+    Assert::Fail(L"Stop test execution.");
 }
 
 VOID

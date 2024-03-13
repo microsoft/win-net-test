@@ -17,9 +17,6 @@
 EXTERN_C_START
 
 VOID
-StopTest();
-
-VOID
 LogTestFailure(
     _In_z_ PCWSTR File,
     _In_z_ PCWSTR Function,

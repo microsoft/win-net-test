@@ -10,6 +10,7 @@
 #include <ws2def.h>
 #include <ws2ipdef.h>
 #include <netiodef.h>
+#include <netioapi.h>
 #include <mstcpip.h>
 #pragma warning(push) // SAL issues in WIL header.
 #pragma warning(disable:28157)
@@ -26,14 +27,13 @@
 // Windows and WIL includes need to be ordered in a certain way.
 #pragma warning(push)
 #pragma warning(disable:4324) // structure was padded due to alignment specifier
-#define NOMINMAX
 #include <winsock2.h>
 #include <windows.h>
 #include <ws2def.h>
 #include <ws2ipdef.h>
 #include <netiodef.h>
+#include <netioapi.h>
 #include <mstcpip.h>
-#include <iphlpapi.h>
 #pragma warning(pop)
 #include <wil/resource.h>
 #endif // defined(KERNEL_MODE)
@@ -48,7 +48,7 @@
 
 #include "tests.tmh"
 
-#define FNMP_IF_DESC "FNMP"
+#define FNMP_IF_DESC L"FNMP"
 #define FNMP_IPV4_ADDRESS "192.168.200.1"
 #define FNMP_NEIGHBOR_IPV4_ADDRESS "192.168.200.2"
 #define FNMP_IPV6_ADDRESS "fc00::200:1"
@@ -60,45 +60,66 @@ FNLWF_LOAD_API_CONTEXT FnLwfLoadApiContext;
 #if defined(KERNEL_MODE)
 #define TEST_FNMPAPI TEST_NTSTATUS
 #define TEST_FNLWFAPI TEST_NTSTATUS
+#define TEST_FNMPAPI_GOTO TEST_NTSTATUS_GOTO
+#define TEST_FNLWFAPI_GOTO TEST_NTSTATUS_GOTO
+#define TEST_FNMPAPI_RET TEST_NTSTATUS_RET
+#define TEST_FNLWFAPI_RET TEST_NTSTATUS_RET
 #else
 #define TEST_FNMPAPI TEST_HRESULT
 #define TEST_FNLWFAPI TEST_HRESULT
+#define TEST_FNMPAPI_GOTO TEST_HRESULT_GOTO
+#define TEST_FNLWFAPI_GOTO TEST_HRESULT_GOTO
+#define TEST_FNMPAPI_RET TEST_HRESULT_RET
+#define TEST_FNLWFAPI_RET TEST_HRESULT_RET
 #endif // defined(KERNEL_MODE)
+
+#define TEST_CXPLAT(condition) TEST_TRUE(CXPLAT_SUCCEEDED(condition))
+#define TEST_CXPLAT_GOTO(condition, label) TEST_TRUE_GOTO(CXPLAT_SUCCEEDED(condition), label)
+#define TEST_CXPLAT_RET(condition, retval) TEST_TRUE_RET(CXPLAT_SUCCEEDED(condition), retval)
 
 //
 // A timeout value that allows for a little latency, e.g. async threads to
 // execute.
 //
 #define TEST_TIMEOUT_ASYNC_MS 1000
-/*
-#define TEST_TIMEOUT_ASYNC std::chrono::milliseconds(TEST_TIMEOUT_ASYNC_MS)
 
 //
 // The expected maximum time needed for a network adapter to restart.
 //
-#define MP_RESTART_TIMEOUT std::chrono::seconds(15)
+#define MP_RESTART_TIMEOUT_MS 15000
 
 //
 // Interval between polling attempts.
 //
 #define POLL_INTERVAL_MS 10
 C_ASSERT(POLL_INTERVAL_MS * 5 <= TEST_TIMEOUT_ASYNC_MS);
-C_ASSERT(POLL_INTERVAL_MS * 5 <= std::chrono::milliseconds(MP_RESTART_TIMEOUT).count());
+C_ASSERT(POLL_INTERVAL_MS * 5 <= MP_RESTART_TIMEOUT_MS);
 
-*/
+#if defined(KERNEL_MODE) && !defined(htons)
+#define htons RtlUshortByteSwap
+#define ntohs RtlUshortByteSwap
+#define htonl RtlUlongByteSwap
+#define ntohl RtlUlongByteSwap
+#endif
+
+#define POOL_TAG 'sTnF' // FnTs
+#if defined(KERNEL_MODE)
+template <typename T>
+using unique_malloc_ptr = wistd::unique_ptr<T, wil::function_deleter<decltype(&::ExFreePool), ::ExFreePool>>;
+#else
 template <typename T>
 using unique_malloc_ptr = wistd::unique_ptr<T, wil::function_deleter<decltype(&::free), ::free>>;
+#endif
 using unique_fnmp_handle = wil::unique_any<FNMP_HANDLE, decltype(::FnMpClose), ::FnMpClose>;
 using unique_fnlwf_handle = wil::unique_any<FNLWF_HANDLE, decltype(::FnLwfClose), ::FnLwfClose>;
 using unique_cxplat_socket = wil::unique_any<CXPLAT_SOCKET, decltype(::CxPlatSocketClose), ::CxPlatSocketClose>;
+using unique_cxplat_thread = wil::unique_any<CXPLAT_THREAD, decltype(::CxPlatThreadDelete), ::CxPlatThreadDelete>;
 
 static CONST CHAR *PowershellPrefix = "powershell -noprofile -ExecutionPolicy Bypass";
 
 //
 // Helper functions.
 //
-
-class TestInterface;
 
 /*
 static
@@ -117,69 +138,72 @@ InvokeSystem(
 }
 */
 
-class TestInterface {
+typedef struct TestInterface {
 private:
-    CONST CHAR *_IfDesc;
+    CONST WCHAR *_IfDesc;
     mutable UINT32 _IfIndex;
     mutable UCHAR _HwAddress[sizeof(ETHERNET_ADDRESS)]{ 0 };
     IN_ADDR _Ipv4Address;
     IN6_ADDR _Ipv6Address;
 
-    VOID
+    bool
     Query() const
     {
-/*
-        IP_ADAPTER_INFO *Adapter;
-        ULONG OutBufLen;
+        MIB_IF_TABLE2 *IfTable = NULL;
 
         if (ReadUInt32Acquire(&_IfIndex) != NET_IFINDEX_UNSPECIFIED) {
-            return;
+            return true;
         }
 
         //
         // Get information on all adapters.
         //
-        OutBufLen = 0;
-        TEST_EQUAL((ULONG)ERROR_BUFFER_OVERFLOW, GetAdaptersInfo(NULL, &OutBufLen));
-        unique_malloc_ptr<IP_ADAPTER_INFO> AdapterInfoList{ (IP_ADAPTER_INFO *)malloc(OutBufLen) };
-        TEST_NOT_NULL(AdapterInfoList);
-        TEST_EQUAL((ULONG)NO_ERROR, GetAdaptersInfo(AdapterInfoList.get(), &OutBufLen));
+        TEST_EQUAL_RET((ULONG)NO_ERROR, GetIfTable2Ex(MibIfTableNormal, &IfTable), false);
+        TEST_NOT_NULL_RET(IfTable, false);
+
+        auto ScopeGuard = wil::scope_exit([&]
+        {
+            FreeMibTable(IfTable);
+        });
 
         //
         // Search for the test adapter.
         //
-        Adapter = AdapterInfoList.get();
-        while (Adapter != NULL) {
-            if (!strcmp(Adapter->Description, _IfDesc)) {
-                TEST_EQUAL(sizeof(_HwAddress), Adapter->AddressLength);
-                RtlCopyMemory(_HwAddress, Adapter->Address, sizeof(_HwAddress));
+        for (ULONG i = 0; i < IfTable->NumEntries; i++) {
+            MIB_IF_ROW2 *Row = &IfTable->Table[i];
+            if (!wcscmp(Row->Description, _IfDesc)) {
+                TEST_EQUAL_RET(sizeof(_HwAddress), Row->PhysicalAddressLength, false);
+                RtlCopyMemory(_HwAddress, Row->PhysicalAddress, sizeof(_HwAddress));
 
-                WriteUInt32Release(&_IfIndex, Adapter->Index);
+                WriteUInt32Release(&_IfIndex, Row->InterfaceIndex);
             }
-            Adapter = Adapter->Next;
         }
 
-        TEST_NOT_EQUAL(NET_IFINDEX_UNSPECIFIED, _IfIndex);
-//*/
+        TEST_NOT_EQUAL_RET(NET_IFINDEX_UNSPECIFIED, _IfIndex, false);
+        return true;
     }
 
 public:
 
-    TestInterface(
-        _In_z_ CONST CHAR *IfDesc,
+    bool
+    Initialize(
+        _In_z_ CONST WCHAR *IfDesc,
         _In_z_ CONST CHAR *Ipv4Address,
         _In_z_ CONST CHAR *Ipv6Address
         )
-        :
-        _IfDesc(IfDesc),
-        _IfIndex(NET_IFINDEX_UNSPECIFIED)
     {
         CONST CHAR *Terminator;
-        TEST_NTSTATUS(RtlIpv4StringToAddressA(Ipv4Address, FALSE, &Terminator, &_Ipv4Address));
-        TEST_NTSTATUS(RtlIpv6StringToAddressA(Ipv6Address, &Terminator, &_Ipv6Address));
+
+        _IfDesc = IfDesc;
+        _IfIndex = NET_IFINDEX_UNSPECIFIED;
+
+        TEST_NTSTATUS_RET(RtlIpv4StringToAddressA(Ipv4Address, FALSE, &Terminator, &_Ipv4Address), false);
+        TEST_NTSTATUS_RET(RtlIpv6StringToAddressA(Ipv6Address, &Terminator, &_Ipv6Address), false);
+        TEST_TRUE_RET(Query(), false);
+        return true;
     }
 
-    CONST CHAR*
+    CONST WCHAR*
     GetIfDesc() const
     {
         return _IfDesc;
@@ -188,7 +212,6 @@ public:
     NET_IFINDEX
     GetIfIndex() const
     {
-        Query();
         return _IfIndex;
     }
 
@@ -203,7 +226,6 @@ public:
         _Out_ ETHERNET_ADDRESS *HwAddress
         ) const
     {
-        Query();
         RtlCopyMemory(HwAddress, _HwAddress, sizeof(_HwAddress));
     }
 
@@ -250,51 +272,49 @@ public:
         Ipv6Address->u.Byte[sizeof(*Ipv6Address) - 1]++;
     }
 /*
-    VOID
+    bool
     Restart() const
     {
         CHAR CmdBuff[256];
         RtlZeroMemory(CmdBuff, sizeof(CmdBuff));
         sprintf_s(CmdBuff, "%s /c Restart-NetAdapter -ifDesc \"%s\"", PowershellPrefix, _IfDesc);
-        TEST_EQUAL(0, system(CmdBuff));
+        TEST_EQUAL_RET(0, system(CmdBuff), false);
+        return true;
     }
 */
-};
+} TestInterface;
 
-template<class T>
 class Stopwatch {
 private:
-    LARGE_INTEGER _StartQpc;
-    LARGE_INTEGER _FrequencyQpc;
-    T _TimeoutInterval;
+    UINT64 _StartQpc;
+    UINT64 _TimeoutInterval;
 
 public:
     Stopwatch(
-        _In_opt_ T TimeoutInterval = T::max()
+        _In_opt_ UINT64 TimeoutInterval = MAXUINT64
         )
         :
         _TimeoutInterval(TimeoutInterval)
     {
-        QueryPerformanceFrequency(&_FrequencyQpc);
-        QueryPerformanceCounter(&_StartQpc);
+        _StartQpc = CxPlatTimePlat();
     }
 
-    T
+    UINT64
     Elapsed()
     {
-        LARGE_INTEGER End;
+        UINT64 End;
         UINT64 ElapsedQpc;
 
-        QueryPerformanceCounter(&End);
-        ElapsedQpc = End.QuadPart - _StartQpc.QuadPart;
+        End = CxPlatTimePlat();
+        ElapsedQpc = End - _StartQpc;
 
-        return T((ElapsedQpc * T::period::den) / T::period::num / _FrequencyQpc.QuadPart);
+        return US_TO_MS(CxPlatTimePlatToUs64(ElapsedQpc));
     }
 
-    T
+    UINT64
     Remaining()
     {
-        return std::max(T(0), _TimeoutInterval - Elapsed());
+        return max(0, _TimeoutInterval - Elapsed());
     }
 
     bool
@@ -303,34 +323,34 @@ public:
         return Elapsed() >= _TimeoutInterval;
     }
 
-    void
+    bool
     ExpectElapsed(
-        _In_ T ExpectedInterval,
+        _In_ UINT64 ExpectedInterval,
         _In_opt_ UINT32 MarginPercent = 10
         )
     {
-        T Fudge = (ExpectedInterval * MarginPercent) / 100;
-        TEST_TRUE(MarginPercent == 0 || Fudge > T(0));
-        TEST_TRUE(Elapsed() >= ExpectedInterval - Fudge);
-        TEST_TRUE(Elapsed() <= ExpectedInterval + Fudge);
+        UINT64 Fudge = (ExpectedInterval * MarginPercent) / 100;
+        TEST_TRUE_RET(MarginPercent == 0 || Fudge > 0, false);
+        TEST_TRUE_RET(Elapsed() >= ExpectedInterval - Fudge, false);
+        TEST_TRUE_RET(Elapsed() <= ExpectedInterval + Fudge, false);
+        return true;
     }
 
     void
     Reset()
     {
-        QueryPerformanceCounter(&_StartQpc);
+        _StartQpc = CxPlatTimePlat();
     }
 
     void
     Reset(
-        _In_ T TimeoutInterval
+        _In_ UINT64 TimeoutInterval
         )
     {
         _TimeoutInterval = TimeoutInterval;
         Reset();
     }
 };
-/*
 
 static
 VOID
@@ -347,7 +367,7 @@ InitializeOidKey(
     Key->RequestInterface = RequestInterface;
 }
 
-static TestInterface FnMpIf(FNMP_IF_DESC, FNMP_IPV4_ADDRESS, FNMP_IPV6_ADDRESS);
+static TestInterface *FnMpIf;
 
 struct RX_FRAME {
     DATA_FRAME Frame;
@@ -413,7 +433,7 @@ MpOpenShared(
     )
 {
     unique_fnmp_handle Handle;
-    TEST_FNMPAPI(FnMpOpenShared(IfIndex, &Handle));
+    TEST_FNMPAPI_RET(FnMpOpenShared(IfIndex, &Handle), Handle);
     return Handle;
 }
 
@@ -424,7 +444,7 @@ MpOpenExclusive(
     )
 {
     unique_fnmp_handle Handle;
-    TEST_FNMPAPI(FnMpOpenExclusive(IfIndex, &Handle));
+    TEST_FNMPAPI_RET(FnMpOpenExclusive(IfIndex, &Handle), Handle);
     return Handle;
 }
 
@@ -466,7 +486,7 @@ MpRxIndicateFrame(
 }
 
 static
-VOID
+bool
 MpTxFilter(
     _In_ const unique_fnmp_handle& Handle,
     _In_ const VOID *Pattern,
@@ -474,7 +494,8 @@ MpTxFilter(
     _In_ UINT32 Length
     )
 {
-    TEST_FNMPAPI(FnMpTxFilter(Handle.get(), Pattern, Mask, Length));
+    TEST_FNMPAPI_RET(FnMpTxFilter(Handle.get(), Pattern, Mask, Length), false);
+    return true;
 }
 
 static
@@ -501,7 +522,7 @@ MpTxAllocateAndGetFrame(
     unique_malloc_ptr<DATA_FRAME> FrameBuffer;
     UINT32 FrameLength = 0;
     FNMPAPI_STATUS Result;
-    Stopwatch<std::chrono::milliseconds> Watchdog(TEST_TIMEOUT_ASYNC);
+    Stopwatch Watchdog(TEST_TIMEOUT_ASYNC_MS);
 
     //
     // Poll FNMP for TX: the driver doesn't support overlapped IO.
@@ -511,27 +532,27 @@ MpTxAllocateAndGetFrame(
         if (Result != FNMPAPI_STATUS_NOT_FOUND) {
             break;
         }
-    } while (Sleep(POLL_INTERVAL_MS), !Watchdog.IsExpired());
+    } while (CxPlatSleep(POLL_INTERVAL_MS), !Watchdog.IsExpired());
 
-    TEST_EQUAL(FNMPAPI_STATUS_MORE_DATA, Result);
-    TEST_TRUE(FrameLength >= sizeof(DATA_FRAME));
-    FrameBuffer.reset((DATA_FRAME *)malloc(FrameLength));
-    TEST_TRUE(FrameBuffer != NULL);
+    TEST_EQUAL_RET(FNMPAPI_STATUS_MORE_DATA, Result, FrameBuffer);
+    TEST_TRUE_RET(FrameLength >= sizeof(DATA_FRAME), FrameBuffer);
+    FrameBuffer.reset((DATA_FRAME *)CxPlatAllocNonPaged(FrameLength, POOL_TAG));
+    TEST_TRUE_RET(FrameBuffer != NULL, FrameBuffer);
 
-    TEST_FNMPAPI(MpTxGetFrame(Handle, Index, &FrameLength, FrameBuffer.get(), SubIndex));
+    TEST_FNMPAPI_RET(MpTxGetFrame(Handle, Index, &FrameLength, FrameBuffer.get(), SubIndex), FrameBuffer);
 
     return FrameBuffer;
 }
 
 static
-VOID
+bool
 MpTxDequeueFrame(
     _In_ const unique_fnmp_handle& Handle,
     _In_ UINT32 Index
     )
 {
     FNMPAPI_STATUS Result;
-    Stopwatch<std::chrono::milliseconds> Watchdog(TEST_TIMEOUT_ASYNC);
+    Stopwatch Watchdog(TEST_TIMEOUT_ASYNC_MS);
 
     //
     // Poll FNMP for TX: the driver doesn't support overlapped IO.
@@ -540,20 +561,22 @@ MpTxDequeueFrame(
         Result = FnMpTxDequeueFrame(Handle.get(), Index);
     } while (!Watchdog.IsExpired() && Result == FNMPAPI_STATUS_NOT_FOUND);
 
-    TEST_FNMPAPI(Result);
+    TEST_FNMPAPI_RET(Result, false);
+    return true;
 }
 
 static
-VOID
+bool
 MpTxFlush(
     _In_ const unique_fnmp_handle& Handle
     )
 {
-    TEST_FNMPAPI(FnMpTxFlush(Handle.get()));
+    TEST_FNMPAPI_RET(FnMpTxFlush(Handle.get()), false);
+    return true;
 }
 
 static
-VOID
+bool
 MpUpdateTaskOffload(
     _In_ const unique_fnmp_handle& Handle,
     _In_ FN_OFFLOAD_TYPE OffloadType,
@@ -562,18 +585,20 @@ MpUpdateTaskOffload(
 {
     UINT32 Size = OffloadParameters != NULL ? sizeof(*OffloadParameters) : 0;
 
-    TEST_FNMPAPI(FnMpUpdateTaskOffload(Handle.get(), OffloadType, OffloadParameters, Size));
+    TEST_FNMPAPI_RET(FnMpUpdateTaskOffload(Handle.get(), OffloadType, OffloadParameters, Size), false);
+    return true;
 }
 
 static
-VOID
+bool
 MpOidFilter(
     _In_ const unique_fnmp_handle& Handle,
     _In_ const OID_KEY *Keys,
     _In_ UINT32 KeyCount
     )
 {
-    TEST_FNMPAPI(FnMpOidFilter(Handle.get(), Keys, KeyCount));
+    TEST_FNMPAPI_RET(FnMpOidFilter(Handle.get(), Keys, KeyCount), false);
+    return true;
 }
 
 static
@@ -588,20 +613,19 @@ MpOidGetRequest(
     return FnMpOidGetRequest(Handle.get(), Key, InformationBufferLength, InformationBuffer);
 }
 
-template<typename T=decltype(TEST_TIMEOUT_ASYNC)>
 static
 unique_malloc_ptr<VOID>
 MpOidAllocateAndGetRequest(
     _In_ const unique_fnmp_handle& Handle,
     _In_ OID_KEY Key,
     _Out_ UINT32 *InformationBufferLength,
-    _In_opt_ T Timeout = TEST_TIMEOUT_ASYNC
+    _In_opt_ UINT32 Timeout = TEST_TIMEOUT_ASYNC_MS
     )
 {
     unique_malloc_ptr<VOID> InformationBuffer;
     UINT32 Length = 0;
     FNMPAPI_STATUS Result;
-    Stopwatch<T> Watchdog(Timeout);
+    Stopwatch Watchdog(Timeout);
 
     //
     // Poll FNMP for an OID: the driver doesn't support overlapped IO.
@@ -611,14 +635,14 @@ MpOidAllocateAndGetRequest(
         if (Result != FNMPAPI_STATUS_NOT_FOUND) {
             break;
         }
-    } while (Sleep(POLL_INTERVAL_MS), !Watchdog.IsExpired());
+    } while (CxPlatSleep(POLL_INTERVAL_MS), !Watchdog.IsExpired());
 
-    TEST_EQUAL(FNMPAPI_STATUS_MORE_DATA, Result);
-    TEST_TRUE(Length > 0);
-    InformationBuffer.reset(malloc(Length));
-    TEST_TRUE(InformationBuffer != NULL);
+    TEST_EQUAL_RET(FNMPAPI_STATUS_MORE_DATA, Result, InformationBuffer);
+    TEST_TRUE_RET(Length > 0, InformationBuffer);
+    InformationBuffer.reset(CxPlatAllocNonPaged(Length, POOL_TAG));
+    TEST_TRUE_RET(InformationBuffer != NULL, InformationBuffer);
 
-    TEST_FNMPAPI(MpOidGetRequest(Handle, Key, &Length, InformationBuffer.get()));
+    TEST_FNMPAPI_RET(MpOidGetRequest(Handle, Key, &Length, InformationBuffer.get()), InformationBuffer);
 
     *InformationBufferLength = Length;
     return InformationBuffer;
@@ -638,40 +662,41 @@ LwfOpenDefault(
     // so poll for readiness.
     //
 
-    Stopwatch<std::chrono::milliseconds> Watchdog(TEST_TIMEOUT_ASYNC);
+    Stopwatch Watchdog(TEST_TIMEOUT_ASYNC_MS);
     do {
         Result = FnLwfOpenDefault(IfIndex, &Handle);
         if (FNLWFAPI_SUCCEEDED(Result)) {
             break;
         } else {
-            TEST_EQUAL(FNLWFAPI_STATUS_NOT_FOUND, Result);
+            TEST_EQUAL_RET(FNLWFAPI_STATUS_NOT_FOUND, Result, Handle);
         }
-    } while (Sleep(POLL_INTERVAL_MS), !Watchdog.IsExpired());
+    } while (CxPlatSleep(POLL_INTERVAL_MS), !Watchdog.IsExpired());
 
-    TEST_FNLWFAPI(Result);
+    TEST_FNLWFAPI_RET(Result, Handle);
 
     return Handle;
 }
 
 static
-VOID
+bool
 LwfTxEnqueue(
     _In_ const unique_fnlwf_handle& Handle,
     _In_ DATA_FRAME *Frame
     )
 {
-    TEST_FNLWFAPI(FnLwfTxEnqueue(Handle.get(), Frame));
+    TEST_FNLWFAPI_RET(FnLwfTxEnqueue(Handle.get(), Frame), false);
+    return true;
 }
 
 static
-VOID
+bool
 LwfTxFlush(
     _In_ const unique_fnlwf_handle& Handle,
     _In_opt_ DATA_FLUSH_OPTIONS *Options = nullptr
     )
 {
     FNLWFAPI_STATUS Result;
-    Stopwatch<std::chrono::milliseconds> Watchdog(TEST_TIMEOUT_ASYNC);
+    Stopwatch Watchdog(TEST_TIMEOUT_ASYNC_MS);
 
     //
     // Retry if the interface is not ready: the NDIS data path may be paused.
@@ -681,13 +706,14 @@ LwfTxFlush(
         if (Result != FNLWFAPI_STATUS_NOT_READY) {
             break;
         }
-    } while (Sleep(POLL_INTERVAL_MS), !Watchdog.IsExpired());
+    } while (CxPlatSleep(POLL_INTERVAL_MS), !Watchdog.IsExpired());
 
-    TEST_FNLWFAPI(Result);
+    TEST_FNLWFAPI_RET(Result, false);
+    return true;
 }
 
 static
-VOID
+bool
 LwfRxFilter(
     _In_ const unique_fnlwf_handle& Handle,
     _In_ const VOID *Pattern,
@@ -695,7 +721,8 @@ LwfRxFilter(
     _In_ UINT32 Length
     )
 {
-    TEST_FNLWFAPI(FnLwfRxFilter(Handle.get(), Pattern, Mask, Length));
+    TEST_FNLWFAPI_RET(FnLwfRxFilter(Handle.get(), Pattern, Mask, Length), false);
+    return true;
 }
 
 static
@@ -720,7 +747,7 @@ LwfRxAllocateAndGetFrame(
     unique_malloc_ptr<DATA_FRAME> FrameBuffer;
     UINT32 FrameLength = 0;
     FNLWFAPI_STATUS Result;
-    Stopwatch<std::chrono::milliseconds> Watchdog(TEST_TIMEOUT_ASYNC);
+    Stopwatch Watchdog(TEST_TIMEOUT_ASYNC_MS);
 
     //
     // Poll FNLWF for RX: the driver doesn't support overlapped IO.
@@ -730,27 +757,27 @@ LwfRxAllocateAndGetFrame(
         if (Result != FNLWFAPI_STATUS_NOT_FOUND) {
             break;
         }
-    } while (Sleep(POLL_INTERVAL_MS), !Watchdog.IsExpired());
+    } while (CxPlatSleep(POLL_INTERVAL_MS), !Watchdog.IsExpired());
 
-    TEST_EQUAL(FNLWFAPI_STATUS_MORE_DATA, Result);
-    TEST_TRUE(FrameLength >= sizeof(DATA_FRAME));
-    FrameBuffer.reset((DATA_FRAME *)malloc(FrameLength));
-    TEST_TRUE(FrameBuffer != NULL);
+    TEST_EQUAL_RET(FNLWFAPI_STATUS_MORE_DATA, Result, FrameBuffer);
+    TEST_TRUE_RET(FrameLength >= sizeof(DATA_FRAME), FrameBuffer);
+    FrameBuffer.reset((DATA_FRAME *)CxPlatAllocNonPaged(FrameLength, POOL_TAG));
+    TEST_TRUE_RET(FrameBuffer != NULL, FrameBuffer);
 
-    TEST_FNLWFAPI(LwfRxGetFrame(Handle, Index, &FrameLength, FrameBuffer.get()));
+    TEST_FNLWFAPI_RET(LwfRxGetFrame(Handle, Index, &FrameLength, FrameBuffer.get()), FrameBuffer);
 
     return FrameBuffer;
 }
 
 static
-VOID
+bool
 LwfRxDequeueFrame(
     _In_ const unique_fnlwf_handle& Handle,
     _In_ UINT32 Index
     )
 {
     FNLWFAPI_STATUS Result;
-    Stopwatch<std::chrono::milliseconds> Watchdog(TEST_TIMEOUT_ASYNC);
+    Stopwatch Watchdog(TEST_TIMEOUT_ASYNC_MS);
 
     //
     // Poll FNLWF for RX: the driver doesn't support overlapped IO.
@@ -759,16 +786,18 @@ LwfRxDequeueFrame(
         Result = FnLwfRxDequeueFrame(Handle.get(), Index);
     } while (!Watchdog.IsExpired() && Result == FNLWFAPI_STATUS_NOT_FOUND);
 
-    TEST_FNLWFAPI(Result);
+    TEST_FNLWFAPI_RET(Result, false);
+    return true;
 }
 
 static
-VOID
+bool
 LwfRxFlush(
     _In_ const unique_fnlwf_handle& Handle
     )
 {
-    TEST_FNLWFAPI(FnLwfRxFlush(Handle.get()));
+    TEST_FNLWFAPI_RET(FnLwfRxFlush(Handle.get()), false);
+    return true;
 }
 
 static
@@ -784,11 +813,11 @@ LwfOidSubmitRequest(
         FnLwfOidSubmitRequest(
             Handle.get(), Key, InformationBufferLength, InformationBuffer);
 }
-*/
+
 static
-VOID
+bool
 WaitForWfpQuarantine(
-    _In_ const TestInterface& If
+    _In_ const TestInterface *If
     );
 
 static
@@ -799,37 +828,38 @@ CreateUdpSocket(
     _Out_ UINT16 *LocalPort
     )
 {
+    unique_cxplat_socket Socket;
+
+    *LocalPort = 0;
+
     if (If != NULL) {
         //
         // Ensure the local UDP stack has finished initializing the interface.
         //
-        WaitForWfpQuarantine(*If);
+        TEST_TRUE_RET(WaitForWfpQuarantine(If), Socket);
     }
 
-    unique_cxplat_socket Socket;
     CxPlatSocketCreate(Af, SOCK_DGRAM, IPPROTO_UDP, &Socket);
-    TEST_NOT_NULL(Socket.get());
+    TEST_NOT_NULL_RET(Socket.get(), Socket);
 
     SOCKADDR_INET Address = {0};
     Address.si_family = Af;
-    TEST_EQUAL(CXPLAT_STATUS_SUCCESS, CxPlatSocketBind(Socket.get(), (SOCKADDR *)&Address, sizeof(Address)));
+    TEST_CXPLAT_RET(CxPlatSocketBind(Socket.get(), (SOCKADDR *)&Address, sizeof(Address)), Socket);
 
     INT AddressLength = sizeof(Address);
-    TEST_EQUAL(CXPLAT_STATUS_SUCCESS, CxPlatSocketGetSockName(Socket.get(), (SOCKADDR *)&Address, &AddressLength));
+    TEST_CXPLAT_RET(CxPlatSocketGetSockName(Socket.get(), (SOCKADDR *)&Address, &AddressLength), Socket);
 
     INT TimeoutMs = TEST_TIMEOUT_ASYNC_MS;
-    TEST_EQUAL(
-        CXPLAT_STATUS_SUCCESS,
-        CxPlatSocketSetSockOpt(Socket.get(), SOL_SOCKET, SO_RCVTIMEO, (CHAR *)&TimeoutMs, sizeof(TimeoutMs)));
+    TEST_CXPLAT_RET(CxPlatSocketSetSockOpt(Socket.get(), SOL_SOCKET, SO_RCVTIMEO, (CHAR *)&TimeoutMs, sizeof(TimeoutMs)), Socket);
 
     *LocalPort = SS_PORT(&Address);
     return Socket;
 }
-/*
+
 static
-VOID
+bool
 WaitForWfpQuarantine(
-    _In_ const TestInterface& If
+    _In_ const TestInterface *If
     )
 {
     //
@@ -840,31 +870,35 @@ WaitForWfpQuarantine(
     ETHERNET_ADDRESS LocalHw, RemoteHw;
     INET_ADDR LocalIp, RemoteIp;
     auto UdpSocket = CreateUdpSocket(AF_INET, NULL, &LocalPort);
-    auto SharedMp = MpOpenShared(If.GetIfIndex());
+    auto SharedMp = MpOpenShared(If->GetIfIndex());
+
+    TEST_NOT_NULL_RET(UdpSocket.get(), false);
+    TEST_NOT_NULL_RET(SharedMp.get(), false);
 
     RemotePort = htons(1234);
-    If.GetHwAddress(&LocalHw);
-    If.GetRemoteHwAddress(&RemoteHw);
-    If.GetIpv4Address(&LocalIp.Ipv4);
-    If.GetRemoteIpv4Address(&RemoteIp.Ipv4);
+    If->GetHwAddress(&LocalHw);
+    If->GetRemoteHwAddress(&RemoteHw);
+    If->GetIpv4Address(&LocalIp.Ipv4);
+    If->GetRemoteIpv4Address(&RemoteIp.Ipv4);
 
     UCHAR UdpPayload[] = "WaitForWfpQuarantine";
     CHAR RecvPayload[sizeof(UdpPayload)];
     UCHAR UdpFrame[UDP_HEADER_STORAGE + sizeof(UdpPayload)];
     UINT32 UdpFrameLength = sizeof(UdpFrame);
-    TEST_TRUE(
+    TEST_TRUE_RET(
         PktBuildUdpFrame(
             UdpFrame, &UdpFrameLength, UdpPayload, sizeof(UdpPayload), &LocalHw,
-            &RemoteHw, AF_INET, &LocalIp, &RemoteIp, LocalPort, RemotePort));
+            &RemoteHw, AF_INET, &LocalIp, &RemoteIp, LocalPort, RemotePort),
+        false);
 
     //
     // On older Windows builds, WFP takes a very long time to de-quarantine.
     //
-    Stopwatch<std::chrono::seconds> Watchdog(std::chrono::seconds(30));
+    Stopwatch Watchdog(30 * 1000);
     DWORD Bytes;
     do {
         RX_FRAME RxFrame;
-        RxInitializeFrame(&RxFrame, If.GetQueueId(), UdpFrame, UdpFrameLength);
+        RxInitializeFrame(&RxFrame, If->GetQueueId(), UdpFrame, UdpFrameLength);
         if (SUCCEEDED(MpRxIndicateFrame(SharedMp, &RxFrame))) {
             Bytes = CxPlatSocketRecv(UdpSocket.get(), RecvPayload, sizeof(RecvPayload), 0);
         } else {
@@ -874,11 +908,13 @@ WaitForWfpQuarantine(
         if (Bytes == sizeof(UdpPayload)) {
             break;
         }
-    } while (Sleep(POLL_INTERVAL_MS), !Watchdog.IsExpired());
-    TEST_EQUAL(Bytes, sizeof(UdpPayload));
+    } while (CxPlatSleep(POLL_INTERVAL_MS), !Watchdog.IsExpired());
+    TEST_EQUAL_RET(Bytes, sizeof(UdpPayload), false);
+
+    return true;
 }
 
-VOID
+bool
 SetSockAddr(
     _In_ PCSTR Addr,
     _In_ USHORT Port,
@@ -891,35 +927,76 @@ SetSockAddr(
     if (Af == AF_INET6) {
         ULONG Scope = 0;
         IN6_ADDR In6 = {0};
-        TEST_NTSTATUS(RtlIpv6StringToAddressExA(Addr, &In6, &Scope, &Port));
+        TEST_NTSTATUS_RET(RtlIpv6StringToAddressExA(Addr, &In6, &Scope, &Port), false);
         RtlCopyMemory(&((PSOCKADDR_IN6)SockAddr)->sin6_addr, &In6, sizeof(IN6_ADDR));
     } else {
         IN_ADDR In = {0};
-        TEST_NTSTATUS(RtlIpv4StringToAddressExA(Addr, TRUE, &In, &Port));
+        TEST_NTSTATUS_RET(RtlIpv4StringToAddressExA(Addr, TRUE, &In, &Port), false);
         ((PSOCKADDR_IN)SockAddr)->sin_addr.s_addr = In.s_addr;
     }
+    return true;
 }
 
 //
 // Test framework agnostic test suite(s).
 //
-*/
+
 EXTERN_C
 bool
 TestSetup()
 {
-    TEST_TRUE(CXPLAT_SUCCEEDED(CxPlatInitialize()));
-    // TEST_EQUAL(0, InvokeSystem("netsh advfirewall firewall add rule name=fnmptest dir=in action=allow protocol=any remoteip=any localip=any"));
-    TEST_FNMPAPI(FnMpLoadApi(&FnMpLoadApiContext));
-    TEST_FNLWFAPI(FnLwfLoadApi(&FnLwfLoadApiContext));
-    // WaitForWfpQuarantine(FnMpIf);
+    BOOLEAN CxPlatInitialized = FALSE;
+    BOOLEAN FirewallInitialized = FALSE;
+    BOOLEAN FnMpApiInitialized = FALSE;
+    BOOLEAN FnLwfApiInitialized = FALSE;
+
+    TEST_TRUE_GOTO(CXPLAT_SUCCEEDED(CxPlatInitialize()), Error);
+    CxPlatInitialized = TRUE;
+
+    // TEST_EQUAL_GOTO(0, InvokeSystem("netsh advfirewall firewall add rule name=fnmptest dir=in action=allow protocol=any remoteip=any localip=any"), Error);
+    FirewallInitialized = TRUE;
+
+    TEST_FNMPAPI_GOTO(FnMpLoadApi(&FnMpLoadApiContext), Error);
+    FnMpApiInitialized = TRUE;
+
+    TEST_FNLWFAPI_GOTO(FnLwfLoadApi(&FnLwfLoadApiContext), Error);
+    FnLwfApiInitialized = TRUE;
+
+    FnMpIf = (TestInterface*)CxPlatAllocNonPaged(sizeof(*FnMpIf), POOL_TAG);
+    TEST_NOT_NULL_GOTO(FnMpIf, Error);
+
+    TEST_TRUE_GOTO(FnMpIf->Initialize(FNMP_IF_DESC, FNMP_IPV4_ADDRESS, FNMP_IPV6_ADDRESS), Error);
+
+    TEST_TRUE_GOTO(WaitForWfpQuarantine(FnMpIf), Error);
+
     return true;
+
+Error:
+
+    if (FnMpIf != NULL) {
+        CxPlatFree(FnMpIf, POOL_TAG);
+    }
+    if (FnLwfApiInitialized) {
+        FnLwfUnloadApi(FnLwfLoadApiContext);
+    }
+    if (FnMpApiInitialized) {
+        FnMpUnloadApi(FnMpLoadApiContext);
+    }
+    if (FirewallInitialized) {
+        // InvokeSystem("netsh advfirewall firewall delete rule name=fnmptest");
+    }
+    if (CxPlatInitialized) {
+        CxPlatUninitialize();
+    }
+
+    return false;
 }
 
 EXTERN_C
 bool
 TestCleanup()
 {
+    CxPlatFree(FnMpIf, POOL_TAG);
     FnLwfUnloadApi(FnLwfLoadApiContext);
     FnMpUnloadApi(FnMpLoadApiContext);
     // TEST_EQUAL(0, InvokeSystem("netsh advfirewall firewall delete rule name=fnmptest"));
@@ -931,18 +1008,20 @@ EXTERN_C
 VOID
 MpBasicRx()
 {
-/*
     UINT16 LocalPort, RemotePort;
     ETHERNET_ADDRESS LocalHw, RemoteHw;
     INET_ADDR LocalIp, RemoteIp;
     auto UdpSocket = CreateUdpSocket(AF_INET, NULL, &LocalPort);
-    auto SharedMp = MpOpenShared(FnMpIf.GetIfIndex());
+    auto SharedMp = MpOpenShared(FnMpIf->GetIfIndex());
+
+    TEST_NOT_NULL(UdpSocket.get());
+    TEST_NOT_NULL(SharedMp.get());
 
     RemotePort = htons(1234);
-    FnMpIf.GetHwAddress(&LocalHw);
-    FnMpIf.GetRemoteHwAddress(&RemoteHw);
-    FnMpIf.GetIpv4Address(&LocalIp.Ipv4);
-    FnMpIf.GetRemoteIpv4Address(&RemoteIp.Ipv4);
+    FnMpIf->GetHwAddress(&LocalHw);
+    FnMpIf->GetRemoteHwAddress(&RemoteHw);
+    FnMpIf->GetIpv4Address(&LocalIp.Ipv4);
+    FnMpIf->GetRemoteIpv4Address(&RemoteIp.Ipv4);
 
     UCHAR UdpPayload[] = "BasicRx";
     CHAR RecvPayload[sizeof(UdpPayload)];
@@ -954,22 +1033,23 @@ MpBasicRx()
             &RemoteHw, AF_INET, &LocalIp, &RemoteIp, LocalPort, RemotePort));
 
     RX_FRAME RxFrame;
-    RxInitializeFrame(&RxFrame, FnMpIf.GetQueueId(), UdpFrame, UdpFrameLength);
+    RxInitializeFrame(&RxFrame, FnMpIf->GetQueueId(), UdpFrame, UdpFrameLength);
     TEST_FNMPAPI(MpRxIndicateFrame(SharedMp, &RxFrame));
     TEST_EQUAL(sizeof(UdpPayload), CxPlatSocketRecv(UdpSocket.get(), RecvPayload, sizeof(RecvPayload), 0));
     TEST_TRUE(RtlEqualMemory(UdpPayload, RecvPayload, sizeof(UdpPayload)));
-//*/
 }
 
 EXTERN_C
 VOID
 MpBasicTx()
 {
-/*
     UINT16 LocalPort;
     auto UdpSocket = CreateUdpSocket(AF_INET, NULL, &LocalPort);
-    auto SharedMp = MpOpenShared(FnMpIf.GetIfIndex());
+    auto SharedMp = MpOpenShared(FnMpIf->GetIfIndex());
     BOOLEAN Uso = TRUE;
+
+    TEST_NOT_NULL(UdpSocket.get());
+    TEST_NOT_NULL(SharedMp.get());
 
     UCHAR UdpPayload[] = "BasicTx0BasicTx1";
     UCHAR Pattern[UDP_HEADER_BACKFILL(AF_INET) + sizeof(UdpPayload) / 2 - 1];
@@ -985,10 +1065,10 @@ MpBasicTx()
         Mask[i] = 0xff;
     }
 
-    MpTxFilter(SharedMp, Pattern, Mask, sizeof(Pattern));
+    TEST_TRUE(MpTxFilter(SharedMp, Pattern, Mask, sizeof(Pattern)));
 
     SOCKADDR_STORAGE RemoteAddr;
-    SetSockAddr(FNMP_NEIGHBOR_IPV4_ADDRESS, 1234, AF_INET, &RemoteAddr);
+    TEST_TRUE(SetSockAddr(FNMP_NEIGHBOR_IPV4_ADDRESS, 1234, AF_INET, &RemoteAddr));
 
     if (CXPLAT_FAILED(CxPlatSocketSetSockOpt(UdpSocket.get(), IPPROTO_UDP, UDP_SEND_MSG_SIZE, &ExpectedUdpPayloadSize, sizeof(ExpectedUdpPayloadSize)))) {
         TEST_EQUAL(WSAEINVAL, CxPlatSocketGetLastError());
@@ -999,6 +1079,7 @@ MpBasicTx()
     TEST_EQUAL((int)SendSize, CxPlatSocketSendto(UdpSocket.get(), (PCHAR)UdpPayload, SendSize, 0, (PSOCKADDR)&RemoteAddr, sizeof(RemoteAddr)));
 
     auto MpTxFrame = MpTxAllocateAndGetFrame(SharedMp, 0);
+    TEST_NOT_NULL(MpTxFrame.get());
 
     //
     // The following assumes the following MDL structure formed by the UDP TX path.
@@ -1018,6 +1099,7 @@ MpBasicTx()
 
     if (Uso) {
         MpTxFrame = MpTxAllocateAndGetFrame(SharedMp, 0, 1);
+        TEST_NOT_NULL(MpTxFrame.get());
 
         TEST_EQUAL(2, MpTxFrame->BufferCount);
         TEST_EQUAL(MpTxFrame->Buffers[0].DataLength, UDP_HEADER_BACKFILL(AF_INET));
@@ -1036,7 +1118,7 @@ MpBasicTx()
         FNMPAPI_STATUS_NOT_FOUND,
         MpTxGetFrame(SharedMp, 0, &FrameLength, NULL, 3));
 
-    MpTxDequeueFrame(SharedMp, 0);
+    TEST_TRUE(MpTxDequeueFrame(SharedMp, 0));
     TEST_EQUAL(
         FNMPAPI_STATUS_NOT_FOUND,
         MpTxGetFrame(SharedMp, 0, &FrameLength, NULL, 0));
@@ -1044,42 +1126,42 @@ MpBasicTx()
         FNMPAPI_STATUS_NOT_FOUND,
         MpTxGetFrame(SharedMp, 0, &FrameLength, NULL, 1));
 
-    MpTxFlush(SharedMp);
-*/
+    TEST_TRUE(MpTxFlush(SharedMp));
 }
-/*
+
 static
 VOID
 InitializeOffloadParameters(
     _Out_ NDIS_OFFLOAD_PARAMETERS *OffloadParameters
     )
 {
-    ZeroMemory(OffloadParameters, sizeof(*OffloadParameters));
+    RtlZeroMemory(OffloadParameters, sizeof(*OffloadParameters));
     OffloadParameters->Header.Type = NDIS_OBJECT_TYPE_DEFAULT;
     OffloadParameters->Header.Size = NDIS_SIZEOF_OFFLOAD_PARAMETERS_REVISION_5;
     OffloadParameters->Header.Revision = NDIS_OFFLOAD_PARAMETERS_REVISION_5;
 }
-*/
 
 EXTERN_C
 VOID
 MpBasicRxOffload()
 {
-/*
     UINT16 LocalPort, RemotePort;
     ETHERNET_ADDRESS LocalHw, RemoteHw;
     INET_ADDR LocalIp, RemoteIp;
     auto UdpSocket = CreateUdpSocket(AF_INET, NULL, &LocalPort);
-    auto SharedMp = MpOpenShared(FnMpIf.GetIfIndex());
+    auto SharedMp = MpOpenShared(FnMpIf->GetIfIndex());
     auto MpTaskOffloadCleanup = wil::scope_exit([&]() {
         MpUpdateTaskOffload(SharedMp, FnOffloadCurrentConfig, NULL);
     });
 
+    TEST_NOT_NULL(UdpSocket.get());
+    TEST_NOT_NULL(SharedMp.get());
+
     RemotePort = htons(1234);
-    FnMpIf.GetHwAddress(&LocalHw);
-    FnMpIf.GetRemoteHwAddress(&RemoteHw);
-    FnMpIf.GetIpv4Address(&LocalIp.Ipv4);
-    FnMpIf.GetRemoteIpv4Address(&RemoteIp.Ipv4);
+    FnMpIf->GetHwAddress(&LocalHw);
+    FnMpIf->GetRemoteHwAddress(&RemoteHw);
+    FnMpIf->GetIpv4Address(&LocalIp.Ipv4);
+    FnMpIf->GetRemoteIpv4Address(&RemoteIp.Ipv4);
 
     UCHAR UdpPayload[] = "BasicRxOffload";
     CHAR RecvPayload[sizeof(UdpPayload)];
@@ -1091,7 +1173,7 @@ MpBasicRxOffload()
             &RemoteHw, AF_INET, &LocalIp, &RemoteIp, LocalPort, RemotePort));
 
     RX_FRAME RxFrame;
-    RxInitializeFrame(&RxFrame, FnMpIf.GetQueueId(), UdpFrame, UdpFrameLength);
+    RxInitializeFrame(&RxFrame, FnMpIf->GetQueueId(), UdpFrame, UdpFrameLength);
     TEST_FNMPAPI(MpRxIndicateFrame(SharedMp, &RxFrame));
     TEST_EQUAL(sizeof(UdpPayload), CxPlatSocketRecv(UdpSocket.get(), RecvPayload, sizeof(RecvPayload), 0));
     TEST_TRUE(RtlEqualMemory(UdpPayload, RecvPayload, sizeof(UdpPayload)));
@@ -1099,7 +1181,7 @@ MpBasicRxOffload()
     NDIS_OFFLOAD_PARAMETERS OffloadParams;
     InitializeOffloadParameters(&OffloadParams);
     OffloadParams.UDPIPv4Checksum = NDIS_OFFLOAD_PARAMETERS_RX_ENABLED_TX_DISABLED;
-    MpUpdateTaskOffload(SharedMp, FnOffloadCurrentConfig, &OffloadParams);
+    TEST_TRUE(MpUpdateTaskOffload(SharedMp, FnOffloadCurrentConfig, &OffloadParams));
 
     //
     // Set the checksum succeeded OOB bit, and mangle the checksum. If the OOB
@@ -1113,14 +1195,14 @@ MpBasicRxOffload()
     TEST_TRUE(RtlEqualMemory(UdpPayload, RecvPayload, sizeof(UdpPayload)));
     RxFrame.Frame.Input.Checksum.Value = 0;
     UdpHdr->uh_sum--;
-    MpUpdateTaskOffload(SharedMp, FnOffloadCurrentConfig, NULL);
+    TEST_TRUE(MpUpdateTaskOffload(SharedMp, FnOffloadCurrentConfig, NULL));
 
     //
     // Try the same thing with the IP header.
     //
     InitializeOffloadParameters(&OffloadParams);
     OffloadParams.IPv4Checksum = NDIS_OFFLOAD_PARAMETERS_RX_ENABLED_TX_DISABLED;
-    MpUpdateTaskOffload(SharedMp, FnOffloadCurrentConfig, &OffloadParams);
+    TEST_TRUE(MpUpdateTaskOffload(SharedMp, FnOffloadCurrentConfig, &OffloadParams));
 
     RxFrame.Frame.Input.Checksum.Receive.IpChecksumSucceeded = TRUE;
     RxFrame.Frame.Input.Checksum.Receive.IpChecksumValueInvalid = TRUE;
@@ -1131,20 +1213,21 @@ MpBasicRxOffload()
     TEST_TRUE(RtlEqualMemory(UdpPayload, RecvPayload, sizeof(UdpPayload)));
     RxFrame.Frame.Input.Checksum.Value = 0;
     IpHdr->HeaderChecksum--;
-*/
 }
 
 EXTERN_C
 VOID
 MpBasicTxOffload()
 {
-/*
     UINT16 LocalPort;
     auto UdpSocket = CreateUdpSocket(AF_INET, NULL, &LocalPort);
-    auto SharedMp = MpOpenShared(FnMpIf.GetIfIndex());
+    auto SharedMp = MpOpenShared(FnMpIf->GetIfIndex());
     auto MpTaskOffloadCleanup = wil::scope_exit([&]() {
         MpUpdateTaskOffload(SharedMp, FnOffloadCurrentConfig, NULL);
     });
+
+    TEST_NOT_NULL(UdpSocket.get());
+    TEST_NOT_NULL(SharedMp.get());
 
     UCHAR UdpPayload[] = "BasicTxOffload";
     UCHAR Pattern[UDP_HEADER_BACKFILL(AF_INET) + sizeof(UdpPayload)];
@@ -1158,10 +1241,10 @@ MpBasicTxOffload()
         Mask[i] = 0xff;
     }
 
-    MpTxFilter(SharedMp, Pattern, Mask, sizeof(Pattern));
+    TEST_TRUE(MpTxFilter(SharedMp, Pattern, Mask, sizeof(Pattern)));
 
     SOCKADDR_STORAGE RemoteAddr;
-    SetSockAddr(FNMP_NEIGHBOR_IPV4_ADDRESS, 1234, AF_INET, &RemoteAddr);
+    TEST_TRUE(SetSockAddr(FNMP_NEIGHBOR_IPV4_ADDRESS, 1234, AF_INET, &RemoteAddr));
 
     TEST_EQUAL(
         (int)sizeof(UdpPayload),
@@ -1170,14 +1253,15 @@ MpBasicTxOffload()
             (PSOCKADDR)&RemoteAddr, sizeof(RemoteAddr)));
 
     auto MpTxFrame = MpTxAllocateAndGetFrame(SharedMp, 0);
+    TEST_NOT_NULL(MpTxFrame.get());
     TEST_FALSE(MpTxFrame->Output.Checksum.Transmit.UdpChecksum);
-    MpTxDequeueFrame(SharedMp, 0);
-    MpTxFlush(SharedMp);
+    TEST_TRUE(MpTxDequeueFrame(SharedMp, 0));
+    TEST_TRUE(MpTxFlush(SharedMp));
 
     NDIS_OFFLOAD_PARAMETERS OffloadParams;
     InitializeOffloadParameters(&OffloadParams);
     OffloadParams.UDPIPv4Checksum = NDIS_OFFLOAD_PARAMETERS_TX_ENABLED_RX_DISABLED;
-    MpUpdateTaskOffload(SharedMp, FnOffloadCurrentConfig, &OffloadParams);
+    TEST_TRUE(MpUpdateTaskOffload(SharedMp, FnOffloadCurrentConfig, &OffloadParams));
 
     TEST_EQUAL(
         (int)sizeof(UdpPayload),
@@ -1186,19 +1270,21 @@ MpBasicTxOffload()
             (PSOCKADDR)&RemoteAddr, sizeof(RemoteAddr)));
 
     MpTxFrame = MpTxAllocateAndGetFrame(SharedMp, 0);
+    TEST_NOT_NULL(MpTxFrame.get());
     TEST_TRUE(MpTxFrame->Output.Checksum.Transmit.UdpChecksum);
-    MpTxDequeueFrame(SharedMp, 0);
-    MpTxFlush(SharedMp);
-*/
+    TEST_TRUE(MpTxDequeueFrame(SharedMp, 0));
+    TEST_TRUE(MpTxFlush(SharedMp));
 }
 
 EXTERN_C
 VOID
 LwfBasicRx()
 {
-/*
-    auto GenericMp = MpOpenShared(FnMpIf.GetIfIndex());
-    auto DefaultLwf = LwfOpenDefault(FnMpIf.GetIfIndex());
+    auto GenericMp = MpOpenShared(FnMpIf->GetIfIndex());
+    auto DefaultLwf = LwfOpenDefault(FnMpIf->GetIfIndex());
+
+    TEST_NOT_NULL(GenericMp.get());
+    TEST_NOT_NULL(DefaultLwf.get());
 
     const UINT32 DataOffset = 3;
     const UCHAR Payload[] = "FnLwfRx";
@@ -1216,14 +1302,15 @@ LwfBasicRx()
     RtlCopyMemory(BufferVa + DataOffset, &Pattern, sizeof(Pattern));
     RtlCopyMemory(BufferVa + DataOffset + sizeof(Pattern), Payload, sizeof(Payload));
 
-    LwfRxFilter(DefaultLwf, &Pattern, &Mask, sizeof(Pattern));
+    TEST_TRUE(LwfRxFilter(DefaultLwf, &Pattern, &Mask, sizeof(Pattern)));
 
     RX_FRAME Frame;
-    RxInitializeFrame(&Frame, FnMpIf.GetQueueId(), &Buffer);
+    RxInitializeFrame(&Frame, FnMpIf->GetQueueId(), &Buffer);
     TEST_FNMPAPI(MpRxEnqueueFrame(GenericMp, &Frame));
     TEST_FNMPAPI(TryMpRxFlush(GenericMp));
 
     auto LwfRxFrame = LwfRxAllocateAndGetFrame(DefaultLwf, 0);
+    TEST_NOT_NULL(LwfRxFrame.get());
     TEST_EQUAL(LwfRxFrame->BufferCount, Frame.Frame.BufferCount);
 
     const DATA_BUFFER *LwfRxBuffer = &LwfRxFrame->Buffers[0];
@@ -1235,18 +1322,19 @@ LwfBasicRx()
             LwfRxBuffer->VirtualAddress + LwfRxBuffer->DataOffset,
             Buffer.DataLength));
 
-    LwfRxDequeueFrame(DefaultLwf, 0);
-    LwfRxFlush(DefaultLwf);
-*/
+    TEST_TRUE(LwfRxDequeueFrame(DefaultLwf, 0));
+    TEST_TRUE(LwfRxFlush(DefaultLwf));
 }
 
 EXTERN_C
 VOID
 LwfBasicTx()
 {
-/*
-    auto GenericMp = MpOpenShared(FnMpIf.GetIfIndex());
-    auto DefaultLwf = LwfOpenDefault(FnMpIf.GetIfIndex());
+    auto GenericMp = MpOpenShared(FnMpIf->GetIfIndex());
+    auto DefaultLwf = LwfOpenDefault(FnMpIf->GetIfIndex());
+
+    TEST_NOT_NULL(GenericMp.get());
+    TEST_NOT_NULL(DefaultLwf.get());
 
     const UINT32 DataOffset = 3;
     const UCHAR Payload[] = "FnLwfTx";
@@ -1267,12 +1355,13 @@ LwfBasicTx()
     RtlCopyMemory(BufferVa + DataOffset, &Pattern, sizeof(Pattern));
     RtlCopyMemory(BufferVa + DataOffset + sizeof(Pattern), Payload, sizeof(Payload));
 
-    MpTxFilter(GenericMp, &Pattern, &Mask, sizeof(Pattern));
+    TEST_TRUE(MpTxFilter(GenericMp, &Pattern, &Mask, sizeof(Pattern)));
 
-    LwfTxEnqueue(DefaultLwf, &Frame);
-    LwfTxFlush(DefaultLwf);
+    TEST_TRUE(LwfTxEnqueue(DefaultLwf, &Frame));
+    TEST_TRUE(LwfTxFlush(DefaultLwf));
 
     auto MpTxFrame = MpTxAllocateAndGetFrame(GenericMp, 0);
+    TEST_NOT_NULL(MpTxFrame.get());
     TEST_EQUAL(MpTxFrame->BufferCount, Frame.BufferCount);
 
     const DATA_BUFFER *MpTxBuffer = &MpTxFrame->Buffers[0];
@@ -1284,23 +1373,41 @@ LwfBasicTx()
             MpTxBuffer->VirtualAddress + MpTxBuffer->DataOffset,
             Buffer.DataLength));
 
-    MpTxDequeueFrame(GenericMp, 0);
-    MpTxFlush(GenericMp);
-*/
+    TEST_TRUE(MpTxDequeueFrame(GenericMp, 0));
+    TEST_TRUE(MpTxFlush(GenericMp));
+}
+
+typedef struct LWF_OID_SUBMIT_REQUEST {
+    FNLWF_HANDLE Handle;
+    OID_KEY OidKey;
+    UINT32 *InfoBufferLength;
+    VOID *InfoBuffer;
+    FNLWFAPI_STATUS Status;
+} LWF_OID_SUBMIT_REQUEST;
+
+CXPLAT_THREAD_RETURN_TYPE
+LwfOidSubmitRequestFn(
+    _In_ VOID* Context
+    )
+{
+    LWF_OID_SUBMIT_REQUEST *Req = (LWF_OID_SUBMIT_REQUEST *)Context;
+    Req->Status = FnLwfOidSubmitRequest(Req->Handle, Req->OidKey, Req->InfoBufferLength, Req->InfoBuffer);
+    CXPLAT_THREAD_RETURN(0);
 }
 
 EXTERN_C
 VOID
 LwfBasicOid()
 {
-/*
     OID_KEY OidKeys[2];
     UINT32 MpInfoBufferLength;
     unique_malloc_ptr<VOID> MpInfoBuffer;
     UINT32 LwfInfoBufferLength;
     ULONG LwfInfoBuffer;
     ULONG OriginalPacketFilter = 0;
-    auto DefaultLwf = LwfOpenDefault(FnMpIf.GetIfIndex());
+    auto DefaultLwf = LwfOpenDefault(FnMpIf->GetIfIndex());
+
+    TEST_NOT_NULL(DefaultLwf.get());
 
     //
     // Get the existing packet filter from NDIS so we can tweak it to make sure
@@ -1323,28 +1430,33 @@ LwfBasicOid()
     InitializeOidKey(&OidKeys[1], OID_GEN_CURRENT_PACKET_FILTER, NdisRequestSetInformation);
 
     for (UINT32 Index = 0; Index < RTL_NUMBER_OF(OidKeys); Index++) {
-        auto ExclusiveMp = MpOpenExclusive(FnMpIf.GetIfIndex());
+        auto ExclusiveMp = MpOpenExclusive(FnMpIf->GetIfIndex());
+        TEST_NOT_NULL(ExclusiveMp.get());
 
-        MpOidFilter(ExclusiveMp, &OidKeys[Index], 1);
+        TEST_TRUE(MpOidFilter(ExclusiveMp, &OidKeys[Index], 1));
 
         LwfInfoBuffer = OriginalPacketFilter ^ (0x00000001);
         LwfInfoBufferLength = sizeof(LwfInfoBuffer);
-        auto AsyncThread = std::async(
-            std::launch::async,
-            [&] {
-                return
-                    LwfOidSubmitRequest(
-                        DefaultLwf, OidKeys[Index], &LwfInfoBufferLength, &LwfInfoBuffer);
-            }
-        );
+
+        LWF_OID_SUBMIT_REQUEST Req;
+        Req.Handle = DefaultLwf.get();
+        Req.OidKey = OidKeys[Index];
+        Req.InfoBufferLength = &LwfInfoBufferLength;
+        Req.InfoBuffer = &LwfInfoBuffer;
+
+        CXPLAT_THREAD_CONFIG ThreadConfig {
+            0, 0, NULL, LwfOidSubmitRequestFn, &Req
+        };
+        unique_cxplat_thread AsyncThread;
+        CxPlatThreadCreate(&ThreadConfig, &AsyncThread);
 
         MpInfoBuffer = MpOidAllocateAndGetRequest(ExclusiveMp, OidKeys[Index], &MpInfoBufferLength);
+        TEST_NOT_NULL(MpInfoBuffer.get());
         ExclusiveMp.reset();
 
-        TEST_EQUAL(AsyncThread.wait_for(TEST_TIMEOUT_ASYNC), std::future_status::ready);
-        TEST_FNMPAPI(AsyncThread.get());
+        TEST_TRUE(CxPlatThreadWait(AsyncThread.get(), TEST_TIMEOUT_ASYNC_MS));
+        TEST_FNMPAPI(Req.Status);
 
         TEST_EQUAL(LwfInfoBufferLength, sizeof(ULONG));
     }
-*/
 }

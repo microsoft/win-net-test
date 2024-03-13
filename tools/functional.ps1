@@ -61,6 +61,14 @@ param (
 Set-StrictMode -Version 'Latest'
 $ErrorActionPreference = 'Stop'
 
+function CleanupKernelMode {
+    sc.exe stop fnfunctionaltestdrv | Write-Verbose
+    sc.exe delete fnfunctionaltestdrv | Write-Verbose
+    Remove-Item -Path "$SystemDriversPath\fnfunctionaltestdrv.sys" -ErrorAction SilentlyContinue
+    [Environment]::SetEnvironmentVariable("fnfunctionaltests::KernelModeEnabled", $null)
+    [Environment]::SetEnvironmentVariable("fnfunctionaltests::KernelModeDriverPath", $null)
+}
+
 # Important paths.
 $RootDir = Split-Path $PSScriptRoot -Parent
 . $RootDir\tools\common.ps1
@@ -85,15 +93,10 @@ if ($Timeout -gt 0) {
     }
 }
 
-# Ensure clean slate.
-sc.exe stop fnfunctionaltestdrv | Write-Verbose
-sc.exe delete fnfunctionaltestdrv | Write-Verbose
-Remove-Item -Path "$SystemDriversPath\fnfunctionaltestdrv.sys" -ErrorAction SilentlyContinue
-[Environment]::SetEnvironmentVariable("fnfunctionaltests::KernelModeEnabled", $null)
-[Environment]::SetEnvironmentVariable("fnfunctionaltests::KernelModeDriverPath", $null)
-
-# Set up kernel mode testing.
 if ($KernelMode) {
+    # Ensure clean slate.
+    CleanupKernelMode
+
     [System.Environment]::SetEnvironmentVariable('fnfunctionaltests::KernelModeEnabled', '1')
     [System.Environment]::SetEnvironmentVariable('fnfunctionaltests::KernelModeDriverPath', "$SystemDriversPath\")
     Copy-Item -Path "$ArtifactsDir\fnfunctionaltestdrv.sys" $SystemDriversPath
@@ -159,6 +162,9 @@ for ($i = 1; $i -le $Iterations; $i++) {
         }
         & "$RootDir\tools\setup.ps1" -Uninstall fnlwf -Config $Config -Arch $Arch -ErrorAction 'Continue'
         & "$RootDir\tools\setup.ps1" -Uninstall fnmp -Config $Config -Arch $Arch -ErrorAction 'Continue'
+        if ($KernelMode) {
+            CleanupKernelMode
+        }
         & "$RootDir\tools\log.ps1" -Stop -Name $LogName -Config $Config -Arch $Arch -ErrorAction 'Continue'
     }
 }

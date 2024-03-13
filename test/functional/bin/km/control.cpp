@@ -176,8 +176,6 @@ TestDrvCtlInitialize(
 
     WdfControlFinishInitializing(Device);
 
-    TestSetup();
-
     TraceVerbose(
         "[test] Control interface initialized");
 
@@ -197,8 +195,6 @@ TestDrvCtlUninitialize(
 {
     TraceVerbose(
         "[test] Control interface uninitializing");
-
-    TestCleanup();
 
     if (TestDrvCtlDevice != nullptr) {
         NT_ASSERT(TestDrvCtlExtension != nullptr);
@@ -263,6 +259,12 @@ TestDrvCtlEvtFileCreate(
         // TODO: Add multiple device client support?
         //
         TestDrvClient = Client;
+
+        if (!TestSetup()) {
+            TestDrvClient = nullptr;
+            Status = STATUS_UNSUCCESSFUL;
+            break;
+        }
     }
     while (false);
 
@@ -309,6 +311,8 @@ TestDrvCtlEvtFileCleanup(
         TraceInfo(
             "[test] Client %p cleaning up",
             Client);
+
+        TestCleanup();
 
         TestDrvClient = nullptr;
     }
@@ -503,12 +507,6 @@ Error:
 }
 
 EXTERN_C
-VOID
-StopTest()
-{
-}
-
-EXTERN_C
 _IRQL_requires_max_(PASSIVE_LEVEL)
 void
 LogTestFailure(
@@ -541,7 +539,10 @@ Return Value:
     wchar_t Buffer[128];
 
     NT_ASSERT(KeGetCurrentIrql() == PASSIVE_LEVEL);
-    TestDrvClient->TestFailure = true;
+
+    if (TestDrvClient != nullptr) {
+        TestDrvClient->TestFailure = true;
+    }
 
     va_list Args;
     va_start(Args, Format);
