@@ -17,6 +17,7 @@ FnIoEnqueueGetNblContext(
 _IRQL_requires_max_(DISPATCH_LEVEL)
 NTSTATUS
 FnIoEnqueueFrameBegin(
+    _In_ KPROCESSOR_MODE RequestorMode,
     _In_ VOID *InputBuffer,
     _In_ UINT32 InputBufferLength,
     _In_ NDIS_HANDLE NblPool,
@@ -31,7 +32,7 @@ FnIoEnqueueFrameBegin(
 
     *NetBufferList = NULL;
 
-    Status = FnIoIoctlBounceEnqueue(InputBuffer, InputBufferLength, EnqueueIn);
+    Status = FnIoIoctlBounceEnqueue(RequestorMode, InputBuffer, InputBufferLength, EnqueueIn);
     if (!NT_SUCCESS(Status)) {
         goto Exit;
     }

@@ -175,7 +175,7 @@ SharedIrpUpdateTaskOffload(
     if (In->OffloadParametersLength > 0) {
         Status =
             BounceBuffer(
-                &OffloadParameters, In->OffloadParameters, In->OffloadParametersLength,
+                &OffloadParameters, Irp->RequestorMode, In->OffloadParameters, In->OffloadParametersLength,
                 __alignof(NDIS_OFFLOAD_PARAMETERS));
         if (!NT_SUCCESS(Status)) {
             goto Exit;

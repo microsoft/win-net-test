@@ -16,6 +16,7 @@ typedef struct _DATA_FILTER DATA_FILTER;
 _IRQL_requires_max_(DISPATCH_LEVEL)
 DATA_FILTER *
 FnIoCreateFilter(
+    _In_ KPROCESSOR_MODE RequestorMode,
     _In_ VOID *InputBuffer,
     _In_ UINT32 InputBufferLength
     );
@@ -77,6 +78,7 @@ typedef struct DECLSPEC_ALIGN(MEMORY_ALLOCATION_ALIGNMENT) _ENQUEUE_NBL_CONTEXT 
 _IRQL_requires_max_(DISPATCH_LEVEL)
 NTSTATUS
 FnIoEnqueueFrameBegin(
+    _In_ KPROCESSOR_MODE RequestorMode,
     _In_ VOID *InputBuffer,
     _In_ UINT32 InputBufferLength,
     _In_ NDIS_HANDLE NblPool,

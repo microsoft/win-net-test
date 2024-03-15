@@ -179,7 +179,7 @@ OidIrpSubmitRequest(
 
     Status =
         BounceBuffer(
-            &InfoBuffer, In->InformationBuffer, In->InformationBufferLength, __alignof(UCHAR));
+            &InfoBuffer, Irp->RequestorMode, In->InformationBuffer, In->InformationBufferLength, __alignof(UCHAR));
     if (!NT_SUCCESS(Status)) {
         goto Exit;
     }

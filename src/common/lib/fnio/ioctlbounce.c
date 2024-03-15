@@ -23,6 +23,7 @@ FnIoIoctlCleanupEnqueue(
 
 NTSTATUS
 FnIoIoctlBounceEnqueue(
+    _In_ KPROCESSOR_MODE RequestorMode,
     _In_ CONST VOID *InputBuffer,
     _In_ SIZE_T InputBufferLength,
     _Out_ DATA_ENQUEUE_IN *EnqueueIn
@@ -64,7 +65,7 @@ FnIoIoctlBounceEnqueue(
     // Copy the user buffer array into a trusted kernel buffer.
     //
     BufferArraySize = sizeof(*IoBuffer->Frame.Buffers) * BufferCount;
-    Status = BounceBuffer(&Buffers, IoBuffer->Frame.Buffers, BufferArraySize, __alignof(DATA_BUFFER));
+    Status = BounceBuffer(&Buffers, RequestorMode, IoBuffer->Frame.Buffers, BufferArraySize, __alignof(DATA_BUFFER));
     if (!NT_SUCCESS(Status)) {
         goto Exit;
     }
@@ -96,7 +97,7 @@ FnIoIoctlBounceEnqueue(
         //
         Status =
             BounceBuffer(
-                &Buffer, RxBuffer->VirtualAddress, RxBuffer->BufferLength, __alignof(UCHAR));
+                &Buffer, RequestorMode, RxBuffer->VirtualAddress, RxBuffer->BufferLength, __alignof(UCHAR));
         if (!NT_SUCCESS(Status)) {
             goto Exit;
         }
@@ -137,6 +138,7 @@ FnIoIoctlCleanupFilter(
 
 NTSTATUS
 FnIoIoctlBounceFilter(
+    _In_ KPROCESSOR_MODE RequestorMode,
     _In_ CONST VOID *InputBuffer,
     _In_ SIZE_T InputBufferLength,
     _Out_ DATA_FILTER_IN *FilterIn
@@ -163,12 +165,12 @@ FnIoIoctlBounceFilter(
     //
     // Copy the user buffer array into a trusted kernel buffer.
     //
-    Status = BounceBuffer(&Pattern, IoBuffer->Pattern, IoBuffer->Length, __alignof(UCHAR));
+    Status = BounceBuffer(&Pattern, RequestorMode, IoBuffer->Pattern, IoBuffer->Length, __alignof(UCHAR));
     if (!NT_SUCCESS(Status)) {
         goto Exit;
     }
 
-    Status = BounceBuffer(&Mask, IoBuffer->Mask, IoBuffer->Length, __alignof(UCHAR));
+    Status = BounceBuffer(&Mask, RequestorMode, IoBuffer->Mask, IoBuffer->Length, __alignof(UCHAR));
     if (!NT_SUCCESS(Status)) {
         goto Exit;
     }

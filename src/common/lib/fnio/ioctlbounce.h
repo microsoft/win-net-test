@@ -14,6 +14,7 @@ FnIoIoctlCleanupFilter(
 
 NTSTATUS
 FnIoIoctlBounceFilter(
+    _In_ KPROCESSOR_MODE RequestorMode,
     _In_ CONST VOID *InputBuffer,
     _In_ SIZE_T InputBufferLength,
     _Out_ DATA_FILTER_IN *FilterIn
@@ -26,6 +27,7 @@ FnIoIoctlCleanupEnqueue(
 
 NTSTATUS
 FnIoIoctlBounceEnqueue(
+    _In_ KPROCESSOR_MODE RequestorMode,
     _In_ CONST VOID *InputBuffer,
     _In_ SIZE_T InputBufferLength,
     _Out_ DATA_ENQUEUE_IN *EnqueueIn

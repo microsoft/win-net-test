@@ -32,6 +32,7 @@ BounceRelease(
 NTSTATUS
 BounceBuffer(
     _Inout_ BOUNCE_BUFFER *Bounce,
+    _In_ KPROCESSOR_MODE RequestorMode,
     _In_ CONST VOID *Buffer,
     _In_ SIZE_T BufferSize,
     _In_ UINT32 Alignment

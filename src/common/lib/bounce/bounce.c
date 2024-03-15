@@ -49,6 +49,7 @@ __declspec(code_seg("PAGE"))
 NTSTATUS
 BounceBuffer(
     _Inout_ BOUNCE_BUFFER *Bounce,
+    _In_ KPROCESSOR_MODE RequestorMode,
     _In_ CONST VOID *Buffer,
     _In_ SIZE_T BufferSize,
     _In_ UINT32 Alignment
@@ -76,7 +77,9 @@ BounceBuffer(
     }
 
     __try {
-        ProbeForRead((VOID *)Buffer, BufferSize, Alignment);
+        if (RequestorMode != KernelMode) {
+            ProbeForRead((VOID *)Buffer, BufferSize, Alignment);
+        }
         RtlCopyVolatileMemory(Bounce->Buffer, Buffer, BufferSize);
     } __except (EXCEPTION_EXECUTE_HANDLER) {
         Status = GetExceptionCode();

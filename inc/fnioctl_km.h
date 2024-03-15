@@ -5,29 +5,33 @@
 
 #pragma once
 
-// #include <windows.h>
-// #include <winioctl.h>
-// #include <winternl.h>
-// #include <ifdef.h>
-
 EXTERN_C_START
 
+_IRQL_requires_max_(PASSIVE_LEVEL)
+NTSYSAPI
+NTSTATUS
+NTAPI
+ZwCreateEvent (
+    _Out_ PHANDLE EventHandle,
+    _In_ ACCESS_MASK DesiredAccess,
+    _In_opt_ POBJECT_ATTRIBUTES ObjectAttributes,
+    _In_ EVENT_TYPE EventType,
+    _In_ BOOLEAN InitialState
+    );
+
+_When_(Timeout == NULL, _IRQL_requires_max_(APC_LEVEL))
+_When_(Timeout->QuadPart != 0, _IRQL_requires_max_(APC_LEVEL))
+_When_(Timeout->QuadPart == 0, _IRQL_requires_max_(DISPATCH_LEVEL))
+NTSYSAPI
+NTSTATUS
+NTAPI
+ZwWaitForSingleObject(
+    _In_ HANDLE Handle,
+    _In_ BOOLEAN Alertable,
+    _In_opt_ PLARGE_INTEGER Timeout
+    );
+
 typedef VOID* FNIOCTL_HANDLE;
-
-//
-// This file implements common file handle and IOCTL helpers.
-//
-
-//
-// This struct is defined in public kernel headers, but not user mode headers.
-//
-// typedef struct _FILE_FULL_EA_INFORMATION {
-//     ULONG NextEntryOffset;
-//     UCHAR Flags;
-//     UCHAR EaNameLength;
-//     USHORT EaValueLength;
-//     CHAR EaName[1];
-// } FILE_FULL_EA_INFORMATION;
 
 NTSTATUS
 FnIoctlOpen(
@@ -38,13 +42,32 @@ FnIoctlOpen(
     _Out_ FNIOCTL_HANDLE *Handle
     )
 {
-    UNREFERENCED_PARAMETER(DeviceName);
-    UNREFERENCED_PARAMETER(Disposition);
-    UNREFERENCED_PARAMETER(EaBuffer);
-    UNREFERENCED_PARAMETER(EaLength);
-    UNREFERENCED_PARAMETER(Handle);
-    *Handle = NULL;
-    return STATUS_NOT_IMPLEMENTED;
+    NTSTATUS Status;
+    IO_STATUS_BLOCK IoStatusBlock;
+    OBJECT_ATTRIBUTES ObjectAttributes;
+    UNICODE_STRING UnicodeDeviceName;
+
+    RtlInitUnicodeString(&UnicodeDeviceName, DeviceName);
+    InitializeObjectAttributes(
+        &ObjectAttributes, &UnicodeDeviceName,
+        OBJ_CASE_INSENSITIVE | OBJ_KERNEL_HANDLE, NULL, NULL);
+
+    Status =
+        ZwCreateFile(
+            Handle,
+            GENERIC_READ | GENERIC_WRITE,
+            &ObjectAttributes,
+            &IoStatusBlock,
+            NULL,
+            FILE_ATTRIBUTE_NORMAL,
+            FILE_SHARE_WRITE,
+            Disposition,
+            0,
+            EaBuffer,
+            EaLength);
+
+
+    return Status;
 }
 
 VOID
@@ -52,7 +75,7 @@ FnIoctlClose(
     _In_ FNIOCTL_HANDLE Handle
     )
 {
-    UNREFERENCED_PARAMETER(Handle);
+    ZwClose(Handle);
 }
 
 NTSTATUS
@@ -67,15 +90,64 @@ FnIoctl(
     _In_opt_ VOID *Overlapped
     )
 {
-    UNREFERENCED_PARAMETER(Handle);
-    UNREFERENCED_PARAMETER(Operation);
-    UNREFERENCED_PARAMETER(InBuffer);
-    UNREFERENCED_PARAMETER(InBufferSize);
-    UNREFERENCED_PARAMETER(OutBuffer);
-    UNREFERENCED_PARAMETER(OutputBufferSize);
-    UNREFERENCED_PARAMETER(BytesReturned);
+    NTSTATUS Status;
+    IO_STATUS_BLOCK IoStatusBlock;
+    OBJECT_ATTRIBUTES EventAttributes;
+    HANDLE Event = NULL;
+
     UNREFERENCED_PARAMETER(Overlapped);
-    return STATUS_NOT_IMPLEMENTED;
+
+    if (BytesReturned != NULL) {
+        *BytesReturned = 0;
+    }
+
+    InitializeObjectAttributes(
+        &EventAttributes, NULL, OBJ_KERNEL_HANDLE, NULL, NULL);
+
+    Status =
+        ZwCreateEvent(
+            &Event,
+            EVENT_ALL_ACCESS,
+            &EventAttributes,
+            SynchronizationEvent,
+            FALSE);
+    if (!NT_SUCCESS(Status)) {
+        goto Exit;
+    }
+
+    Status =
+        ZwDeviceIoControlFile(
+            Handle,
+            Event,
+            NULL,
+            NULL,
+            &IoStatusBlock,
+            Operation,
+            InBuffer,
+            InBufferSize,
+            OutBuffer,
+            OutputBufferSize);
+    if (Status == STATUS_PENDING) {
+        Status = ZwWaitForSingleObject(Event, FALSE, NULL);
+        ASSERT(Status == STATUS_SUCCESS);
+        if (!NT_SUCCESS(Status)) {
+            goto Exit;
+        }
+
+        Status = IoStatusBlock.Status;
+    }
+
+    if (BytesReturned != NULL) {
+        *BytesReturned = (UINT32)IoStatusBlock.Information;
+    }
+
+Exit:
+
+    if (Event != NULL) {
+        ZwClose(Event);
+    }
+
+    return Status;
 }
 
 EXTERN_C_END
