@@ -19,11 +19,6 @@
 #include <wil/resource.h>
 #pragma warning(pop)
 #else
-#include <chrono>
-#include <cstdio>
-#include <future>
-#include <xlocnum>
-
 // Windows and WIL includes need to be ordered in a certain way.
 #pragma warning(push)
 #pragma warning(disable:4324) // structure was padded due to alignment specifier
@@ -34,6 +29,8 @@
 #include <netiodef.h>
 #include <netioapi.h>
 #include <mstcpip.h>
+#include <stdlib.h>
+#include <stdio.h>
 #pragma warning(pop)
 #include <wil/resource.h>
 #endif // defined(KERNEL_MODE)
@@ -48,7 +45,8 @@
 
 #include "tests.tmh"
 
-#define FNMP_IF_DESC L"FNMP"
+#define FNMP_IF_DESC "FNMP"
+#define FNMP_IF_DESCW L"FNMP"
 #define FNMP_IPV4_ADDRESS "192.168.200.1"
 #define FNMP_NEIGHBOR_IPV4_ADDRESS "192.168.200.2"
 #define FNMP_IPV6_ADDRESS "fc00::200:1"
@@ -140,7 +138,8 @@ InvokeSystem(
 
 typedef struct TestInterface {
 private:
-    CONST WCHAR *_IfDesc;
+    CONST CHAR *_IfDesc;
+    CONST WCHAR *_IfDescW;
     mutable UINT32 _IfIndex;
     mutable UCHAR _HwAddress[sizeof(ETHERNET_ADDRESS)]{ 0 };
     IN_ADDR _Ipv4Address;
@@ -171,7 +170,7 @@ private:
         //
         for (ULONG i = 0; i < IfTable->NumEntries; i++) {
             MIB_IF_ROW2 *Row = &IfTable->Table[i];
-            if (!wcscmp(Row->Description, _IfDesc)) {
+            if (!wcscmp(Row->Description, _IfDescW)) {
                 TEST_EQUAL_RET(sizeof(_HwAddress), Row->PhysicalAddressLength, false);
                 RtlCopyMemory(_HwAddress, Row->PhysicalAddress, sizeof(_HwAddress));
 
@@ -187,7 +186,8 @@ public:
 
     bool
     Initialize(
-        _In_z_ CONST WCHAR *IfDesc,
+        _In_z_ CONST CHAR *IfDesc,
+        _In_z_ CONST WCHAR *IfDescW,
         _In_z_ CONST CHAR *Ipv4Address,
         _In_z_ CONST CHAR *Ipv6Address
         )
@@ -195,6 +195,7 @@ public:
         CONST CHAR *Terminator;
 
         _IfDesc = IfDesc;
+        _IfDescW = IfDescW;
         _IfIndex = NET_IFINDEX_UNSPECIFIED;
 
         TEST_NTSTATUS_RET(RtlIpv4StringToAddressA(Ipv4Address, FALSE, &Terminator, &_Ipv4Address), false);
@@ -203,7 +204,7 @@ public:
         return true;
     }
 
-    CONST WCHAR*
+    CONST CHAR*
     GetIfDesc() const
     {
         return _IfDesc;
@@ -278,7 +279,7 @@ public:
         CHAR CmdBuff[256];
         RtlZeroMemory(CmdBuff, sizeof(CmdBuff));
         sprintf_s(CmdBuff, "%s /c Restart-NetAdapter -ifDesc \"%s\"", PowershellPrefix, _IfDesc);
-        TEST_EQUAL_RET(0, system(CmdBuff), false);
+        TEST_EQUAL_RET(0, InvokeSystem(CmdBuff), false);
         return true;
     }
 */
@@ -974,7 +975,7 @@ TestSetup()
     FnMpIf = (TestInterface*)CxPlatAllocNonPaged(sizeof(*FnMpIf), POOL_TAG);
     TEST_NOT_NULL_GOTO(FnMpIf, Error);
 
-    TEST_TRUE_GOTO(FnMpIf->Initialize(FNMP_IF_DESC, FNMP_IPV4_ADDRESS, FNMP_IPV6_ADDRESS), Error);
+    TEST_TRUE_GOTO(FnMpIf->Initialize(FNMP_IF_DESC, FNMP_IF_DESCW, FNMP_IPV4_ADDRESS, FNMP_IPV6_ADDRESS), Error);
 
     TEST_TRUE_GOTO(WaitForWfpQuarantine(FnMpIf), Error);
 
