@@ -46,6 +46,7 @@
     <Link>
       <AdditionalDependencies>
         netio.lib;
+        uuid.lib;
         wdmsec.lib;
         %(AdditionalDependencies)
       </AdditionalDependencies>

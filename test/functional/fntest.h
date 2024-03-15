@@ -19,30 +19,35 @@
 #define TEST_EQUAL(expected, condition) { \
     if ((condition) != (expected)) { \
         TEST_FAILURE(#condition " not equal to " #expected); \
+        return; \
     } \
 }
 
 #define TEST_NOT_EQUAL(expected, condition) { \
     if ((condition) == (expected)) { \
         TEST_FAILURE(#condition " equals " #expected); \
+        return; \
     } \
 }
 
 #define TEST_TRUE(condition) { \
     if (!(condition)) { \
         TEST_FAILURE(#condition " not true"); \
+        return; \
     } \
 }
 
 #define TEST_FALSE(condition) { \
     if (condition) { \
         TEST_FAILURE(#condition " not false"); \
+        return; \
     } \
 }
 
 #define TEST_NOT_NULL(condition) { \
     if ((condition) == NULL) { \
         TEST_FAILURE(#condition " is NULL"); \
+        return; \
     } \
 }
 
@@ -50,6 +55,7 @@
     HRESULT hr_ = (condition); \
     if (FAILED(hr_)) { \
         TEST_FAILURE(#condition " failed, 0x%x", hr_); \
+        return; \
     } \
 }
 
@@ -57,6 +63,7 @@
     HRESULT hr_ = HRESULT_FROM_NT(condition); \
     if (FAILED(hr_)) { \
         TEST_FAILURE(#condition " failed, 0x%x", hr_); \
+        return; \
     } \
 }
 

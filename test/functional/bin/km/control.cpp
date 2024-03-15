@@ -427,32 +427,25 @@ TestDrvCtlEvtIoDeviceControl(
 
     switch (IoControlCode) {
     case IOCTL_MP_BASIC_RX:
-        // TODO
-        Status = STATUS_NOT_IMPLEMENTED;
+        TestDrvCtlRun(MpBasicRx());
         break;
     case IOCTL_MP_BASIC_TX:
-        // TODO
-        Status = STATUS_NOT_IMPLEMENTED;
+        TestDrvCtlRun(MpBasicTx());
         break;
     case IOCTL_MP_BASIC_RX_OFFLOAD:
-        // TODO
-        Status = STATUS_NOT_IMPLEMENTED;
+        TestDrvCtlRun(MpBasicRxOffload());
         break;
     case IOCTL_MP_BASIC_TX_OFFLOAD:
-        // TODO
-        Status = STATUS_NOT_IMPLEMENTED;
+        TestDrvCtlRun(MpBasicTxOffload());
         break;
     case IOCTL_LWF_BASIC_RX:
-        // TODO
-        Status = STATUS_NOT_IMPLEMENTED;
+        TestDrvCtlRun(LwfBasicRx());
         break;
     case IOCTL_LWF_BASIC_TX:
-        // TODO
-        Status = STATUS_NOT_IMPLEMENTED;
+        TestDrvCtlRun(LwfBasicTx());
         break;
     case IOCTL_LWF_BASIC_OID:
-        // TODO
-        Status = STATUS_NOT_IMPLEMENTED;
+        TestDrvCtlRun(LwfBasicOid());
         break;
     default:
         Status = STATUS_INVALID_PARAMETER;

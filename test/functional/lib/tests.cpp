@@ -520,7 +520,7 @@ MpTxAllocateAndGetFrame(
     )
 {
     unique_malloc_ptr<DATA_FRAME> FrameBuffer;
-    UINT32 FrameLength = 0;
+    UINT32 FrameLength;
     FNMPAPI_STATUS Result;
     Stopwatch Watchdog(TEST_TIMEOUT_ASYNC_MS);
 
@@ -528,6 +528,7 @@ MpTxAllocateAndGetFrame(
     // Poll FNMP for TX: the driver doesn't support overlapped IO.
     //
     do {
+        FrameLength = 0;
         Result = MpTxGetFrame(Handle, Index, &FrameLength, NULL, SubIndex);
         if (Result != FNMPAPI_STATUS_NOT_FOUND) {
             break;
@@ -539,7 +540,9 @@ MpTxAllocateAndGetFrame(
     FrameBuffer.reset((DATA_FRAME *)CxPlatAllocNonPaged(FrameLength, POOL_TAG));
     TEST_TRUE_RET(FrameBuffer != NULL, FrameBuffer);
 
-    TEST_FNMPAPI_RET(MpTxGetFrame(Handle, Index, &FrameLength, FrameBuffer.get(), SubIndex), FrameBuffer);
+    if (FNMPAPI_FAILED(MpTxGetFrame(Handle, Index, &FrameLength, FrameBuffer.get(), SubIndex))) {
+        FrameBuffer.reset();
+    }
 
     return FrameBuffer;
 }
@@ -623,7 +626,7 @@ MpOidAllocateAndGetRequest(
     )
 {
     unique_malloc_ptr<VOID> InformationBuffer;
-    UINT32 Length = 0;
+    UINT32 Length;
     FNMPAPI_STATUS Result;
     Stopwatch Watchdog(Timeout);
 
@@ -631,6 +634,7 @@ MpOidAllocateAndGetRequest(
     // Poll FNMP for an OID: the driver doesn't support overlapped IO.
     //
     do {
+        Length = 0;
         Result = MpOidGetRequest(Handle, Key, &Length, NULL);
         if (Result != FNMPAPI_STATUS_NOT_FOUND) {
             break;
@@ -642,7 +646,9 @@ MpOidAllocateAndGetRequest(
     InformationBuffer.reset(CxPlatAllocNonPaged(Length, POOL_TAG));
     TEST_TRUE_RET(InformationBuffer != NULL, InformationBuffer);
 
-    TEST_FNMPAPI_RET(MpOidGetRequest(Handle, Key, &Length, InformationBuffer.get()), InformationBuffer);
+    if (FNMPAPI_FAILED(MpOidGetRequest(Handle, Key, &Length, InformationBuffer.get()))) {
+        InformationBuffer.reset();
+    }
 
     *InformationBufferLength = Length;
     return InformationBuffer;
@@ -745,7 +751,7 @@ LwfRxAllocateAndGetFrame(
     )
 {
     unique_malloc_ptr<DATA_FRAME> FrameBuffer;
-    UINT32 FrameLength = 0;
+    UINT32 FrameLength;
     FNLWFAPI_STATUS Result;
     Stopwatch Watchdog(TEST_TIMEOUT_ASYNC_MS);
 
@@ -753,6 +759,7 @@ LwfRxAllocateAndGetFrame(
     // Poll FNLWF for RX: the driver doesn't support overlapped IO.
     //
     do {
+        FrameLength = 0;
         Result = LwfRxGetFrame(Handle, Index, &FrameLength, NULL);
         if (Result != FNLWFAPI_STATUS_NOT_FOUND) {
             break;
@@ -762,9 +769,11 @@ LwfRxAllocateAndGetFrame(
     TEST_EQUAL_RET(FNLWFAPI_STATUS_MORE_DATA, Result, FrameBuffer);
     TEST_TRUE_RET(FrameLength >= sizeof(DATA_FRAME), FrameBuffer);
     FrameBuffer.reset((DATA_FRAME *)CxPlatAllocNonPaged(FrameLength, POOL_TAG));
-    TEST_TRUE_RET(FrameBuffer != NULL, FrameBuffer);
+    TEST_TRUE_RET(FrameBuffer.get() != NULL, FrameBuffer);
 
-    TEST_FNLWFAPI_RET(LwfRxGetFrame(Handle, Index, &FrameLength, FrameBuffer.get()), FrameBuffer);
+    if (FNLWFAPI_FAILED(LwfRxGetFrame(Handle, Index, &FrameLength, FrameBuffer.get()))) {
+        FrameBuffer.reset();
+    }
 
     return FrameBuffer;
 }
@@ -1119,9 +1128,11 @@ MpBasicTx()
         MpTxGetFrame(SharedMp, 0, &FrameLength, NULL, 3));
 
     TEST_TRUE(MpTxDequeueFrame(SharedMp, 0));
+    FrameLength = 0;
     TEST_EQUAL(
         FNMPAPI_STATUS_NOT_FOUND,
         MpTxGetFrame(SharedMp, 0, &FrameLength, NULL, 0));
+    FrameLength = 0;
     TEST_EQUAL(
         FNMPAPI_STATUS_NOT_FOUND,
         MpTxGetFrame(SharedMp, 0, &FrameLength, NULL, 1));
@@ -1448,7 +1459,7 @@ LwfBasicOid()
             0, 0, NULL, LwfOidSubmitRequestFn, &Req
         };
         unique_cxplat_thread AsyncThread;
-        CxPlatThreadCreate(&ThreadConfig, &AsyncThread);
+        TEST_CXPLAT(CxPlatThreadCreate(&ThreadConfig, &AsyncThread));
 
         MpInfoBuffer = MpOidAllocateAndGetRequest(ExclusiveMp, OidKeys[Index], &MpInfoBufferLength);
         TEST_NOT_NULL(MpInfoBuffer.get());
