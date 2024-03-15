@@ -89,6 +89,7 @@ static const WSK_CLIENT_DISPATCH WskAppDispatch = {
 
 IO_COMPLETION_ROUTINE CxPlatDataPathIoCompletion;
 IO_COMPLETION_ROUTINE CxPlatWskCloseSocketIoCompletion;
+IO_COMPLETION_ROUTINE CxPlatDataPathSendComplete;
 
 _IRQL_requires_max_(DISPATCH_LEVEL)
 _Must_inspect_result_
@@ -110,6 +111,11 @@ CxPlatInitialize(
     CXPLAT_STATUS Status;
     WSK_CLIENT_NPI WskClientNpi = { NULL, &WskAppDispatch };
     BOOLEAN WskRegistered = FALSE;
+    WSK_EVENT_CALLBACK_CONTROL CallbackControl =
+    {
+        &NPI_WSK_INTERFACE_ID,
+        WSK_EVENT_RECEIVE_FROM
+    };
 
     PAGED_CODE();
 
@@ -143,6 +149,25 @@ CxPlatInitialize(
             "[ lib] ERROR, %u, %s.",
             Status,
             "WskCaptureProviderNPI");
+        goto Exit;
+    }
+
+    Status =
+        WskProviderNpi.Dispatch->
+        WskControlClient(
+            WskProviderNpi.Client,
+            WSK_SET_STATIC_EVENT_CALLBACKS,
+            sizeof(CallbackControl),
+            &CallbackControl,
+            0,
+            NULL,
+            NULL,
+            NULL);
+    if (CXPLAT_FAILED(Status)) {
+        TraceError(
+            "[ lib] ERROR, %u, %s.",
+            Status,
+            "WskControlClient WSK_SET_STATIC_EVENT_CALLBACKS");
         goto Exit;
     }
 
@@ -208,7 +233,7 @@ CxPlatDataPathIoCompletion(
     UNREFERENCED_PARAMETER(DeviceObject);
     UNREFERENCED_PARAMETER(Irp);
 
-    NT_ASSERT(Context);
+    NT_ASSERT(Context != NULL);
     KeSetEvent((KEVENT*)Context, IO_NO_INCREMENT, FALSE);
 
     //
@@ -233,7 +258,7 @@ CxPlatWskCloseSocketIoCompletion(
 
     UNREFERENCED_PARAMETER(DeviceObject);
 
-    NT_ASSERT(Context);
+    NT_ASSERT(Context != NULL);
     Binding = (CXPLAT_SOCKET_BINDING*)Context;
 
     if (Irp->PendingReturned) {
@@ -252,6 +277,42 @@ CxPlatWskCloseSocketIoCompletion(
     // Always return STATUS_MORE_PROCESSING_REQUIRED to
     // terminate the completion processing of the IRP.
     //
+    return STATUS_MORE_PROCESSING_REQUIRED;
+}
+
+_Use_decl_annotations_
+NTSTATUS
+CxPlatDataPathSendComplete(
+    PDEVICE_OBJECT DeviceObject,
+    PIRP Irp,
+    VOID* Context
+    )
+{
+    CXPLAT_SOCKET_SEND_DATA* SendData;
+    CXPLAT_SOCKET_BINDING* Binding;
+
+    UNREFERENCED_PARAMETER(DeviceObject);
+
+    NT_ASSERT(Context != NULL);
+    SendData = (CXPLAT_SOCKET_SEND_DATA*)Context;
+    Binding = SendData->Binding;
+
+    if (!NT_SUCCESS(Irp->IoStatus.Status)) {
+        TraceError(
+            "[data][%p] ERROR, %u, %s.",
+            Binding,
+            Irp->IoStatus.Status,
+            "WskSendMessages completion");
+    }
+
+    IoCleanupIrp(&SendData->Irp);
+    NT_ASSERT(SendData->WskBufs.Next == NULL);
+    if (SendData->WskBufs.Buffer.Mdl != NULL) {
+        NT_ASSERT(SendData->WskBufs.Buffer.Mdl->Next == NULL);
+        IoFreeMdl(SendData->WskBufs.Buffer.Mdl);
+    }
+    ExFreePoolWithTag(SendData, CXPLAT_POOL_SOCKET_SEND);
+
     return STATUS_MORE_PROCESSING_REQUIRED;
 }
 
@@ -312,7 +373,7 @@ CxPlatSocketCreate(
             (USHORT)SocketType,
             Protocol,
             Flags,
-            NULL,
+            Binding,
             &WskDatagramDispatch,
             NULL,
             NULL,
@@ -320,23 +381,15 @@ CxPlatSocketCreate(
             &Binding->Irp);
     if (Status == STATUS_PENDING) {
         KeWaitForSingleObject(&Binding->WskCompletionEvent, Executive, KernelMode, FALSE, NULL);
-    } else if (CXPLAT_FAILED(Status)) {
+        Status = Binding->Irp.IoStatus.Status;
+    }
+
+    if (!NT_SUCCESS(Status)) {
         TraceError(
             "[data][%p] ERROR, %u, %s.",
             Binding,
             Status,
             "WskSocket");
-        goto Exit;
-    }
-
-    Status = Binding->Irp.IoStatus.Status;
-
-    if (CXPLAT_FAILED(Status)) {
-        TraceError(
-            "[data][%p] ERROR, %u, %s.",
-            Binding,
-            Status,
-            "WskSocket completion");
         goto Exit;
     }
 
@@ -430,23 +483,15 @@ CxPlatSocketBind(
             );
     if (Status == STATUS_PENDING) {
         KeWaitForSingleObject(&Binding->WskCompletionEvent, Executive, KernelMode, FALSE, NULL);
-    } else if (!NT_SUCCESS(Status)) {
-        TraceError(
-            "[data][%p] ERROR, %u, %s.",
-            Binding,
-            Status,
-            "WskBind");
-        goto Exit;
+        Status = Binding->Irp.IoStatus.Status;
     }
-
-    Status = Binding->Irp.IoStatus.Status;
 
     if (!NT_SUCCESS(Status)) {
         TraceError(
             "[data][%p] ERROR, %u, %s.",
             Binding,
             Status,
-            "WskBind completion");
+            "WskBind");
         goto Exit;
     }
 
@@ -490,23 +535,15 @@ CxPlatSocketGetSockName(
             &Binding->Irp);
     if (Status == STATUS_PENDING) {
         KeWaitForSingleObject(&Binding->WskCompletionEvent, Executive, KernelMode, FALSE, NULL);
-    } else if (!NT_SUCCESS(Status)) {
-        TraceError(
-            "[data][%p] ERROR, %u, %s.",
-            Binding,
-            Status,
-            "WskGetLocalAddress");
-        goto Exit;
+        Status = Binding->Irp.IoStatus.Status;
     }
-
-    Status = Binding->Irp.IoStatus.Status;
 
     if (!NT_SUCCESS(Status)) {
         TraceError(
             "[data][%p] ERROR, %u, %s.",
             Binding,
             Status,
-            "WskGetLocalAddress completion");
+            "WskGetLocalAddress");
         goto Exit;
     }
 
@@ -568,10 +605,18 @@ CxPlatSocketSetSockOpt(
             NULL,
             NULL,
             &Binding->Irp);
-
     if (Status == STATUS_PENDING) {
         KeWaitForSingleObject(&Binding->WskCompletionEvent, Executive, KernelMode, FALSE, NULL);
         Status = Binding->Irp.IoStatus.Status;
+    }
+
+    if (!NT_SUCCESS(Status)) {
+        TraceError(
+            "[data][%p] ERROR, %u, %s.",
+            Binding,
+            Status,
+            "WskControlSocket completion");
+        goto Exit;
     }
 
 Exit:
@@ -631,15 +676,17 @@ CxPlatSocketSendto(
 
     SendData->Binding = Binding;
 
-    IoReuseIrp(&Binding->Irp, STATUS_SUCCESS);
+    IoInitializeIrp(
+        &SendData->Irp,
+        sizeof(SendData->IrpBuffer),
+        1);
     IoSetCompletionRoutine(
-        &Binding->Irp,
-        CxPlatDataPathIoCompletion,
-        &Binding->WskCompletionEvent,
+        &SendData->Irp,
+        CxPlatDataPathSendComplete,
+        SendData,
         TRUE,
         TRUE,
         TRUE);
-    KeResetEvent(&Binding->WskCompletionEvent);
 
     Status =
         Binding->DgrmSocket->Dispatch->
@@ -650,7 +697,7 @@ CxPlatSocketSendto(
             (PSOCKADDR)Address,
             0,
             NULL,
-            &Binding->Irp);
+            &SendData->Irp);
 
     if (!NT_SUCCESS(Status)) {
         TraceError(
@@ -658,39 +705,28 @@ CxPlatSocketSendto(
             Binding,
             Status,
             "WskSendMessages");
+        //
+        // Callback still gets invoked on failure to do the cleanup.
+        //
     }
 
-    //
-    // Callback still gets invoked on failure to do the cleanup.
-    //
-    KeWaitForSingleObject(&Binding->WskCompletionEvent, Executive, KernelMode, FALSE, NULL);
-
-    Status = Binding->Irp.IoStatus.Status;
-    BytesSent = (INT)Binding->Irp.IoStatus.Information;
-
-    if (!NT_SUCCESS(Status)) {
-        TraceError(
-            "[data][%p] ERROR, %u, %s.",
-            Binding,
-            Status,
-            "WskSendMessages completion");
-    }
-
-    IoCleanupIrp(&SendData->Irp);
+    Status = STATUS_SUCCESS;
+    BytesSent = BufferLength;
 
 Exit:
 
     if (!NT_SUCCESS(Status)) {
         CxPlatSocketLastError = Status;
-    }
 
-    if (SendData != NULL) {
-        NT_ASSERT(SendData->WskBufs.Next == NULL);
-        if (SendData->WskBufs.Buffer.Mdl != NULL) {
-            NT_ASSERT(SendData->WskBufs.Buffer.Mdl->Next == NULL);
-            IoFreeMdl(SendData->WskBufs.Buffer.Mdl);
+        if (SendData != NULL) {
+            NT_ASSERT(SendData->WskBufs.Next == NULL);
+            if (SendData->WskBufs.Buffer.Mdl != NULL) {
+                IoCleanupIrp(&SendData->Irp);
+                NT_ASSERT(SendData->WskBufs.Buffer.Mdl->Next == NULL);
+                IoFreeMdl(SendData->WskBufs.Buffer.Mdl);
+            }
+            ExFreePoolWithTag(SendData, CXPLAT_POOL_SOCKET_SEND);
         }
-        ExFreePoolWithTag(SendData, CXPLAT_POOL_SOCKET_SEND);
     }
 
     return BytesSent;
@@ -1228,7 +1264,7 @@ SetPriority:
         NT_ASSERT(CXPLAT_SUCCEEDED(Status));
         Status = CXPLAT_STATUS_SUCCESS;
     }
-    Thread = (CXPLAT_THREAD *)EThread;
+    *Thread = (CXPLAT_THREAD)EThread;
 Cleanup:
     ZwClose(ThreadHandle);
 Error:
