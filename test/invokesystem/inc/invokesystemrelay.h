@@ -66,7 +66,7 @@ InvokeSystemRelay(
 
     Status =
         FnIoctl(
-            Handle, ISR_IOCTL_INVOKE_SYSTEM_SUBMIT, Command, strlen(Command),
+            Handle, ISR_IOCTL_INVOKE_SYSTEM_SUBMIT, (VOID *)Command, (UINT32)strlen(Command),
             &Result, sizeof(Result), NULL, NULL);
 
 Exit:

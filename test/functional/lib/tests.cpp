@@ -6,6 +6,7 @@
 #if defined(KERNEL_MODE)
 #include <ntddk.h>
 #include <ntintsafe.h>
+#include <ntstrsafe.h>
 #include <ndis.h>
 #include <ws2def.h>
 #include <ws2ipdef.h>
@@ -39,6 +40,9 @@
 #include <pkthlp.h>
 #include <fnmpapi.h>
 #include <fnlwfapi.h>
+#if defined(KERNEL_MODE)
+#include <invokesystemrelay.h>
+#endif
 #include <fntrace.h>
 
 #include "fntest.h"
@@ -119,13 +123,15 @@ static CONST CHAR *PowershellPrefix = "powershell -noprofile -ExecutionPolicy By
 // Helper functions.
 //
 
-/*
 static
 INT
 InvokeSystem(
     _In_z_ const CHAR *Command
     )
 {
+#if defined(KERNEL_MODE)
+    return InvokeSystemRelay(Command);
+#else
     INT Result;
 
     TraceVerbose("system(%s)", Command);
@@ -133,8 +139,13 @@ InvokeSystem(
     TraceVerbose("system(%s) returned %u", Command, Result);
 
     return Result;
+#endif
 }
-*/
+
+#if !defined(KERNEL_MODE)
+#define RtlStringCbPrintfA(Dst, DstSize, Format, ...) \
+    sprintf_s(Dst, Format, __VA_ARGS__)
+#endif
 
 typedef struct TestInterface {
 private:
@@ -272,17 +283,17 @@ public:
         GetIpv6Address(Ipv6Address);
         Ipv6Address->u.Byte[sizeof(*Ipv6Address) - 1]++;
     }
-/*
+
     bool
     Restart() const
     {
         CHAR CmdBuff[256];
         RtlZeroMemory(CmdBuff, sizeof(CmdBuff));
-        sprintf_s(CmdBuff, "%s /c Restart-NetAdapter -ifDesc \"%s\"", PowershellPrefix, _IfDesc);
+        RtlStringCbPrintfA(CmdBuff, sizeof(CmdBuff), "%s /c Restart-NetAdapter -ifDesc \"%s\"", PowershellPrefix, _IfDesc);
         TEST_EQUAL_RET(0, InvokeSystem(CmdBuff), false);
         return true;
     }
-*/
+
 } TestInterface;
 
 class Stopwatch {
@@ -955,16 +966,16 @@ EXTERN_C
 bool
 TestSetup()
 {
-    BOOLEAN CxPlatInitialized = FALSE;
     BOOLEAN FirewallInitialized = FALSE;
+    BOOLEAN CxPlatInitialized = FALSE;
     BOOLEAN FnMpApiInitialized = FALSE;
     BOOLEAN FnLwfApiInitialized = FALSE;
 
+    TEST_EQUAL_GOTO(0, InvokeSystem("netsh advfirewall firewall add rule name=fnmptest dir=in action=allow protocol=any remoteip=any localip=any"), Error);
+    FirewallInitialized = TRUE;
+
     TEST_TRUE_GOTO(CXPLAT_SUCCEEDED(CxPlatInitialize()), Error);
     CxPlatInitialized = TRUE;
-
-    // TEST_EQUAL_GOTO(0, InvokeSystem("netsh advfirewall firewall add rule name=fnmptest dir=in action=allow protocol=any remoteip=any localip=any"), Error);
-    FirewallInitialized = TRUE;
 
     TEST_FNMPAPI_GOTO(FnMpLoadApi(&FnMpLoadApiContext), Error);
     FnMpApiInitialized = TRUE;
@@ -992,11 +1003,11 @@ Error:
     if (FnMpApiInitialized) {
         FnMpUnloadApi(FnMpLoadApiContext);
     }
-    if (FirewallInitialized) {
-        // InvokeSystem("netsh advfirewall firewall delete rule name=fnmptest");
-    }
     if (CxPlatInitialized) {
         CxPlatUninitialize();
+    }
+    if (FirewallInitialized) {
+        InvokeSystem("netsh advfirewall firewall delete rule name=fnmptest");
     }
 
     return false;
@@ -1009,8 +1020,8 @@ TestCleanup()
     CxPlatFree(FnMpIf, POOL_TAG);
     FnLwfUnloadApi(FnLwfLoadApiContext);
     FnMpUnloadApi(FnMpLoadApiContext);
-    // TEST_EQUAL(0, InvokeSystem("netsh advfirewall firewall delete rule name=fnmptest"));
     CxPlatUninitialize();
+    TEST_EQUAL_RET(0, InvokeSystem("netsh advfirewall firewall delete rule name=fnmptest"), false);
     return true;
 }
 

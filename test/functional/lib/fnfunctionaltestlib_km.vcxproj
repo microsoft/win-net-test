@@ -20,6 +20,7 @@
         $(SolutionDir)inc;
         $(SolutionDir)test\cxplat\inc;
         $(SolutionDir)test\functional;
+        $(SolutionDir)test\invokesystem\inc;
         $(SolutionDir)submodules\net-offloads\include;
         $(SolutionDir)submodules\wil\include;
         $(SolutionDir)test\pkthlp;
