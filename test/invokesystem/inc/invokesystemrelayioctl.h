@@ -26,6 +26,14 @@ typedef struct _ISR_OPEN_PACKET {
     ISR_FILE_TYPE ObjectType;
 } ISR_OPEN_PACKET;
 
+typedef struct _ISR_OPEN_CLIENT {
+    UINT32 Reserved;
+} ISR_OPEN_CLIENT;
+
+typedef struct _ISR_OPEN_SERVICE {
+    UINT32 Reserved;
+} ISR_OPEN_SERVICE;
+
 //
 // Issued by kernel mode clients to enqueue an invoke system request.
 // The request is processed asynchronously and the result is returned upon completion.
