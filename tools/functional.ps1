@@ -65,6 +65,7 @@ function CleanupKernelMode {
     sc.exe stop fnfunctionaltestdrv | Write-Verbose
     sc.exe delete fnfunctionaltestdrv | Write-Verbose
     Remove-Item -Path "$SystemDriversPath\fnfunctionaltestdrv.sys" -ErrorAction SilentlyContinue
+    & "$RootDir\tools\setup.ps1" -Uninstall invokesystemrelay -Config $Config -Arch $Arch -ErrorAction 'Continue'
     [Environment]::SetEnvironmentVariable("fnfunctionaltests::KernelModeEnabled", $null)
     [Environment]::SetEnvironmentVariable("fnfunctionaltests::KernelModeDriverPath", $null)
 }
@@ -96,6 +97,10 @@ if ($Timeout -gt 0) {
 if ($KernelMode) {
     # Ensure clean slate.
     CleanupKernelMode
+
+    Write-Verbose "installing invokesystemrelay..."
+    & "$RootDir\tools\setup.ps1" -Install invokesystemrelay -Config $Config -Arch $Arch
+    Write-Verbose "installed invokesystemrelay."
 
     [System.Environment]::SetEnvironmentVariable('fnfunctionaltests::KernelModeEnabled', '1')
     [System.Environment]::SetEnvironmentVariable('fnfunctionaltests::KernelModeDriverPath', "$SystemDriversPath\")

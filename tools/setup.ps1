@@ -38,11 +38,11 @@ param (
     [string]$Arch = "x64",
 
     [Parameter(Mandatory = $false)]
-    [ValidateSet("", "fnmp", "fnlwf")]
+    [ValidateSet("", "fnmp", "fnlwf", "invokesystemrelay")]
     [string]$Install = "",
 
     [Parameter(Mandatory = $false)]
-    [ValidateSet("", "fnmp", "fnlwf")]
+    [ValidateSet("", "fnmp", "fnlwf", "invokesystemrelay")]
     [string]$Uninstall = "",
 
     [Parameter(Mandatory = $false)]
@@ -88,6 +88,7 @@ $FnMpServiceName = "FNMP"
 $FnLwfSys = "$ArtifactsDir\fnlwf\fnlwf.sys"
 $FnLwfInf = "$ArtifactsDir\fnlwf\fnlwf.inf"
 $FnLwfComponentId = "ms_fnlwf"
+$InvokeSystemRelayDrvSys = "$ArtifactsDir\invokesystemrelaydrv.sys"
 
 # Ensure the output path exists.
 New-Item -ItemType Directory -Force -Path $LogsDir | Out-Null
@@ -332,6 +333,30 @@ function Uninstall-FnLwf {
     Write-Verbose "fnlwf.sys uninstall complete!"
 }
 
+# Installs the invokesystemrelay driver.
+function Install-InvokeSystemRelay {
+    if (!(Test-Path $InvokeSystemRelayDrvSys)) {
+        Write-Error "$InvokeSystemRelayDrvSys does not exist!"
+    }
+
+    try { sc.exe create "invokesystemrelay" type= kernel binpath= $InvokeSystemRelayDrvSys start= demand > $null }
+    catch { Write-Verbose "'sc.exe create invokesystemrelay' threw exception!" }
+
+    Start-Service-With-Retry invokesystemrelay
+
+    Write-Verbose "invokesystemrelaydrv.sys install complete!"
+}
+
+# Uninstalls the invokesystemrelay driver.
+function Uninstall-InvokeSystemRelay {
+    Write-Verbose "sc.exe stop invokesystemrelay"
+    sc.exe stop invokesystemrelay | Write-Verbose
+
+    Cleanup-Service invokesystemrelay
+
+    Write-Verbose "invokesystemrelay.sys uninstall complete!"
+}
+
 try {
     if ($Install -eq "fnmp") {
         Install-FnMp
@@ -339,12 +364,18 @@ try {
     if ($Install -eq "fnlwf") {
         Install-FnLwf
     }
+    if ($Install -eq "invokesystemrelay") {
+        Install-InvokeSystemRelay
+    }
 
     if ($Uninstall -eq "fnmp") {
         Uninstall-FnMp
     }
     if ($Uninstall -eq "fnlwf") {
         Uninstall-FnLwf
+    }
+    if ($Uninstall -eq "invokesystemrelay") {
+        Uninstall-InvokeSystemRelay
     }
 } catch {
     Write-Error $_ -ErrorAction $OriginalErrorActionPreference
