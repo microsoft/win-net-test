@@ -33,6 +33,7 @@ ZwWaitForSingleObject(
 
 typedef VOID* FNIOCTL_HANDLE;
 
+inline
 NTSTATUS
 FnIoctlOpen(
     _In_ WCHAR *DeviceName,
@@ -70,6 +71,7 @@ FnIoctlOpen(
     return Status;
 }
 
+inline
 VOID
 FnIoctlClose(
     _In_ FNIOCTL_HANDLE Handle
@@ -78,6 +80,7 @@ FnIoctlClose(
     ZwClose(Handle);
 }
 
+inline
 NTSTATUS
 FnIoctl(
     _In_ FNIOCTL_HANDLE Handle,

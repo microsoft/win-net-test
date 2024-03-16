@@ -37,6 +37,7 @@ typedef struct _FILE_FULL_EA_INFORMATION {
     CHAR EaName[1];
 } FILE_FULL_EA_INFORMATION;
 
+inline
 HRESULT
 FnIoctlOpen(
     _In_ WCHAR *DeviceName,
@@ -72,6 +73,7 @@ FnIoctlOpen(
     return HRESULT_FROM_WIN32(RtlNtStatusToDosError(Status));
 }
 
+inline
 VOID
 FnIoctlClose(
     _In_ FNIOCTL_HANDLE Handle
@@ -80,6 +82,7 @@ FnIoctlClose(
     CloseHandle(Handle);
 }
 
+inline
 HRESULT
 FnIoctl(
     _In_ FNIOCTL_HANDLE Handle,
