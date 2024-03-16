@@ -29,6 +29,8 @@ Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "cxplat_um", "test\cxplat\li
 EndProject
 Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "cxplat_km", "test\cxplat\lib\km\cxplat_km.vcxproj", "{06F8BD85-F946-40DA-9173-E20FB69FEDB0}"
 EndProject
+Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "invokesystemrelaydrv", "test\invokesystem\sys\invokesystemrelaydrv.vcxproj", "{644A5488-7FB8-4C8B-A45A-981DF9A56AEF}"
+EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
 		Debug|ARM64 = Debug|ARM64
@@ -185,6 +187,18 @@ Global
 		{06F8BD85-F946-40DA-9173-E20FB69FEDB0}.Release|x64.ActiveCfg = Release|x64
 		{06F8BD85-F946-40DA-9173-E20FB69FEDB0}.Release|x64.Build.0 = Release|x64
 		{06F8BD85-F946-40DA-9173-E20FB69FEDB0}.Release|x64.Deploy.0 = Release|x64
+		{644A5488-7FB8-4C8B-A45A-981DF9A56AEF}.Debug|ARM64.ActiveCfg = Debug|ARM64
+		{644A5488-7FB8-4C8B-A45A-981DF9A56AEF}.Debug|ARM64.Build.0 = Debug|ARM64
+		{644A5488-7FB8-4C8B-A45A-981DF9A56AEF}.Debug|ARM64.Deploy.0 = Debug|ARM64
+		{644A5488-7FB8-4C8B-A45A-981DF9A56AEF}.Debug|x64.ActiveCfg = Debug|x64
+		{644A5488-7FB8-4C8B-A45A-981DF9A56AEF}.Debug|x64.Build.0 = Debug|x64
+		{644A5488-7FB8-4C8B-A45A-981DF9A56AEF}.Debug|x64.Deploy.0 = Debug|x64
+		{644A5488-7FB8-4C8B-A45A-981DF9A56AEF}.Release|ARM64.ActiveCfg = Release|ARM64
+		{644A5488-7FB8-4C8B-A45A-981DF9A56AEF}.Release|ARM64.Build.0 = Release|ARM64
+		{644A5488-7FB8-4C8B-A45A-981DF9A56AEF}.Release|ARM64.Deploy.0 = Release|ARM64
+		{644A5488-7FB8-4C8B-A45A-981DF9A56AEF}.Release|x64.ActiveCfg = Release|x64
+		{644A5488-7FB8-4C8B-A45A-981DF9A56AEF}.Release|x64.Build.0 = Release|x64
+		{644A5488-7FB8-4C8B-A45A-981DF9A56AEF}.Release|x64.Deploy.0 = Release|x64
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE
