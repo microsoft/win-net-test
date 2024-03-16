@@ -97,11 +97,6 @@ if ($Timeout -gt 0) {
 if ($KernelMode) {
     # Ensure clean slate.
     CleanupKernelMode
-
-    Write-Verbose "installing invokesystemrelay..."
-    & "$RootDir\tools\setup.ps1" -Install invokesystemrelay -Config $Config -Arch $Arch
-    Write-Verbose "installed invokesystemrelay."
-
     [System.Environment]::SetEnvironmentVariable('fnfunctionaltests::KernelModeEnabled', '1')
     [System.Environment]::SetEnvironmentVariable('fnfunctionaltests::KernelModeDriverPath', "$SystemDriversPath\")
     Copy-Item -Path "$ArtifactsDir\fnfunctionaltestdrv.sys" $SystemDriversPath
@@ -119,6 +114,12 @@ for ($i = 1; $i -le $Iterations; $i++) {
         }
 
         & "$RootDir\tools\log.ps1" -Start -Name $LogName -Profile FnFunctional.Verbose -Config $Config -Arch $Arch
+
+        if ($KernelMode) {
+            Write-Verbose "installing invokesystemrelay..."
+            & "$RootDir\tools\setup.ps1" -Install invokesystemrelay -Config $Config -Arch $Arch
+            Write-Verbose "installed invokesystemrelay."
+        }
 
         Write-Verbose "installing fnmp..."
         & "$RootDir\tools\setup.ps1" -Install fnmp -Config $Config -Arch $Arch
