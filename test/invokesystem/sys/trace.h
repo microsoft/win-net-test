@@ -13,7 +13,7 @@
 //
 #define WPP_CONTROL_GUIDS                           \
     WPP_DEFINE_CONTROL_GUID(                        \
-        FnLwfTraceGuid,                             \
+        IsrDrvTraceGuid,                            \
         (ADAACE40,590D,488B,89C9,99798D20F2F6),     \
         WPP_DEFINE_BIT(TRACE_CONTROL)               \
         )

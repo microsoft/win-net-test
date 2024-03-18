@@ -1,0 +1,49 @@
+<?xml version="1.0" encoding="utf-8"?>
+<Project DefaultTargets="Build" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
+  <PropertyGroup>
+    <ProjectGuid>{32916b02-626c-4bdb-af0c-c586670bba0d}</ProjectGuid>
+    <TargetName>invokesystemrelaysvc</TargetName>
+    <UndockedType>exe</UndockedType>
+    <UndockedDir>$(SolutionDir)submodules\undocked\</UndockedDir>
+    <UndockedOut>$(SolutionDir)artifacts\</UndockedOut>
+    <UndockedSourceLink>true</UndockedSourceLink>
+  </PropertyGroup>
+  <Import Project="$(UndockedDir)vs\windows.undocked.props" />
+  <Import Project="$(SolutionDir)src\wnt.cpp.props" />
+  <ItemGroup>
+    <ClCompile Include="main.cpp" />
+  </ItemGroup>
+  <PropertyGroup Condition="'$(DisableRegistryUse)' == 'true'">
+    <!--
+      Workaround for EWDK build failures:
+      Microsoft.Cpp.VCTools.props sets these to invalid values if they're not
+      already set. -->
+    <VCInstallDir_160 Condition="'$(VCInstallDir_160)' == ''">$(VSInstallDir)VC\</VCInstallDir_160>
+    <VCToolsInstallDir_160 Condition="'$(VCToolsInstallDir_160)' == '' and '$(VCToolsVersion)' != ''">$(VCInstallDir_160)Tools\MSVC\$(VCToolsVersion)\</VCToolsInstallDir_160>
+  </PropertyGroup>
+  <ItemDefinitionGroup>
+    <ClCompile>
+      <AdditionalIncludeDirectories>
+        $(SolutionDir)test\invokesystem\inc;
+        %(AdditionalIncludeDirectories)
+      </AdditionalIncludeDirectories>
+      <PreprocessorDefinitions>
+        %(PreprocessorDefinitions)
+      </PreprocessorDefinitions>
+      <UseFullPaths>true</UseFullPaths>
+      <!-- Disable C26812: The enum type '' is unscoped. Prefer 'enum class' over 'enum' -->
+      <!-- Disable C5252 : Multiple different types resulted in the same XFG type-hash -->
+      <DisableSpecificWarnings>26812;5252;%(DisableSpecificWarnings)</DisableSpecificWarnings>
+    </ClCompile>
+    <Link>
+      <SubSystem>Console</SubSystem>
+      <AdditionalDependencies>
+        ntdll.lib;
+        onecore.lib;
+        advapi32.lib;
+        %(AdditionalDependencies)
+      </AdditionalDependencies>
+    </Link>
+  </ItemDefinitionGroup>
+  <Import Project="$(UndockedDir)vs\windows.undocked.targets" />
+</Project>
