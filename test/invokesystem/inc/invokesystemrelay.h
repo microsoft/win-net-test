@@ -10,37 +10,6 @@
 
 EXTERN_C_START
 
-#define ISR_OPEN_EA_LENGTH \
-    (sizeof(FILE_FULL_EA_INFORMATION) + \
-        sizeof(ISR_OPEN_PACKET_NAME) + \
-        sizeof(ISR_OPEN_PACKET))
-
-inline
-VOID *
-IsrInitializeEa(
-    _In_ ISR_FILE_TYPE FileType,
-    _Out_ VOID *EaBuffer,
-    _In_ UINT32 EaLength
-    )
-{
-    FILE_FULL_EA_INFORMATION *EaHeader = (FILE_FULL_EA_INFORMATION *)EaBuffer;
-    ISR_OPEN_PACKET *OpenPacket;
-
-    if (EaLength < ISR_OPEN_EA_LENGTH) {
-        __fastfail(FAST_FAIL_INVALID_ARG);
-    }
-
-    RtlZeroMemory(EaHeader, sizeof(*EaHeader));
-    EaHeader->EaNameLength = sizeof(ISR_OPEN_PACKET_NAME) - 1;
-    RtlCopyMemory(EaHeader->EaName, ISR_OPEN_PACKET_NAME, sizeof(ISR_OPEN_PACKET_NAME));
-    EaHeader->EaValueLength = (USHORT)(EaLength - sizeof(*EaHeader) - sizeof(ISR_OPEN_PACKET_NAME));
-
-    OpenPacket = (ISR_OPEN_PACKET *)(EaHeader->EaName + sizeof(ISR_OPEN_PACKET_NAME));
-    OpenPacket->ObjectType = FileType;
-
-    return OpenPacket + 1;
-}
-
 inline
 INT
 InvokeSystemRelay(
