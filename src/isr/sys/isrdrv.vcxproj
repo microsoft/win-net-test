@@ -2,7 +2,7 @@
 <Project DefaultTargets="Build" ToolsVersion="12.0" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
   <PropertyGroup>
     <ProjectGuid>{644a5488-7fb8-4c8b-a45a-981df9a56aef}</ProjectGuid>
-    <TargetName>invokesystemrelaydrv</TargetName>
+    <TargetName>isrdrv</TargetName>
     <UndockedType>sys</UndockedType>
     <UndockedDir>$(SolutionDir)submodules\undocked\</UndockedDir>
     <UndockedOut>$(SolutionDir)artifacts\</UndockedOut>
@@ -21,7 +21,7 @@
   <ItemDefinitionGroup>
     <ClCompile>
       <AdditionalIncludeDirectories>
-        $(SolutionDir)test\invokesystem\inc;
+        $(SolutionDir)inc;
         %(AdditionalIncludeDirectories)
       </AdditionalIncludeDirectories>
       <PreprocessorDefinitions>

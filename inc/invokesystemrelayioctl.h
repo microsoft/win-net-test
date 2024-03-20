@@ -7,7 +7,7 @@
 
 EXTERN_C_START
 
-#define ISR_DEVICE_NAME L"\\Device\\invokesystemrelaydrv"
+#define ISR_DEVICE_NAME L"\\Device\\isrdrv"
 
 #define ISR_OPEN_PACKET_NAME "IsrOpenPacket0"
 

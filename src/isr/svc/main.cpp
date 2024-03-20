@@ -13,7 +13,7 @@
 
 #include "main.tmh"
 
-#define SVCNAME "InvokeSystemRelaySvc"
+#define SVCNAME "isrsvc"
 
 static SERVICE_STATUS SvcStatus;
 static SERVICE_STATUS_HANDLE SvcStatusHandle;

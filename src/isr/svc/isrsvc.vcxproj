@@ -2,7 +2,7 @@
 <Project DefaultTargets="Build" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
   <PropertyGroup>
     <ProjectGuid>{32916b02-626c-4bdb-af0c-c586670bba0d}</ProjectGuid>
-    <TargetName>invokesystemrelaysvc</TargetName>
+    <TargetName>isrsvc</TargetName>
     <UndockedType>exe</UndockedType>
     <UndockedDir>$(SolutionDir)submodules\undocked\</UndockedDir>
     <UndockedOut>$(SolutionDir)artifacts\</UndockedOut>
@@ -24,13 +24,12 @@
   <ItemDefinitionGroup>
     <PreBuildEvent>
       <Command>
-        tracewpp.exe -odir:$(IntDir) -scan:$(SolutionDir)test\invokesystem\svc\trace.h $(ProjectDir)*.cpp -p:isrsvc -cfgdir:"$(WindowsSdkDir)bin\$(TargetPlatformVersion)\WppConfig\Rev1"
+        tracewpp.exe -odir:$(IntDir) -scan:$(SolutionDir)src\isr\svc\trace.h $(ProjectDir)*.cpp -p:isrsvc -cfgdir:"$(WindowsSdkDir)bin\$(TargetPlatformVersion)\WppConfig\Rev1"
       </Command>
     </PreBuildEvent>
     <ClCompile>
       <AdditionalIncludeDirectories>
         $(SolutionDir)inc;
-        $(SolutionDir)test\invokesystem\inc;
         %(AdditionalIncludeDirectories)
       </AdditionalIncludeDirectories>
       <PreprocessorDefinitions>

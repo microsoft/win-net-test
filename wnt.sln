@@ -29,9 +29,9 @@ Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "cxplat_um", "test\cxplat\li
 EndProject
 Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "cxplat_km", "test\cxplat\lib\km\cxplat_km.vcxproj", "{06F8BD85-F946-40DA-9173-E20FB69FEDB0}"
 EndProject
-Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "invokesystemrelaydrv", "test\invokesystem\sys\invokesystemrelaydrv.vcxproj", "{644A5488-7FB8-4C8B-A45A-981DF9A56AEF}"
+Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "isrdrv", "src\isr\sys\isrdrv.vcxproj", "{644A5488-7FB8-4C8B-A45A-981DF9A56AEF}"
 EndProject
-Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "invokesystemrelaysvc", "test\invokesystem\svc\invokesystemrelaysvc.vcxproj", "{32916B02-626C-4BDB-AF0C-C586670BBA0D}"
+Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "isrsvc", "src\isr\svc\isrsvc.vcxproj", "{32916B02-626C-4BDB-AF0C-C586670BBA0D}"
 EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution

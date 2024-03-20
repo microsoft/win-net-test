@@ -25,10 +25,10 @@
     <ProjectReference Include="$(SolutionDir)test\pkthlp\um\pkthlp_um.vcxproj">
       <Project>{e84ff937-7445-4b8e-ba40-dffacc09c060}</Project>
     </ProjectReference>
-    <ProjectReference Include="$(SolutionDir)test\invokesystem\svc\invokesystemrelaysvc.vcxproj">
+    <ProjectReference Include="$(SolutionDir)src\isr\svc\isrsvc.vcxproj">
       <Project>{32916b02-626c-4bdb-af0c-c586670bba0d}</Project>
     </ProjectReference>
-    <ProjectReference Include="$(SolutionDir)test\invokesystem\sys\invokesystemrelaydrv.vcxproj">
+    <ProjectReference Include="$(SolutionDir)src\isr\sys\isrdrv.vcxproj">
       <Project>{644a5488-7fb8-4c8b-a45a-981df9a56aef}</Project>
     </ProjectReference>
     <ProjectReference Include="$(SolutionDir)test\debugcrt\debugcrt.vcxproj">

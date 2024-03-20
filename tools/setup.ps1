@@ -88,8 +88,8 @@ $FnMpServiceName = "FNMP"
 $FnLwfSys = "$ArtifactsDir\fnlwf\fnlwf.sys"
 $FnLwfInf = "$ArtifactsDir\fnlwf\fnlwf.inf"
 $FnLwfComponentId = "ms_fnlwf"
-$InvokeSystemRelayDrvSys = "$ArtifactsDir\invokesystemrelaydrv.sys"
-$InvokeSystemRelaySvcExe = "$ArtifactsDir\invokesystemrelaysvc.exe"
+$IsrDrvSys = "$ArtifactsDir\isrdrv.sys"
+$IsrSvcExe = "$ArtifactsDir\isrsvc.exe"
 
 # Ensure the output path exists.
 New-Item -ItemType Directory -Force -Path $LogsDir | Out-Null
@@ -336,43 +336,43 @@ function Uninstall-FnLwf {
 
 # Installs the invokesystemrelay driver and service.
 function Install-InvokeSystemRelay {
-    if (!(Test-Path $InvokeSystemRelayDrvSys)) {
-        Write-Error "$InvokeSystemRelayDrvSys does not exist!"
+    if (!(Test-Path $IsrDrvSys)) {
+        Write-Error "$IsrDrvSys does not exist!"
     }
-    if (!(Test-Path $InvokeSystemRelaySvcExe)) {
-        Write-Error "$InvokeSystemRelaySvcExe does not exist!"
+    if (!(Test-Path $IsrSvcExe)) {
+        Write-Error "$IsrSvcExe does not exist!"
     }
 
-    try { sc.exe create "invokesystemrelaydrv" type= kernel binpath= $InvokeSystemRelayDrvSys start= demand > $null }
-    catch { Write-Verbose "'sc.exe create invokesystemrelaydrv' threw exception!" }
+    try { sc.exe create "isrdrv" type= kernel binpath= $IsrDrvSys start= demand > $null }
+    catch { Write-Verbose "'sc.exe create isrdrv' threw exception!" }
 
-    Start-Service-With-Retry invokesystemrelaydrv
+    Start-Service-With-Retry isrdrv
 
-    Write-Verbose "invokesystemrelaydrv.sys install complete!"
+    Write-Verbose "isrdrv.sys install complete!"
 
-    try { sc.exe create "invokesystemrelaysvc" binpath= $InvokeSystemRelaySvcExe start= demand > $null }
-    catch { Write-Verbose "'sc.exe create invokesystemrelaysvc' threw exception!" }
+    try { sc.exe create "isrsvc" binpath= $IsrSvcExe start= demand > $null }
+    catch { Write-Verbose "'sc.exe create isrsvc' threw exception!" }
 
-    Start-Service-With-Retry invokesystemrelaysvc
+    Start-Service-With-Retry isrsvc
 
-    Write-Verbose "invokesystemrelaysvc.exe install complete!"
+    Write-Verbose "isrsvc.exe install complete!"
 }
 
 # Uninstalls the invokesystemrelay driver and service.
 function Uninstall-InvokeSystemRelay {
-    Write-Verbose "sc.exe stop invokesystemrelaysvc"
-    sc.exe stop invokesystemrelaysvc | Write-Verbose
+    Write-Verbose "sc.exe stop isrsvc"
+    sc.exe stop isrsvc | Write-Verbose
 
-    Cleanup-Service invokesystemrelaysvc
+    Cleanup-Service isrsvc
 
-    Write-Verbose "invokesystemrelaysvc.exe uninstall complete!"
+    Write-Verbose "isrsvc.exe uninstall complete!"
 
-    Write-Verbose "sc.exe stop invokesystemrelaydrv"
-    sc.exe stop invokesystemrelaydrv | Write-Verbose
+    Write-Verbose "sc.exe stop isrdrv"
+    sc.exe stop isrdrv | Write-Verbose
 
-    Cleanup-Service invokesystemrelaydrv
+    Cleanup-Service isrdrv
 
-    Write-Verbose "invokesystemrelaydrv.sys uninstall complete!"
+    Write-Verbose "isrdrv.sys uninstall complete!"
 }
 
 try {
