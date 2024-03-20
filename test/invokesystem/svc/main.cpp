@@ -9,59 +9,19 @@
 #include <fnioctl_um.h>
 #include "invokesystemrelayioctl.h"
 
-#define SVCNAME TEXT("InvokeSystemRelaySvc")
+#include "trace.h"
 
-#define TraceError(Fmt, ...) EventLog(EVENTLOG_ERROR_TYPE, 1, Fmt, __VA_ARGS__)
-#define TraceInfo(Fmt, ...) EventLog(EVENTLOG_INFORMATION_TYPE, 2, Fmt, __VA_ARGS__)
+#include "main.tmh"
+
+#define SVCNAME "InvokeSystemRelaySvc"
 
 static SERVICE_STATUS SvcStatus;
 static SERVICE_STATUS_HANDLE SvcStatusHandle;
-static HANDLE SvcStopEvent = NULL;
 static BOOLEAN Stopping = FALSE;
 static FNIOCTL_HANDLE IsrHandle = NULL;
 
-static
-VOID
-EventLog(
-    _In_ WORD EventType,
-    _In_ DWORD EventId,
-    _Printf_format_string_ PCSTR Format,
-    ...
-    )
-{
-    HANDLE EventSource;
-
-    EventSource = RegisterEventSource(NULL, SVCNAME);
-
-    if (EventSource != NULL) {
-        LPCSTR Strings[2];
-        CHAR Buffer[128];
-
-        va_list Args;
-        va_start(Args, Format);
-        _vsnprintf_s(Buffer, sizeof(Buffer), _TRUNCATE, Format, Args);
-        va_end(Args);
-
-        Strings[0] = SVCNAME;
-        Strings[1] = Buffer;
-
-        ReportEvent(
-            EventSource,   // event log handle
-            EventType,     // event type
-            0,             // event category
-            EventId,       // event identifier
-            NULL,          // no security identifier
-            2,             // size of Strings array
-            0,             // no binary data
-            Strings,       // array of strings
-            NULL);         // no binary data
-
-        DeregisterEventSource(EventSource);
-    }
-}
-
 //
-// Called by the service to update SCM of the service status.
+// Called to update SCM of the service status.
 //
 static
 VOID
@@ -71,7 +31,7 @@ ReportSvcStatus(
     _In_ DWORD WaitHint
     )
 {
-    TraceInfo("ReportSvcStatus: %d", CurrentState);
+    TraceInfo(TRACE_CONTROL, "CurrentState=%d", CurrentState);
 
     SvcStatus.dwCurrentState = CurrentState;
     SvcStatus.dwWin32ExitCode = Win32ExitCode;
@@ -100,7 +60,7 @@ SvcCtrlHandler(
     _In_ DWORD ControlCode
     )
 {
-    TraceInfo("SvcCtrlHandler: %d", ControlCode);
+    TraceInfo(TRACE_CONTROL, "ControlCode=%d", ControlCode);
 
     switch(ControlCode) {
     case SERVICE_CONTROL_STOP:
@@ -115,7 +75,7 @@ SvcCtrlHandler(
         // Cancel any pending IO (most likely the get IOCTL is pending).
         //
         if (!CancelIoEx(IsrHandle, NULL)) {
-            TraceError("CancelIoEx failed with %d", GetLastError());
+            TraceError(TRACE_CONTROL, "CancelIoEx failed with %d", GetLastError());
         }
 
         break;
@@ -140,13 +100,13 @@ DoServiceWork(
         //
         // Get a request from the driver.
         //
-        TraceInfo("Getting request...");
+        TraceInfo(TRACE_CONTROL, "Getting request...");
         Result =
             FnIoctl(
                 IsrHandle, ISR_IOCTL_INVOKE_SYSTEM_GET, NULL, 0,
                 &Get, sizeof(Get), NULL, NULL);
         if (FAILED(Result)) {
-            TraceError("ISR_IOCTL_INVOKE_SYSTEM_GET failed with %d", Result);
+            TraceError(TRACE_CONTROL, "ISR_IOCTL_INVOKE_SYSTEM_GET failed with %d", Result);
             //
             // Mitigation to avoid burning CPU in a tight loop.
             //
@@ -157,7 +117,7 @@ DoServiceWork(
         //
         // Process the request.
         //
-        TraceInfo("Running request Id=%llu, Command=%s", Get.Id, Get.Command);
+        TraceInfo(TRACE_CONTROL, "Running request Id=%llu, Command=%s", Get.Id, Get.Command);
         CommandResult = system(Get.Command);
 
         RtlZeroMemory(&Post, sizeof(Post));
@@ -167,20 +127,20 @@ DoServiceWork(
         //
         // Post the status to the driver.
         //
-        TraceInfo("Posting request Id=%llu, Result=%d", Post.Id, Post.Result);
+        TraceInfo(TRACE_CONTROL, "Posting request Id=%llu, Result=%d", Post.Id, Post.Result);
         Result =
             FnIoctl(
                 IsrHandle, ISR_IOCTL_INVOKE_SYSTEM_POST, &Post, sizeof(Post),
                 NULL, 0, NULL, NULL);
         if (FAILED(Result)) {
-            TraceError("ISR_IOCTL_INVOKE_SYSTEM_POST failed with %d", Result);
+            TraceError(TRACE_CONTROL, "ISR_IOCTL_INVOKE_SYSTEM_POST failed with %d", Result);
             continue;
         }
     }
 }
 
 //
-// Called by SCM when service is started.
+// Called by SCM via StartServiceCtrlDispatcher.
 //
 static
 VOID
@@ -191,13 +151,14 @@ SvcMain(
     )
 {
     DWORD ExitCode;
+    HRESULT Result;
     ISR_OPEN_SERVICE *OpenService;
     CHAR EaBuffer[ISR_OPEN_EA_LENGTH + sizeof(*OpenService)];
 
     UNREFERENCED_PARAMETER(Argc);
     UNREFERENCED_PARAMETER(Argv);
 
-    TraceInfo(__FUNCTION__);
+    TraceInfo(TRACE_CONTROL, "start");
 
     //
     // Register service control handler.
@@ -205,7 +166,7 @@ SvcMain(
     SvcStatusHandle = RegisterServiceCtrlHandler(SVCNAME, SvcCtrlHandler);
     if (SvcStatusHandle == NULL) {
         ExitCode = GetLastError();
-        TraceError("RegisterServiceCtrlHandler failed with %d", ExitCode);
+        TraceError(TRACE_CONTROL, "RegisterServiceCtrlHandler failed with %d", ExitCode);
         goto Exit;
     }
 
@@ -222,7 +183,7 @@ SvcMain(
         (ISR_OPEN_SERVICE *)
             IsrInitializeEa(ISR_FILE_TYPE_SERVICE, EaBuffer, sizeof(EaBuffer));
 
-    HRESULT Result =
+    Result =
         FnIoctlOpen(
             ISR_DEVICE_NAME,
             FILE_CREATE,
@@ -231,7 +192,7 @@ SvcMain(
             &IsrHandle);
     if (FAILED(Result)) {
         ExitCode = ERROR_GEN_FAILURE;
-        TraceError("FnIoctlOpen failed with %d", Result);
+        TraceError(TRACE_CONTROL, "FnIoctlOpen failed with %d", Result);
         goto Exit;
     }
 
@@ -256,7 +217,7 @@ Exit:
 }
 
 //
-// Called when service is created?
+// Called by SCM when service is started.
 //
 INT
 __cdecl
@@ -269,12 +230,17 @@ main(
         { NULL, NULL }
     };
 
-    TraceInfo(__FUNCTION__);
+    WPP_INIT_TRACING(NULL);
 
+    TraceInfo(TRACE_CONTROL, "start");
+
+    //
     // This call returns when the service has stopped.
     // The process should simply terminate when the call returns.
-
+    //
     if (!StartServiceCtrlDispatcher(DispatchTable)) {
-        TraceError("StartServiceCtrlDispatcher failed with %d", GetLastError());
+        TraceError(TRACE_CONTROL, "StartServiceCtrlDispatcher failed with %d", GetLastError());
     }
+
+    WPP_CLEANUP();
 }

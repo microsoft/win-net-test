@@ -30,7 +30,7 @@
       <WppEnabled>true</WppEnabled>
       <WppScanConfigurationData>$(ProjectDir)trace.h</WppScanConfigurationData>
       <WppRecorderEnabled>true</WppRecorderEnabled>
-      <WppAdditionalOptions>-p:isr</WppAdditionalOptions>
+      <WppAdditionalOptions>-p:isrdrv</WppAdditionalOptions>
     </ClCompile>
     <Link>
       <AdditionalDependencies>

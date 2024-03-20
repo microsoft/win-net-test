@@ -22,6 +22,11 @@
     <VCToolsInstallDir_160 Condition="'$(VCToolsInstallDir_160)' == '' and '$(VCToolsVersion)' != ''">$(VCInstallDir_160)Tools\MSVC\$(VCToolsVersion)\</VCToolsInstallDir_160>
   </PropertyGroup>
   <ItemDefinitionGroup>
+    <PreBuildEvent>
+      <Command>
+        tracewpp.exe -odir:$(IntDir) -scan:$(SolutionDir)test\invokesystem\svc\trace.h $(ProjectDir)*.cpp -p:isrsvc -cfgdir:"$(WindowsSdkDir)bin\$(TargetPlatformVersion)\WppConfig\Rev1"
+      </Command>
+    </PreBuildEvent>
     <ClCompile>
       <AdditionalIncludeDirectories>
         $(SolutionDir)inc;

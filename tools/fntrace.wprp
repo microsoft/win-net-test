@@ -74,6 +74,11 @@
                 <Keyword Value="0x7FFFFFFFFFFFFFFF" />
             </Keywords>
         </EventProvider>
+        <EventProvider Id="EP_InvokeSystemRelaySvcWpp" Name="DBE35650-5285-4CAF-B64A-B707B8ECAD2C" Level="5">
+            <Keywords>
+                <Keyword Value="0x7FFFFFFFFFFFFFFF" />
+            </Keywords>
+        </EventProvider>
 
         <!-- Windows OS providers -->
         <EventProvider Id="EP_MicrosoftWindowsTcpipPerPacket" Name="2F07E2EE-15DB-40F1-90EF-9D7BA282188A" Level="17" />
@@ -88,6 +93,7 @@
                         <EventProviderId Value="EP_FnTestWpp" />
                         <EventProviderId Value="EP_FnTestDrvWpp" />
                         <EventProviderId Value="EP_InvokeSystemRelayDrvWpp" />
+                        <EventProviderId Value="EP_InvokeSystemRelaySvcWpp" />
 
                         <EventProviderId Value="EP_MicrosoftWindowsTcpipPerPacket" />
                         <EventProviderId Value="EP_MicrosoftWindowsWinsockAfd" />

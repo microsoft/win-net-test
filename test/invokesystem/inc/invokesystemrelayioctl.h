@@ -37,7 +37,7 @@ typedef struct _ISR_OPEN_SERVICE {
 //
 // IOCTL interface.
 //
-#define ISR_MAX_COMMAND_LENGTH 256
+#define ISR_MAX_COMMAND_LENGTH 1024
 
 typedef struct _ISR_GET_OUTPUT {
     UINT64 Id;
@@ -57,7 +57,7 @@ typedef struct _ISR_POST_INPUT {
 // Input: char *Command
 // Output: int Result
 //
-// TODO: add timeout so that these requests cannot pend forever?
+// TODO: add timeout so that these requests cannot pend forever
 //
 #define ISR_IOCTL_INVOKE_SYSTEM_SUBMIT \
     CTL_CODE(FILE_DEVICE_NETWORK, 1, METHOD_BUFFERED, FILE_WRITE_ACCESS)
@@ -65,7 +65,7 @@ typedef struct _ISR_POST_INPUT {
 //
 // Issued by invokesystemrelay user mode service to fetch an invoke system request.
 // This will pend indefinitely until a request is ready to be processed.
-// Asynchronous.
+// Asynchronous. Cancelable.
 //
 // Input: None
 // Output: ISR_GET_OUTPUT
