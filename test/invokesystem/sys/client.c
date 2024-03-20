@@ -78,7 +78,9 @@ ClientIrpSubmit(
     IoMarkIrpPending(Irp);
     Status = STATUS_PENDING;
 
-    TraceInfo(TRACE_CONTROL, "Pending client request UserContext=%p Irp=%p", UserContext, Irp);
+    TraceInfo(
+        TRACE_CONTROL, "Pending client request UserContext=%p Irp=%p",
+        UserContext, Irp);
 
 Exit:
 
@@ -95,8 +97,8 @@ ClientIrpDeviceIoControl(
     _In_ IO_STACK_LOCATION *IrpSp
     )
 {
-    CLIENT_USER_CONTEXT *UserContext = IrpSp->FileObject->FsContext;
     NTSTATUS Status;
+    CLIENT_USER_CONTEXT *UserContext = IrpSp->FileObject->FsContext;
 
     switch (IrpSp->Parameters.DeviceIoControl.IoControlCode) {
     case ISR_IOCTL_INVOKE_SYSTEM_SUBMIT:
@@ -104,6 +106,9 @@ ClientIrpDeviceIoControl(
         break;
 
     default:
+        TraceError(
+            TRACE_CONTROL, "Invalid IOCTL Code=%u",
+            IrpSp->Parameters.DeviceIoControl.IoControlCode);
         Status = STATUS_NOT_SUPPORTED;
         goto Exit;
     }
@@ -130,8 +135,7 @@ ClientIrpClose(
     _In_ IO_STACK_LOCATION *IrpSp
     )
 {
-    CLIENT_USER_CONTEXT *UserContext =
-        (CLIENT_USER_CONTEXT *)IrpSp->FileObject->FsContext;
+    CLIENT_USER_CONTEXT *UserContext = IrpSp->FileObject->FsContext;
 
     UNREFERENCED_PARAMETER(Irp);
 

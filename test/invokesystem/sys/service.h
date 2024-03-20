@@ -7,7 +7,6 @@
 
 typedef struct _SERVICE_USER_CONTEXT {
     FILE_OBJECT_HEADER Header;
-    KEVENT RequestsAvailableEvent;
 } SERVICE_USER_CONTEXT;
 
 NTSTATUS

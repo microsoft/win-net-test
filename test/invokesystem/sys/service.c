@@ -7,12 +7,10 @@
 
 #include "service.tmh"
 
-static volatile SERVICE_USER_CONTEXT *ServiceUserContext;
-
 static KSPIN_LOCK Lock;
 static IRP *PendingIrp;
 static ISR_REQUEST *PendingRequest;
-
+static volatile SERVICE_USER_CONTEXT *ServiceUserContext;
 static DRIVER_CANCEL ServiceCancelGet;
 
 static
@@ -57,6 +55,7 @@ ServiceInitializeGetIrpOutput(
     )
 {
     ISR_GET_OUTPUT *Output = Irp->AssociatedIrp.SystemBuffer;
+
     RtlZeroMemory(Output, sizeof(*Output));
     Output->Id = Request->Id;
     strcpy_s(Output->Command, sizeof(Request->Command), Request->Command);
@@ -154,7 +153,9 @@ ServiceIrpGet(
         ServiceInitializeGetIrpOutput(Irp, Request);
         PendingRequest = Request;
         Status = STATUS_SUCCESS;
-        TraceInfo(TRACE_CONTROL, "Pending service get UserContext=%p Irp=%p", UserContext, Irp);
+        TraceInfo(
+            TRACE_CONTROL, "Pending service get UserContext=%p Irp=%p",
+            UserContext, Irp);
     } else if (Status == STATUS_NOT_FOUND) {
         //
         // Pend the IRP.
@@ -267,10 +268,8 @@ ServiceIrpDeviceIoControl(
     _In_ IO_STACK_LOCATION *IrpSp
     )
 {
-    SERVICE_USER_CONTEXT *UserContext = IrpSp->FileObject->FsContext;
     NTSTATUS Status;
-
-    UNREFERENCED_PARAMETER(Irp);
+    SERVICE_USER_CONTEXT *UserContext = IrpSp->FileObject->FsContext;
 
     switch (IrpSp->Parameters.DeviceIoControl.IoControlCode) {
     case ISR_IOCTL_INVOKE_SYSTEM_GET:
@@ -282,6 +281,9 @@ ServiceIrpDeviceIoControl(
         break;
 
     default:
+        TraceError(
+            TRACE_CONTROL, "Invalid IOCTL Code=%u",
+            IrpSp->Parameters.DeviceIoControl.IoControlCode);
         Status = STATUS_NOT_SUPPORTED;
         goto Exit;
     }
