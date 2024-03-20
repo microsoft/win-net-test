@@ -8,33 +8,26 @@
 #include <ntintsafe.h>
 #include <ntstrsafe.h>
 #include <ndis.h>
-#include <ws2def.h>
-#include <ws2ipdef.h>
-#include <netiodef.h>
-#include <netioapi.h>
-#include <mstcpip.h>
+#else
+// Windows and WIL includes need to be ordered in a certain way.
+#include <winsock2.h>
+#include <windows.h>
+#endif
+
 #pragma warning(push) // SAL issues in WIL header.
 #pragma warning(disable:28157)
 #pragma warning(disable:28158)
 #pragma warning(disable:28167)
 #include <wil/resource.h>
 #pragma warning(pop)
-#else
-// Windows and WIL includes need to be ordered in a certain way.
 #pragma warning(push)
 #pragma warning(disable:4324) // structure was padded due to alignment specifier
-#include <winsock2.h>
-#include <windows.h>
 #include <ws2def.h>
 #include <ws2ipdef.h>
 #include <netiodef.h>
 #include <netioapi.h>
 #include <mstcpip.h>
-#include <stdlib.h>
-#include <stdio.h>
 #pragma warning(pop)
-#include <wil/resource.h>
-#endif // defined(KERNEL_MODE)
 
 #include <cxplat.h>
 #include <pkthlp.h>
@@ -43,9 +36,10 @@
 #if defined(KERNEL_MODE)
 #include <invokesystemrelay.h>
 #endif
-#include <fntrace.h>
 
+#include "fntrace.h"
 #include "fntest.h"
+#include "tests.h"
 
 #include "tests.tmh"
 
@@ -55,29 +49,6 @@
 #define FNMP_NEIGHBOR_IPV4_ADDRESS "192.168.200.2"
 #define FNMP_IPV6_ADDRESS "fc00::200:1"
 #define FNMP_NEIGHBOR_IPV6_ADDRESS "fc00::200:2"
-
-FNMP_LOAD_API_CONTEXT FnMpLoadApiContext;
-FNLWF_LOAD_API_CONTEXT FnLwfLoadApiContext;
-
-#if defined(KERNEL_MODE)
-#define TEST_FNMPAPI TEST_NTSTATUS
-#define TEST_FNLWFAPI TEST_NTSTATUS
-#define TEST_FNMPAPI_GOTO TEST_NTSTATUS_GOTO
-#define TEST_FNLWFAPI_GOTO TEST_NTSTATUS_GOTO
-#define TEST_FNMPAPI_RET TEST_NTSTATUS_RET
-#define TEST_FNLWFAPI_RET TEST_NTSTATUS_RET
-#else
-#define TEST_FNMPAPI TEST_HRESULT
-#define TEST_FNLWFAPI TEST_HRESULT
-#define TEST_FNMPAPI_GOTO TEST_HRESULT_GOTO
-#define TEST_FNLWFAPI_GOTO TEST_HRESULT_GOTO
-#define TEST_FNMPAPI_RET TEST_HRESULT_RET
-#define TEST_FNLWFAPI_RET TEST_HRESULT_RET
-#endif // defined(KERNEL_MODE)
-
-#define TEST_CXPLAT(condition) TEST_TRUE(CXPLAT_SUCCEEDED(condition))
-#define TEST_CXPLAT_GOTO(condition, label) TEST_TRUE_GOTO(CXPLAT_SUCCEEDED(condition), label)
-#define TEST_CXPLAT_RET(condition, retval) TEST_TRUE_RET(CXPLAT_SUCCEEDED(condition), retval)
 
 //
 // A timeout value that allows for a little latency, e.g. async threads to
@@ -97,27 +68,49 @@ FNLWF_LOAD_API_CONTEXT FnLwfLoadApiContext;
 C_ASSERT(POLL_INTERVAL_MS * 5 <= TEST_TIMEOUT_ASYNC_MS);
 C_ASSERT(POLL_INTERVAL_MS * 5 <= MP_RESTART_TIMEOUT_MS);
 
-#if defined(KERNEL_MODE) && !defined(htons)
-#define htons RtlUshortByteSwap
-#define ntohs RtlUshortByteSwap
-#define htonl RtlUlongByteSwap
-#define ntohl RtlUlongByteSwap
-#endif
+#define TEST_CXPLAT(condition) TEST_TRUE(CXPLAT_SUCCEEDED(condition))
+#define TEST_CXPLAT_GOTO(condition, label) TEST_TRUE_GOTO(CXPLAT_SUCCEEDED(condition), label)
+#define TEST_CXPLAT_RET(condition, retval) TEST_TRUE_RET(CXPLAT_SUCCEEDED(condition), retval)
 
 #define POOL_TAG 'sTnF' // FnTs
-#if defined(KERNEL_MODE)
+
 template <typename T>
-using unique_malloc_ptr = wistd::unique_ptr<T, wil::function_deleter<decltype(&::ExFreePool), ::ExFreePool>>;
-#else
-template <typename T>
-using unique_malloc_ptr = wistd::unique_ptr<T, wil::function_deleter<decltype(&::free), ::free>>;
-#endif
+using unique_malloc_ptr = wistd::unique_ptr<T, wil::function_deleter<decltype(&::CxPlatFreeNoTag), ::CxPlatFreeNoTag>>;
 using unique_fnmp_handle = wil::unique_any<FNMP_HANDLE, decltype(::FnMpClose), ::FnMpClose>;
 using unique_fnlwf_handle = wil::unique_any<FNLWF_HANDLE, decltype(::FnLwfClose), ::FnLwfClose>;
 using unique_cxplat_socket = wil::unique_any<CXPLAT_SOCKET, decltype(::CxPlatSocketClose), ::CxPlatSocketClose>;
 using unique_cxplat_thread = wil::unique_any<CXPLAT_THREAD, decltype(::CxPlatThreadDelete), ::CxPlatThreadDelete>;
 
+#if defined(KERNEL_MODE)
+#define TEST_FNMPAPI TEST_NTSTATUS
+#define TEST_FNLWFAPI TEST_NTSTATUS
+#define TEST_FNMPAPI_GOTO TEST_NTSTATUS_GOTO
+#define TEST_FNLWFAPI_GOTO TEST_NTSTATUS_GOTO
+#define TEST_FNMPAPI_RET TEST_NTSTATUS_RET
+#define TEST_FNLWFAPI_RET TEST_NTSTATUS_RET
+#if !defined(htons)
+#define htons RtlUshortByteSwap
+#define ntohs RtlUshortByteSwap
+#define htonl RtlUlongByteSwap
+#define ntohl RtlUlongByteSwap
+#endif // !defined(htons)
+#define system(x) InvokeSystemRelay(x)
+#else
+#define TEST_FNMPAPI TEST_HRESULT
+#define TEST_FNLWFAPI TEST_HRESULT
+#define TEST_FNMPAPI_GOTO TEST_HRESULT_GOTO
+#define TEST_FNLWFAPI_GOTO TEST_HRESULT_GOTO
+#define TEST_FNMPAPI_RET TEST_HRESULT_RET
+#define TEST_FNLWFAPI_RET TEST_HRESULT_RET
+#define RtlStringCbPrintfA(Dst, DstSize, Format, ...) \
+    sprintf_s(Dst, Format, __VA_ARGS__)
+#endif // defined(KERNEL_MODE)
+
 static CONST CHAR *PowershellPrefix = "powershell -noprofile -ExecutionPolicy Bypass";
+static CONST CHAR *FirewallAddRuleString = "netsh advfirewall firewall add rule name=fnmptest dir=in action=allow protocol=any remoteip=any localip=any";
+static CONST CHAR *FirewallDeleteRuleString = "netsh advfirewall firewall delete rule name=fnmptest";
+static FNMP_LOAD_API_CONTEXT FnMpLoadApiContext;
+static FNLWF_LOAD_API_CONTEXT FnLwfLoadApiContext;
 
 //
 // Helper functions.
@@ -132,23 +125,11 @@ InvokeSystem(
     INT Result;
 
     TraceVerbose("system(%s)", Command);
-
-#if defined(KERNEL_MODE)
-    Result = InvokeSystemRelay(Command);
-#else
     Result = system(Command);
-#endif
-
     TraceVerbose("%d returned by system(%s)", Result, Command);
 
     return Result;
-
 }
-
-#if !defined(KERNEL_MODE)
-#define RtlStringCbPrintfA(Dst, DstSize, Format, ...) \
-    sprintf_s(Dst, Format, __VA_ARGS__)
-#endif
 
 typedef struct TestInterface {
 private:
@@ -212,8 +193,10 @@ public:
         _IfDescW = IfDescW;
         _IfIndex = NET_IFINDEX_UNSPECIFIED;
 
-        TEST_NTSTATUS_RET(RtlIpv4StringToAddressA(Ipv4Address, FALSE, &Terminator, &_Ipv4Address), false);
-        TEST_NTSTATUS_RET(RtlIpv6StringToAddressA(Ipv6Address, &Terminator, &_Ipv6Address), false);
+        TEST_NTSTATUS_RET(
+            RtlIpv4StringToAddressA(Ipv4Address, FALSE, &Terminator, &_Ipv4Address), false);
+        TEST_NTSTATUS_RET(
+            RtlIpv6StringToAddressA(Ipv6Address, &Terminator, &_Ipv6Address), false);
         TEST_TRUE_RET(Query(), false);
         return true;
     }
@@ -292,7 +275,9 @@ public:
     {
         CHAR CmdBuff[256];
         RtlZeroMemory(CmdBuff, sizeof(CmdBuff));
-        RtlStringCbPrintfA(CmdBuff, sizeof(CmdBuff), "%s /c Restart-NetAdapter -ifDesc \"%s\"", PowershellPrefix, _IfDesc);
+        RtlStringCbPrintfA(
+            CmdBuff, sizeof(CmdBuff), "%s /c Restart-NetAdapter -ifDesc \"%s\"",
+            PowershellPrefix, _IfDesc);
         TEST_EQUAL_RET(0, InvokeSystem(CmdBuff), false);
         return true;
     }
@@ -603,7 +588,9 @@ MpUpdateTaskOffload(
 {
     UINT32 Size = OffloadParameters != NULL ? sizeof(*OffloadParameters) : 0;
 
-    TEST_FNMPAPI_RET(FnMpUpdateTaskOffload(Handle.get(), OffloadType, OffloadParameters, Size), false);
+    TEST_FNMPAPI_RET(
+        FnMpUpdateTaskOffload(Handle.get(), OffloadType, OffloadParameters, Size),
+        false);
     return true;
 }
 
@@ -868,13 +855,20 @@ CreateUdpSocket(
 
     SOCKADDR_INET Address = {0};
     Address.si_family = Af;
-    TEST_CXPLAT_RET(CxPlatSocketBind(Socket.get(), (SOCKADDR *)&Address, sizeof(Address)), Socket);
+    TEST_CXPLAT_RET(
+        CxPlatSocketBind(Socket.get(), (SOCKADDR *)&Address, sizeof(Address)),
+        Socket);
 
     INT AddressLength = sizeof(Address);
-    TEST_CXPLAT_RET(CxPlatSocketGetSockName(Socket.get(), (SOCKADDR *)&Address, &AddressLength), Socket);
+    TEST_CXPLAT_RET(
+        CxPlatSocketGetSockName(Socket.get(), (SOCKADDR *)&Address, &AddressLength),
+        Socket);
 
     INT TimeoutMs = TEST_TIMEOUT_ASYNC_MS;
-    TEST_CXPLAT_RET(CxPlatSocketSetSockOpt(Socket.get(), SOL_SOCKET, SO_RCVTIMEO, (CHAR *)&TimeoutMs, sizeof(TimeoutMs)), Socket);
+    TEST_CXPLAT_RET(
+        CxPlatSocketSetSockOpt(
+            Socket.get(), SOL_SOCKET, SO_RCVTIMEO, (CHAR *)&TimeoutMs, sizeof(TimeoutMs)),
+        Socket);
 
     *LocalPort = SS_PORT(&Address);
     return Socket;
@@ -974,7 +968,7 @@ TestSetup()
     BOOLEAN FnMpApiInitialized = FALSE;
     BOOLEAN FnLwfApiInitialized = FALSE;
 
-    TEST_EQUAL_GOTO(0, InvokeSystem("netsh advfirewall firewall add rule name=fnmptest dir=in action=allow protocol=any remoteip=any localip=any"), Error);
+    TEST_EQUAL_GOTO(0, InvokeSystem(FirewallAddRuleString), Error);
     FirewallInitialized = TRUE;
 
     TEST_TRUE_GOTO(CXPLAT_SUCCEEDED(CxPlatInitialize()), Error);
@@ -989,7 +983,10 @@ TestSetup()
     FnMpIf = (TestInterface*)CxPlatAllocNonPaged(sizeof(*FnMpIf), POOL_TAG);
     TEST_NOT_NULL_GOTO(FnMpIf, Error);
 
-    TEST_TRUE_GOTO(FnMpIf->Initialize(FNMP_IF_DESC, FNMP_IF_DESCW, FNMP_IPV4_ADDRESS, FNMP_IPV6_ADDRESS), Error);
+    TEST_TRUE_GOTO(
+        FnMpIf->Initialize(
+            FNMP_IF_DESC, FNMP_IF_DESCW, FNMP_IPV4_ADDRESS, FNMP_IPV6_ADDRESS),
+        Error);
 
     TEST_TRUE_GOTO(WaitForWfpQuarantine(FnMpIf), Error);
 
@@ -1010,7 +1007,7 @@ Error:
         CxPlatUninitialize();
     }
     if (FirewallInitialized) {
-        InvokeSystem("netsh advfirewall firewall delete rule name=fnmptest");
+        InvokeSystem(FirewallDeleteRuleString);
     }
 
     return false;
@@ -1024,7 +1021,7 @@ TestCleanup()
     FnLwfUnloadApi(FnLwfLoadApiContext);
     FnMpUnloadApi(FnMpLoadApiContext);
     CxPlatUninitialize();
-    TEST_EQUAL_RET(0, InvokeSystem("netsh advfirewall firewall delete rule name=fnmptest"), false);
+    TEST_EQUAL_RET(0, InvokeSystem(FirewallDeleteRuleString), false);
     return true;
 }
 
@@ -1059,7 +1056,9 @@ MpBasicRx()
     RX_FRAME RxFrame;
     RxInitializeFrame(&RxFrame, FnMpIf->GetQueueId(), UdpFrame, UdpFrameLength);
     TEST_FNMPAPI(MpRxIndicateFrame(SharedMp, &RxFrame));
-    TEST_EQUAL(sizeof(UdpPayload), CxPlatSocketRecv(UdpSocket.get(), RecvPayload, sizeof(RecvPayload), 0));
+    TEST_EQUAL(
+        sizeof(UdpPayload),
+        CxPlatSocketRecv(UdpSocket.get(), RecvPayload, sizeof(RecvPayload), 0));
     TEST_TRUE(RtlEqualMemory(UdpPayload, RecvPayload, sizeof(UdpPayload)));
 }
 
@@ -1094,13 +1093,20 @@ MpBasicTx()
     SOCKADDR_STORAGE RemoteAddr;
     TEST_TRUE(SetSockAddr(FNMP_NEIGHBOR_IPV4_ADDRESS, 1234, AF_INET, &RemoteAddr));
 
-    if (CXPLAT_FAILED(CxPlatSocketSetSockOpt(UdpSocket.get(), IPPROTO_UDP, UDP_SEND_MSG_SIZE, &ExpectedUdpPayloadSize, sizeof(ExpectedUdpPayloadSize)))) {
+    if (CXPLAT_FAILED(
+            CxPlatSocketSetSockOpt(
+                UdpSocket.get(), IPPROTO_UDP, UDP_SEND_MSG_SIZE,
+                &ExpectedUdpPayloadSize, sizeof(ExpectedUdpPayloadSize)))) {
         TEST_EQUAL(WSAEINVAL, CxPlatSocketGetLastError());
         Uso = FALSE;
         SendSize = ExpectedUdpPayloadSize;
     }
 
-    TEST_EQUAL((int)SendSize, CxPlatSocketSendto(UdpSocket.get(), (PCHAR)UdpPayload, SendSize, 0, (PSOCKADDR)&RemoteAddr, sizeof(RemoteAddr)));
+    TEST_EQUAL(
+        (int)SendSize,
+        CxPlatSocketSendto(
+            UdpSocket.get(), (PCHAR)UdpPayload, SendSize, 0,
+            (PSOCKADDR)&RemoteAddr, sizeof(RemoteAddr)));
 
     auto MpTxFrame = MpTxAllocateAndGetFrame(SharedMp, 0);
     TEST_NOT_NULL(MpTxFrame.get());
@@ -1201,7 +1207,9 @@ MpBasicRxOffload()
     RX_FRAME RxFrame;
     RxInitializeFrame(&RxFrame, FnMpIf->GetQueueId(), UdpFrame, UdpFrameLength);
     TEST_FNMPAPI(MpRxIndicateFrame(SharedMp, &RxFrame));
-    TEST_EQUAL(sizeof(UdpPayload), CxPlatSocketRecv(UdpSocket.get(), RecvPayload, sizeof(RecvPayload), 0));
+    TEST_EQUAL(
+        sizeof(UdpPayload),
+        CxPlatSocketRecv(UdpSocket.get(), RecvPayload, sizeof(RecvPayload), 0));
     TEST_TRUE(RtlEqualMemory(UdpPayload, RecvPayload, sizeof(UdpPayload)));
 
     NDIS_OFFLOAD_PARAMETERS OffloadParams;
@@ -1217,7 +1225,9 @@ MpBasicRxOffload()
     UDP_HDR *UdpHdr = (UDP_HDR *)&UdpFrame[UDP_HEADER_BACKFILL(AF_INET) - sizeof(*UdpHdr)];
     UdpHdr->uh_sum++;
     TEST_FNMPAPI(MpRxIndicateFrame(SharedMp, &RxFrame));
-    TEST_EQUAL(sizeof(UdpPayload), CxPlatSocketRecv(UdpSocket.get(), RecvPayload, sizeof(RecvPayload), 0));
+    TEST_EQUAL(
+        sizeof(UdpPayload),
+        CxPlatSocketRecv(UdpSocket.get(), RecvPayload, sizeof(RecvPayload), 0));
     TEST_TRUE(RtlEqualMemory(UdpPayload, RecvPayload, sizeof(UdpPayload)));
     RxFrame.Frame.Input.Checksum.Value = 0;
     UdpHdr->uh_sum--;
@@ -1235,7 +1245,9 @@ MpBasicRxOffload()
     IPV4_HEADER *IpHdr = (IPV4_HEADER *)&UdpFrame[sizeof(ETHERNET_HEADER)];
     IpHdr->HeaderChecksum++;
     TEST_FNMPAPI(MpRxIndicateFrame(SharedMp, &RxFrame));
-    TEST_EQUAL(sizeof(UdpPayload), CxPlatSocketRecv(UdpSocket.get(), RecvPayload, sizeof(RecvPayload), 0));
+    TEST_EQUAL(
+        sizeof(UdpPayload),
+        CxPlatSocketRecv(UdpSocket.get(), RecvPayload, sizeof(RecvPayload), 0));
     TEST_TRUE(RtlEqualMemory(UdpPayload, RecvPayload, sizeof(UdpPayload)));
     RxFrame.Frame.Input.Checksum.Value = 0;
     IpHdr->HeaderChecksum--;
@@ -1417,7 +1429,9 @@ LwfOidSubmitRequestFn(
     )
 {
     LWF_OID_SUBMIT_REQUEST *Req = (LWF_OID_SUBMIT_REQUEST *)Context;
-    Req->Status = FnLwfOidSubmitRequest(Req->Handle, Req->OidKey, Req->InfoBufferLength, Req->InfoBuffer);
+    Req->Status =
+        FnLwfOidSubmitRequest(
+            Req->Handle, Req->OidKey, Req->InfoBufferLength, Req->InfoBuffer);
     CXPLAT_THREAD_RETURN(0);
 }
 

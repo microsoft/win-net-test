@@ -213,6 +213,14 @@ CxPlatFree(
     free(Mem);
 }
 
+VOID
+CxPlatFreeNoTag(
+    _In_ VOID* Mem
+    )
+{
+    free(Mem);
+}
+
 //
 // CPU
 //

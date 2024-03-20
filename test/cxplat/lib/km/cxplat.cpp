@@ -1137,6 +1137,14 @@ CxPlatFree(
     ExFreePoolWithTag(Mem, Tag);
 }
 
+VOID
+CxPlatFreeNoTag(
+    _In_ VOID* Mem
+    )
+{
+    ExFreePool(Mem);
+}
+
 //
 // Create Thread Interfaces
 //

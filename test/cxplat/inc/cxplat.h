@@ -276,6 +276,11 @@ CxPlatFree(
     _In_ ULONG Tag
     );
 
+VOID
+CxPlatFreeNoTag(
+    _In_ VOID* Mem
+    );
+
 //
 // Create Thread Interfaces
 //
