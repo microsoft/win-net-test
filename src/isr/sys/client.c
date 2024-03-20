@@ -142,7 +142,7 @@ ClientIrpClose(
     RqClientDeregister();
 
     InterlockedCompareExchangePointer(
-        (volatile VOID *)&ClientUserContext, NULL, UserContext);
+        (VOID volatile *)&ClientUserContext, NULL, UserContext);
 
     ClientCleanup(UserContext);
 
@@ -183,7 +183,7 @@ ClientIrpCreate(
     }
 
     if (InterlockedCompareExchangePointer(
-            (volatile VOID *)&ClientUserContext, UserContext, NULL) != NULL) {
+            (VOID volatile *)&ClientUserContext, UserContext, NULL) != NULL) {
         TraceError(TRACE_CONTROL, "Multiple clients not supported");
         Status = STATUS_TOO_MANY_SESSIONS;
         goto Exit;
@@ -206,7 +206,7 @@ Exit:
 
     if (!NT_SUCCESS(Status)) {
         InterlockedCompareExchangePointer(
-            (volatile VOID *)&ClientUserContext, NULL, UserContext);
+            (VOID volatile *)&ClientUserContext, NULL, UserContext);
         if (UserContext != NULL) {
             ClientCleanup(UserContext);
         }
