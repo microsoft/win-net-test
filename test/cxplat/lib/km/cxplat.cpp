@@ -234,6 +234,7 @@ CxPlatDataPathIoCompletion(
     UNREFERENCED_PARAMETER(Irp);
 
     NT_ASSERT(Context != NULL);
+    __analysis_assume(Context != NULL);
     KeSetEvent((KEVENT*)Context, IO_NO_INCREMENT, FALSE);
 
     //
@@ -259,6 +260,7 @@ CxPlatWskCloseSocketIoCompletion(
     UNREFERENCED_PARAMETER(DeviceObject);
 
     NT_ASSERT(Context != NULL);
+    __analysis_assume(Context != NULL);
     Binding = (CXPLAT_SOCKET_BINDING*)Context;
 
     if (Irp->PendingReturned) {
@@ -294,6 +296,7 @@ CxPlatDataPathSendComplete(
     UNREFERENCED_PARAMETER(DeviceObject);
 
     NT_ASSERT(Context != NULL);
+    __analysis_assume(Context != NULL);
     SendData = (CXPLAT_SOCKET_SEND_DATA*)Context;
     Binding = SendData->Binding;
 
