@@ -3,6 +3,12 @@
 // Licensed under the MIT License.
 //
 
+//
+// This API is comprised of copied snippets of the cross-platform pieces of
+// https://github.com/microsoft/msquic, along with a hand-rolled sockets API.
+// Eventually this API should be replaced with https://github.com/microsoft/cxplat.
+//
+
 #pragma once
 
 EXTERN_C_START
