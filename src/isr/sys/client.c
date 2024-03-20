@@ -7,7 +7,7 @@
 
 #include "client.tmh"
 
-static volatile CLIENT_USER_CONTEXT *ClientUserContext;
+static CLIENT_USER_CONTEXT *ClientUserContext;
 static UINT64 UniqueId;
 
 _IRQL_requires_max_(PASSIVE_LEVEL)
@@ -142,7 +142,7 @@ ClientIrpClose(
     RqClientDeregister();
 
     InterlockedCompareExchangePointer(
-        (VOID volatile *)&ClientUserContext, NULL, UserContext);
+        (PVOID volatile *)&ClientUserContext, NULL, UserContext);
 
     ClientCleanup(UserContext);
 
@@ -183,7 +183,7 @@ ClientIrpCreate(
     }
 
     if (InterlockedCompareExchangePointer(
-            (VOID volatile *)&ClientUserContext, UserContext, NULL) != NULL) {
+            (PVOID volatile *)&ClientUserContext, UserContext, NULL) != NULL) {
         TraceError(TRACE_CONTROL, "Multiple clients not supported");
         Status = STATUS_TOO_MANY_SESSIONS;
         goto Exit;
@@ -206,7 +206,7 @@ Exit:
 
     if (!NT_SUCCESS(Status)) {
         InterlockedCompareExchangePointer(
-            (VOID volatile *)&ClientUserContext, NULL, UserContext);
+            (PVOID volatile *)&ClientUserContext, NULL, UserContext);
         if (UserContext != NULL) {
             ClientCleanup(UserContext);
         }

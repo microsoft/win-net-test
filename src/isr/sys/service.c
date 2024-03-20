@@ -10,7 +10,7 @@
 static KSPIN_LOCK Lock;
 static IRP *PendingIrp;
 static ISR_REQUEST *PendingRequest;
-static volatile SERVICE_USER_CONTEXT *ServiceUserContext;
+static SERVICE_USER_CONTEXT *ServiceUserContext;
 static DRIVER_CANCEL ServiceCancelGet;
 
 static
@@ -318,7 +318,7 @@ ServiceIrpClose(
     RqServiceDeregister();
 
     InterlockedCompareExchangePointer(
-        (VOID volatile *)&ServiceUserContext, NULL, UserContext);
+        (PVOID volatile *)&ServiceUserContext, NULL, UserContext);
 
     ServiceCleanup(UserContext);
 
@@ -357,7 +357,7 @@ ServiceIrpCreate(
     }
 
     if (InterlockedCompareExchangePointer(
-            (VOID volatile *)&ServiceUserContext, UserContext, NULL) != NULL) {
+            (PVOID volatile *)&ServiceUserContext, UserContext, NULL) != NULL) {
         TraceError(TRACE_CONTROL, "Multiple clients not supported");
         Status = STATUS_TOO_MANY_SESSIONS;
         goto Exit;
@@ -380,7 +380,7 @@ Exit:
 
     if (!NT_SUCCESS(Status)) {
         InterlockedCompareExchangePointer(
-            (VOID volatile *)&ServiceUserContext, NULL, UserContext);
+            (PVOID volatile *)&ServiceUserContext, NULL, UserContext);
         if (UserContext != NULL) {
             ServiceCleanup(UserContext);
         }
