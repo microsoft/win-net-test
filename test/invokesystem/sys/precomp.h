@@ -12,8 +12,11 @@
 
 #include "dispatch.h"
 #include "client.h"
+#include "requestqueue.h"
 #include "service.h"
 #include "trace.h"
 
 #define POOLTAG_ISR_CLIENT 'CrsI' // IsrC
+#define POOLTAG_ISR_REQUEST 'RrsI' // IsrR
 #define POOLTAG_ISR_SERVICE 'SrsI' // IsrS
+

@@ -18,7 +18,7 @@ InvokeSystemRelay(
 {
     INT Result = -1;
     NTSTATUS Status;
-    FNIOCTL_HANDLE Handle;
+    FNIOCTL_HANDLE Handle = NULL;
     ISR_OPEN_CLIENT *OpenClient;
     CHAR EaBuffer[ISR_OPEN_EA_LENGTH + sizeof(*OpenClient)];
 
@@ -35,8 +35,8 @@ InvokeSystemRelay(
 
     Status =
         FnIoctl(
-            Handle, ISR_IOCTL_INVOKE_SYSTEM_SUBMIT, (VOID *)Command, (UINT32)strlen(Command),
-            &Result, sizeof(Result), NULL, NULL);
+            Handle, ISR_IOCTL_INVOKE_SYSTEM_SUBMIT, (VOID *)Command,
+            (UINT32)strlen(Command) + 1, &Result, sizeof(Result), NULL, NULL);
 
 Exit:
 

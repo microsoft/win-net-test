@@ -61,3 +61,17 @@
 #define WPP_LEVEL_FLAGS_ENABLED(LEVEL, FLAGS) \
     (WPP_LEVEL_ENABLED(FLAGS) && (WPP_CONTROL(WPP_BIT_ ## FLAGS).Level >= LEVEL))
 #define WPP_LEVEL_FLAGS_LOGGER(LEVEL, FLAGS) WPP_LEVEL_LOGGER(FLAGS)
+
+//
+// Opt-in to a WPP recorder feature that enables independent evaluation of
+// conditions to decide if a message needs to be sent to the recorder, an
+// enabled session, or both.
+//
+#define ENABLE_WPP_TRACE_FILTERING_WITH_WPP_RECORDER 1
+
+//
+// Logger and Enabled macros that support custom recorders. They simply delegate
+// to the default.
+//
+#define WPP_IFRLOG_LEVEL_FLAGS_ENABLED(IFRLOG, LEVEL, FLAGS) WPP_LEVEL_FLAGS_ENABLED(LEVEL, FLAGS)
+#define WPP_IFRLOG_LEVEL_FLAGS_LOGGER(IFRLOG, LEVEL, FLAGS)  WPP_LEVEL_FLAGS_LOGGER(LEVEL, FLAGS)

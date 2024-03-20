@@ -64,12 +64,12 @@
                 <Keyword Value="0x7FFFFFFFFFFFFFFF" />
             </Keywords>
         </EventProvider>
-        <EventProvider Id="EP_FnTestDrvWpp" Name="DFBE8BE6-1134-4B47-B1E7-F925F7567B8A" Level="5">
+        <EventProvider Id="EP_FnTestDrvWpp" Name="DFBE8BE6-1134-4B47-B1E7-F925F7567B8A" Level="5" NonPagedMemory="true">
             <Keywords>
                 <Keyword Value="0x7FFFFFFFFFFFFFFF" />
             </Keywords>
         </EventProvider>
-        <EventProvider Id="EP_InvokeSystemRelayDrvWpp" Name="ADAACE40-590D-488B-89C9-99798D20F2F6" Level="5">
+        <EventProvider Id="EP_InvokeSystemRelayDrvWpp" Name="ADAACE40-590D-488B-89C9-99798D20F2F6" Level="5" NonPagedMemory="true">
             <Keywords>
                 <Keyword Value="0x7FFFFFFFFFFFFFFF" />
             </Keywords>

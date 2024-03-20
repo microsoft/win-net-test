@@ -37,10 +37,11 @@ typedef struct _ISR_OPEN_SERVICE {
 //
 // IOCTL interface.
 //
+#define ISR_MAX_COMMAND_LENGTH 256
 
 typedef struct _ISR_GET_OUTPUT {
     UINT64 Id;
-    CHAR Command[256];
+    CHAR Command[ISR_MAX_COMMAND_LENGTH];
 } ISR_GET_OUTPUT;
 
 typedef struct _ISR_POST_INPUT {

@@ -7,6 +7,30 @@
 
 #include "client.tmh"
 
+static volatile CLIENT_USER_CONTEXT *ClientUserContext;
+static UINT64 UniqueId;
+
+_IRQL_requires_max_(PASSIVE_LEVEL)
+VOID
+ClientRequestComplete(
+    _In_ UINT64 Id,
+    _In_ VOID *Context,
+    _In_ INT Result
+    )
+{
+    IRP *Irp = (IRP *)Context;
+    INT *Output = (INT *)Irp->AssociatedIrp.SystemBuffer;
+
+    UNREFERENCED_PARAMETER(Id);
+
+    TraceInfo(TRACE_CONTROL, "Completing client request Irp=%p", Irp);
+
+    *Output = Result;
+    Irp->IoStatus.Information = sizeof(*Output);
+    Irp->IoStatus.Status = STATUS_SUCCESS;
+    IoCompleteRequest(Irp, IO_NO_INCREMENT);
+}
+
 static
 _IRQL_requires_max_(PASSIVE_LEVEL)
 NTSTATUS
@@ -16,12 +40,47 @@ ClientIrpSubmit(
     _In_ IO_STACK_LOCATION *IrpSp
     )
 {
-    NTSTATUS Status = STATUS_NOT_IMPLEMENTED;
+    NTSTATUS Status;
+    SIZE_T InputBufferLength;
+    SIZE_T OutputBufferLength;
 
-    UNREFERENCED_PARAMETER(Irp);
-    UNREFERENCED_PARAMETER(IrpSp);
+    TraceEnter(TRACE_CONTROL, "UserContext=%p Irp=%p", UserContext, Irp);
 
-    TraceEnter(TRACE_CONTROL, "UserContext=%p", UserContext);
+    InputBufferLength = IrpSp->Parameters.DeviceIoControl.InputBufferLength;
+    OutputBufferLength = IrpSp->Parameters.DeviceIoControl.OutputBufferLength;
+
+    if (InputBufferLength > ISR_MAX_COMMAND_LENGTH ||
+        OutputBufferLength < sizeof(INT)) {
+        TraceError(
+            TRACE_CONTROL, "Invalid input InputBufferLength=%Iu OututBufferLength=%Iu",
+            InputBufferLength, OutputBufferLength);
+        Status = STATUS_INVALID_PARAMETER;
+        goto Exit;
+    }
+
+    if (((CHAR *)Irp->AssociatedIrp.SystemBuffer)[InputBufferLength - 1] != '\0') {
+        TraceError(TRACE_CONTROL, "Invalid input NULL termination");
+        Status = STATUS_INVALID_PARAMETER;
+        goto Exit;
+    }
+
+    Status =
+        RqClientPushRequest(
+            InterlockedIncrement64((LONG64 *)&UniqueId), Irp,
+            Irp->AssociatedIrp.SystemBuffer);
+    if (!NT_SUCCESS(Status)) {
+        goto Exit;
+    }
+
+    //
+    // TODO: Fix race condition where request is completed before we mark it pending.
+    //
+    IoMarkIrpPending(Irp);
+    Status = STATUS_PENDING;
+
+    TraceInfo(TRACE_CONTROL, "Pending client request UserContext=%p Irp=%p", UserContext, Irp);
+
+Exit:
 
     TraceExitStatus(TRACE_CONTROL);
 
@@ -38,8 +97,6 @@ ClientIrpDeviceIoControl(
 {
     CLIENT_USER_CONTEXT *UserContext = IrpSp->FileObject->FsContext;
     NTSTATUS Status;
-
-    UNREFERENCED_PARAMETER(Irp);
 
     switch (IrpSp->Parameters.DeviceIoControl.IoControlCode) {
     case ISR_IOCTL_INVOKE_SYSTEM_SUBMIT:
@@ -73,11 +130,19 @@ ClientIrpClose(
     _In_ IO_STACK_LOCATION *IrpSp
     )
 {
-    CLIENT_USER_CONTEXT *UserContext = (CLIENT_USER_CONTEXT *)IrpSp->FileObject->FsContext;
+    CLIENT_USER_CONTEXT *UserContext =
+        (CLIENT_USER_CONTEXT *)IrpSp->FileObject->FsContext;
 
     UNREFERENCED_PARAMETER(Irp);
 
+    RqClientDeregister();
+
+    InterlockedCompareExchangePointer(
+        (volatile VOID *)&ClientUserContext, NULL, UserContext);
+
     ClientCleanup(UserContext);
+
+    TraceInfo(TRACE_CONTROL, "Client closed UserContext=%p", UserContext);
 
     return STATUS_SUCCESS;
 }
@@ -104,9 +169,24 @@ ClientIrpCreate(
     UNREFERENCED_PARAMETER(InputBuffer);
     UNREFERENCED_PARAMETER(InputBufferLength);
 
-    UserContext = ExAllocatePoolZero(NonPagedPoolNx, sizeof(*UserContext), POOLTAG_ISR_CLIENT);
+    UserContext =
+        ExAllocatePoolZero(
+            NonPagedPoolNx, sizeof(*UserContext), POOLTAG_ISR_CLIENT);
     if (UserContext == NULL) {
+        TraceError(TRACE_CONTROL, "Failed to allocate user context");
         Status = STATUS_INSUFFICIENT_RESOURCES;
+        goto Exit;
+    }
+
+    if (InterlockedCompareExchangePointer(
+            (volatile VOID *)&ClientUserContext, UserContext, NULL) != NULL) {
+        TraceError(TRACE_CONTROL, "Multiple clients not supported");
+        Status = STATUS_TOO_MANY_SESSIONS;
+        goto Exit;
+    }
+
+    Status = RqClientRegister(ClientRequestComplete);
+    if (!NT_SUCCESS(Status)) {
         goto Exit;
     }
 
@@ -116,9 +196,13 @@ ClientIrpCreate(
     IrpSp->FileObject->FsContext = UserContext;
     Status = STATUS_SUCCESS;
 
+    TraceInfo(TRACE_CONTROL, "Client created UserContext=%p", UserContext);
+
 Exit:
 
     if (!NT_SUCCESS(Status)) {
+        InterlockedCompareExchangePointer(
+            (volatile VOID *)&ClientUserContext, NULL, UserContext);
         if (UserContext != NULL) {
             ClientCleanup(UserContext);
         }

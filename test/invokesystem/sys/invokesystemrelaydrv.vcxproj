@@ -14,6 +14,7 @@
   <ItemGroup>
     <ClCompile Include="client.c" />
     <ClCompile Include="dispatch.c" />
+    <ClCompile Include="requestqueue.c" />
     <ClCompile Include="service.c" />
     <ClInclude Include="precomp.h" />
   </ItemGroup>

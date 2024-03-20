@@ -213,6 +213,10 @@ DriverUnload(
 {
     TraceEnter(TRACE_CONTROL, "DriverObject=%p", DriverObject);
 
+    ServiceUninitialize();
+
+    RqUninitialize();
+
     if (IsrDeviceObject != NULL) {
         IoDeleteDevice(IsrDeviceObject);
         IsrDeviceObject = NULL;
@@ -251,6 +255,16 @@ DriverEntry(
             FILE_DEVICE_SECURE_OPEN,
             FALSE,
             &IsrDeviceObject);
+    if (!NT_SUCCESS(Status)) {
+        goto Exit;
+    }
+
+    Status = RqInitialize();
+    if (!NT_SUCCESS(Status)) {
+        goto Exit;
+    }
+
+    Status = ServiceInitialize();
     if (!NT_SUCCESS(Status)) {
         goto Exit;
     }

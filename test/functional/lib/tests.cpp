@@ -129,17 +129,20 @@ InvokeSystem(
     _In_z_ const CHAR *Command
     )
 {
-#if defined(KERNEL_MODE)
-    return InvokeSystemRelay(Command);
-#else
     INT Result;
 
     TraceVerbose("system(%s)", Command);
+
+#if defined(KERNEL_MODE)
+    Result = InvokeSystemRelay(Command);
+#else
     Result = system(Command);
-    TraceVerbose("system(%s) returned %u", Command, Result);
+#endif
+
+    TraceVerbose("%d returned by system(%s)", Result, Command);
 
     return Result;
-#endif
+
 }
 
 #if !defined(KERNEL_MODE)
