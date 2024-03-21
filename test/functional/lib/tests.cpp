@@ -18,6 +18,7 @@
 #pragma warning(disable:28157)
 #pragma warning(disable:28158)
 #pragma warning(disable:28167)
+#pragma warning(disable:6001)
 #include <wil/resource.h>
 #pragma warning(pop)
 #pragma warning(push)
