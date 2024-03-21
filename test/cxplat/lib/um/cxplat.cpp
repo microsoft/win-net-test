@@ -215,10 +215,12 @@ CxPlatFree(
 
 VOID
 CxPlatFreeNoTag(
-    _In_ VOID* Mem
+    _In_opt_ VOID* Mem
     )
 {
-    free(Mem);
+    if (Mem != NULL) {
+        free(Mem);
+    }
 }
 
 //
