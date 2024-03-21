@@ -108,7 +108,7 @@ jobs:
       uses: actions/upload-artifact@a8a3f3ad30e3422c9c7b888a15615d19a852ae32
       if: ${{ always() }}
       with:
-        name: logs_func_um_win${{ matrix.windows }}_${{ matrix.configuration }}_${{ matrix.platform }}
+        name: logs_func_um_win${{ matrix.os }}_${{ matrix.configuration }}_${{ matrix.platform }}
         path: artifacts/logs
 
   functional_tests_kernel:
@@ -160,7 +160,7 @@ jobs:
       uses: actions/upload-artifact@a8a3f3ad30e3422c9c7b888a15615d19a852ae32
       if: ${{ always() }}
       with:
-        name: logs_func_km_win${{ matrix.windows }}_${{ matrix.configuration }}_${{ matrix.platform }}
+        name: logs_func_km_win${{ matrix.os }}_${{ matrix.configuration }}_${{ matrix.platform }}
         path: artifacts/logs
 
   create_artifacts:
