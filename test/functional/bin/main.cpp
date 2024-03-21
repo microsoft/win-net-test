@@ -396,6 +396,8 @@ TEST_MODULE_INITIALIZE(ModuleSetup)
 {
     size_t RequiredSize;
 
+    WPP_INIT_TRACING(NULL);
+
     getenv_s(&RequiredSize, NULL, 0, "fnfunctionaltests::KernelModeEnabled");
     TestingKernelMode = (RequiredSize != 0);
 
@@ -415,7 +417,6 @@ TEST_MODULE_INITIALIZE(ModuleSetup)
 
         TEST_TRUE(TestDriverClient.Initialize(FUNCTIONAL_TEST_DRIVER_NAME));
     } else {
-        WPP_INIT_TRACING(NULL);
         Assert::IsTrue(TestSetup());
     }
 }
@@ -427,8 +428,8 @@ TEST_MODULE_CLEANUP(ModuleCleanup)
         TestDriverService.Uninitialize();
     } else {
         Assert::IsTrue(TestCleanup());
-        WPP_CLEANUP();
     }
+    WPP_CLEANUP();
 }
 
 TEST_CLASS(fnmpfunctionaltests)
