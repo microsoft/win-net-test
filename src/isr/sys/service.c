@@ -320,6 +320,8 @@ ServiceIrpClose(
     InterlockedCompareExchangePointer(
         (PVOID volatile *)&ServiceUserContext, NULL, UserContext);
 
+    TraceInfo(TRACE_CONTROL, "Service closed UserContext=%p", UserContext);
+
     ServiceCleanup(UserContext);
 
     return STATUS_SUCCESS;
@@ -379,9 +381,9 @@ ServiceIrpCreate(
 Exit:
 
     if (!NT_SUCCESS(Status)) {
-        InterlockedCompareExchangePointer(
-            (PVOID volatile *)&ServiceUserContext, NULL, UserContext);
         if (UserContext != NULL) {
+            InterlockedCompareExchangePointer(
+                (PVOID volatile *)&ServiceUserContext, NULL, UserContext);
             ServiceCleanup(UserContext);
         }
     }

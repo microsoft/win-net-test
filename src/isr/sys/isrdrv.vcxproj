@@ -24,9 +24,6 @@
         $(SolutionDir)inc;
         %(AdditionalIncludeDirectories)
       </AdditionalIncludeDirectories>
-      <PreprocessorDefinitions>
-        %(PreprocessorDefinitions)
-      </PreprocessorDefinitions>
       <WppEnabled>true</WppEnabled>
       <WppScanConfigurationData>$(ProjectDir)trace.h</WppScanConfigurationData>
       <WppRecorderEnabled>true</WppRecorderEnabled>

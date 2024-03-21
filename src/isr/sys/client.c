@@ -144,9 +144,9 @@ ClientIrpClose(
     InterlockedCompareExchangePointer(
         (PVOID volatile *)&ClientUserContext, NULL, UserContext);
 
-    ClientCleanup(UserContext);
-
     TraceInfo(TRACE_CONTROL, "Client closed UserContext=%p", UserContext);
+
+    ClientCleanup(UserContext);
 
     return STATUS_SUCCESS;
 }
@@ -205,9 +205,9 @@ ClientIrpCreate(
 Exit:
 
     if (!NT_SUCCESS(Status)) {
-        InterlockedCompareExchangePointer(
-            (PVOID volatile *)&ClientUserContext, NULL, UserContext);
         if (UserContext != NULL) {
+            InterlockedCompareExchangePointer(
+                (PVOID volatile *)&ClientUserContext, NULL, UserContext);
             ClientCleanup(UserContext);
         }
     }
