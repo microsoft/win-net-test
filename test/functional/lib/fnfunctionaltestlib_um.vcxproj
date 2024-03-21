@@ -38,7 +38,7 @@
         %(AdditionalIncludeDirectories)
       </AdditionalIncludeDirectories>
       <PreprocessorDefinitions>
-        UM_NDIS687=1;
+        UM_NDIS683=1;
         %(PreprocessorDefinitions)
       </PreprocessorDefinitions>
       <UseFullPaths>true</UseFullPaths>
