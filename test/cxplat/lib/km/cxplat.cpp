@@ -342,8 +342,8 @@ CxPlatSocketCreate(
     Flags |= WSK_FLAG_DATAGRAM_SOCKET;
 
     Binding =
-        (CXPLAT_SOCKET_BINDING*)ExAllocatePool2(
-            POOL_FLAG_NON_PAGED, sizeof(*Binding), CXPLAT_POOL_SOCKET);
+        (CXPLAT_SOCKET_BINDING*)ExAllocatePoolZero(
+            NonPagedPoolNx, sizeof(*Binding), CXPLAT_POOL_SOCKET);
     if (Binding == NULL) {
         TraceError(
             "[data] ERROR, %s.",
@@ -651,8 +651,8 @@ CxPlatSocketSendto(
     UNREFERENCED_PARAMETER(AddressLength);
 
     SendData =
-        (CXPLAT_SOCKET_SEND_DATA*)ExAllocatePool2(
-            POOL_FLAG_NON_PAGED, sizeof(*SendData) + BufferLength, CXPLAT_POOL_SOCKET_SEND);
+        (CXPLAT_SOCKET_SEND_DATA*)ExAllocatePoolZero(
+            NonPagedPoolNx, sizeof(*SendData) + BufferLength, CXPLAT_POOL_SOCKET_SEND);
     if (SendData == NULL) {
         TraceError(
             "[data] ERROR, %s.",
@@ -865,8 +865,8 @@ CxPlatDatagramSocketReceive(
 
         CXPLAT_SOCKET_RECV_DATA* RecvData = NULL;
         RecvData =
-            (CXPLAT_SOCKET_RECV_DATA*)ExAllocatePool2(
-                POOL_FLAG_NON_PAGED, sizeof(*RecvData) + DataLength, CXPLAT_POOL_SOCKET_RECV);
+            (CXPLAT_SOCKET_RECV_DATA*)ExAllocatePoolZero(
+                NonPagedPoolNx, sizeof(*RecvData) + DataLength, CXPLAT_POOL_SOCKET_RECV);
         if (RecvData == NULL) {
             TraceError(
                 "[%p] Dropping datagram due to insufficient memory.",
@@ -1128,7 +1128,7 @@ CxPlatAllocNonPaged(
     _In_ ULONG Tag
     )
 {
-    return ExAllocatePool2(POOL_FLAG_NON_PAGED | POOL_FLAG_UNINITIALIZED, Size, Tag);
+    return ExAllocatePoolZero(NonPagedPoolNx, Size, Tag);
 }
 
 VOID
