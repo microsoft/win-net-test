@@ -315,7 +315,13 @@ public:
     UINT64
     Remaining()
     {
-        return max(0, _TimeoutInterval - Elapsed());
+        UINT64 Remaining = _TimeoutInterval - Elapsed();
+
+        if (Remaining > _TimeoutInterval) {
+            return 0;
+        } else {
+            return Remaining;
+        }
     }
 
     bool
