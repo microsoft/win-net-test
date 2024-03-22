@@ -25,6 +25,9 @@ This script runs the FNMP/FNLWF functional tests.
 .PARAMETER TestBinaryPath
     Path to the functional test binary (the binary passed to VSTest).
 
+.PARAMETER UserMode
+    Run user mode tests.
+
 .PARAMETER KernelMode
     Run kernel mode tests.
 

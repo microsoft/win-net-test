@@ -234,10 +234,5 @@ RqUninitialize(
     NT_ASSERT(!Service.IsRegistered);
     NT_ASSERT(IsListEmpty(&Queue));
 
-    // while (IsListEmpty(&Queue)) {
-    //     LIST_ENTRY *Entry = RemoveHeadList(&Queue);
-    //     ExFreePoolWithTag(Entry, POOLTAG_ISR_REQUEST);
-    // }
-
     return;
 }

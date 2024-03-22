@@ -65,7 +65,10 @@ FnIoIoctlBounceEnqueue(
     // Copy the user buffer array into a trusted kernel buffer.
     //
     BufferArraySize = sizeof(*IoBuffer->Frame.Buffers) * BufferCount;
-    Status = BounceBuffer(&Buffers, RequestorMode, IoBuffer->Frame.Buffers, BufferArraySize, __alignof(DATA_BUFFER));
+    Status =
+        BounceBuffer(
+            &Buffers, RequestorMode, IoBuffer->Frame.Buffers, BufferArraySize,
+            __alignof(DATA_BUFFER));
     if (!NT_SUCCESS(Status)) {
         goto Exit;
     }
@@ -97,7 +100,8 @@ FnIoIoctlBounceEnqueue(
         //
         Status =
             BounceBuffer(
-                &Buffer, RequestorMode, RxBuffer->VirtualAddress, RxBuffer->BufferLength, __alignof(UCHAR));
+                &Buffer, RequestorMode, RxBuffer->VirtualAddress, RxBuffer->BufferLength,
+                __alignof(UCHAR));
         if (!NT_SUCCESS(Status)) {
             goto Exit;
         }
@@ -165,12 +169,16 @@ FnIoIoctlBounceFilter(
     //
     // Copy the user buffer array into a trusted kernel buffer.
     //
-    Status = BounceBuffer(&Pattern, RequestorMode, IoBuffer->Pattern, IoBuffer->Length, __alignof(UCHAR));
+    Status =
+        BounceBuffer(
+            &Pattern, RequestorMode, IoBuffer->Pattern, IoBuffer->Length, __alignof(UCHAR));
     if (!NT_SUCCESS(Status)) {
         goto Exit;
     }
 
-    Status = BounceBuffer(&Mask, RequestorMode, IoBuffer->Mask, IoBuffer->Length, __alignof(UCHAR));
+    Status =
+        BounceBuffer(
+            &Mask, RequestorMode, IoBuffer->Mask, IoBuffer->Length, __alignof(UCHAR));
     if (!NT_SUCCESS(Status)) {
         goto Exit;
     }
