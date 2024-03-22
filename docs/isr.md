@@ -5,4 +5,4 @@ This tool provides a system()-like kernel-mode API that relays commands to user-
 
 ## API
 
-Kernel-mode test code can interact with the API using [invokesystemrelay.h](./inc/invokesystemrelay.h).
+Kernel-mode test code can interact with the API using [invokesystemrelay.h](../inc/invokesystemrelay.h).
