@@ -55,6 +55,9 @@ param (
     [string]$TestBinaryPath = "",
 
     [Parameter(Mandatory = $false)]
+    [switch]$UserMode = $false,
+
+    [Parameter(Mandatory = $false)]
     [switch]$KernelMode = $false
 )
 
@@ -83,6 +86,10 @@ $SystemDriversPath = Join-Path $([Environment]::GetEnvironmentVariable("SystemRo
 $VsTestPath = Get-VsTestPath
 if ($VsTestPath -eq $null) {
     Write-Error "Could not find VSTest path"
+}
+
+if ($UserMode -and $KernelMode) {
+    Write-Error "Only one of -UserMode and -KernelMode is supported"
 }
 
 if ($Timeout -gt 0) {
