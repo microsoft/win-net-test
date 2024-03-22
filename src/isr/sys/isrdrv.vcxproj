@@ -29,11 +29,6 @@
       <WppRecorderEnabled>true</WppRecorderEnabled>
       <WppAdditionalOptions>-p:isrdrv</WppAdditionalOptions>
     </ClCompile>
-    <Link>
-      <AdditionalDependencies>
-        %(AdditionalDependencies)
-      </AdditionalDependencies>
-    </Link>
   </ItemDefinitionGroup>
   <Import Project="$(UndockedDir)vs\windows.undocked.targets" />
 </Project>

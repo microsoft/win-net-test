@@ -50,7 +50,6 @@
         wdmsec.lib;
         %(AdditionalDependencies)
       </AdditionalDependencies>
-      <LinkTimeCodeGeneration>UseLinkTimeCodeGeneration</LinkTimeCodeGeneration>
     </Link>
   </ItemDefinitionGroup>
   <Import Project="$(UndockedDir)vs\windows.undocked.targets" />

@@ -13,14 +13,6 @@
   <ItemGroup>
     <ClCompile Include="tests.cpp" />
   </ItemGroup>
-  <PropertyGroup Condition="'$(DisableRegistryUse)' == 'true'">
-    <!--
-      Workaround for EWDK build failures:
-      Microsoft.Cpp.VCTools.props sets these to invalid values if they're not
-      already set. -->
-    <VCInstallDir_160 Condition="'$(VCInstallDir_160)' == ''">$(VSInstallDir)VC\</VCInstallDir_160>
-    <VCToolsInstallDir_160 Condition="'$(VCToolsInstallDir_160)' == '' and '$(VCToolsVersion)' != ''">$(VCInstallDir_160)Tools\MSVC\$(VCToolsVersion)\</VCToolsInstallDir_160>
-  </PropertyGroup>
   <ItemDefinitionGroup>
     <PreBuildEvent>
       <Command>
@@ -41,10 +33,6 @@
         UM_NDIS683=1;
         %(PreprocessorDefinitions)
       </PreprocessorDefinitions>
-      <UseFullPaths>true</UseFullPaths>
-      <!-- Disable C26812: The enum type '' is unscoped. Prefer 'enum class' over 'enum' -->
-      <!-- Disable C5252 : Multiple different types resulted in the same XFG type-hash -->
-      <DisableSpecificWarnings>26812;5252;%(DisableSpecificWarnings)</DisableSpecificWarnings>
     </ClCompile>
   </ItemDefinitionGroup>
   <Import Project="$(UndockedDir)vs\windows.undocked.targets" />
