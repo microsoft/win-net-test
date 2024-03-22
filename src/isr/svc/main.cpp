@@ -5,6 +5,7 @@
 
 #include <windows.h>
 #include <strsafe.h>
+#include <stdlib.h>
 
 #include <fnioctl_um.h>
 #include "invokesystemrelayioctl.h"

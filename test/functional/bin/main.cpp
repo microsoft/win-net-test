@@ -4,6 +4,7 @@
 //
 
 #include <windows.h>
+#include <winioctl.h>
 #include <CppUnitTest.h>
 
 #include "fntrace.h"

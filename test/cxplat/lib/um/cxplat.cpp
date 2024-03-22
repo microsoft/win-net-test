@@ -3,8 +3,10 @@
 // Licensed under the MIT License.
 //
 
+#include <winsock2.h>
 #include <windows.h>
 #include <winternl.h>
+#include <stdlib.h>
 
 #include "cxplat.h"
 #include "trace.h"
