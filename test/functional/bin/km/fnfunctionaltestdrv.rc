@@ -1,0 +1,12 @@
+//
+//    Copyright (C) Microsoft.  All rights reserved.
+//
+
+#include <windows.h>
+
+#define VER_FILEDESCRIPTION_STR     "Fn Functional Test Driver"
+#define VER_INTERNALNAME_STR        "fnfunctionaltestdrv.sys"
+#define VER_FILETYPE                VFT_DRV
+#define VER_FILESUBTYPE             VFT2_DRV_NETWORK
+
+#include "undocked.ver"

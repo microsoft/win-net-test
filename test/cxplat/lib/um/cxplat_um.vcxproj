@@ -1,0 +1,31 @@
+<?xml version="1.0" encoding="utf-8"?>
+<Project DefaultTargets="Build" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
+  <PropertyGroup>
+    <ProjectGuid>{93edb3a0-c6e4-42cc-85a3-92bfc44964d0}</ProjectGuid>
+    <TargetName>cxplat_um</TargetName>
+    <UndockedType>lib</UndockedType>
+    <UndockedDir>$(SolutionDir)submodules\undocked\</UndockedDir>
+    <UndockedOut>$(SolutionDir)artifacts\</UndockedOut>
+    <UndockedSourceLink>true</UndockedSourceLink>
+  </PropertyGroup>
+  <Import Project="$(UndockedDir)vs\windows.undocked.props" />
+  <Import Project="$(SolutionDir)src\wnt.cpp.props" />
+  <ItemGroup>
+    <ClCompile Include="cxplat.cpp" />
+  </ItemGroup>
+  <ItemDefinitionGroup>
+    <PreBuildEvent>
+      <Command>
+        tracewpp.exe -odir:$(IntDir) -scan:$(SolutionDir)test\cxplat\lib\trace.h $(ProjectDir)*.cpp -p:cxplat -cfgdir:"$(WindowsSdkDir)bin\$(TargetPlatformVersion)\WppConfig\Rev1"
+      </Command>
+    </PreBuildEvent>
+    <ClCompile>
+      <AdditionalIncludeDirectories>
+        $(SolutionDir)test\cxplat\lib;
+        $(SolutionDir)test\cxplat\inc;
+        %(AdditionalIncludeDirectories)
+      </AdditionalIncludeDirectories>
+    </ClCompile>
+  </ItemDefinitionGroup>
+  <Import Project="$(UndockedDir)vs\windows.undocked.targets" />
+</Project>

@@ -1,0 +1,48 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<Project DefaultTargets="Build" ToolsVersion="12.0" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
+  <PropertyGroup>
+    <ProjectGuid>{fdaab453-4e69-4933-bc27-a917637b0df9}</ProjectGuid>
+    <TargetName>fnfunctionaltestdrv</TargetName>
+    <UndockedType>sys</UndockedType>
+    <UndockedDir>$(SolutionDir)submodules\undocked\</UndockedDir>
+    <UndockedOut>$(SolutionDir)artifacts\</UndockedOut>
+    <UndockedSourceLink>true</UndockedSourceLink>
+  </PropertyGroup>
+  <Import Project="$(UndockedDir)vs\windows.undocked.props" />
+  <Import Project="$(SolutionDir)src\wnt.cpp.props" />
+  <Import Project="$(SolutionDir)src\wnt.cpp.kernel.props" />
+  <ItemGroup>
+    <ProjectReference Include="$(SolutionDir)test\functional\lib\fnfunctionaltestlib_km.vcxproj">
+      <Project>{3539d1da-2355-4352-865f-5120a59846eb}</Project>
+    </ProjectReference>
+    <ProjectReference Include="$(SolutionDir)test\cxplat\lib\km\cxplat_km.vcxproj">
+      <Project>{06f8bd85-f946-40da-9173-e20fb69fedb0}</Project>
+    </ProjectReference>
+  </ItemGroup>
+  <ItemGroup>
+    <ClCompile Include="control.cpp" />
+    <ClCompile Include="driver.cpp" />
+    <ResourceCompile Include="fnfunctionaltestdrv.rc" />
+  </ItemGroup>
+  <ItemDefinitionGroup>
+    <ClCompile>
+      <AdditionalIncludeDirectories>
+        $(SolutionDir)test\functional;
+        %(AdditionalIncludeDirectories)
+      </AdditionalIncludeDirectories>
+      <WppEnabled>true</WppEnabled>
+      <WppScanConfigurationData>$(ProjectDir)trace.h</WppScanConfigurationData>
+      <WppRecorderEnabled>true</WppRecorderEnabled>
+      <WppAdditionalOptions>-p:fntestdrv</WppAdditionalOptions>
+    </ClCompile>
+    <Link>
+      <AdditionalDependencies>
+        netio.lib;
+        uuid.lib;
+        wdmsec.lib;
+        %(AdditionalDependencies)
+      </AdditionalDependencies>
+    </Link>
+  </ItemDefinitionGroup>
+  <Import Project="$(UndockedDir)vs\windows.undocked.targets" />
+</Project>

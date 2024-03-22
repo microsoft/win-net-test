@@ -17,6 +17,7 @@ typedef struct _DATA_FILTER {
 _IRQL_requires_max_(DISPATCH_LEVEL)
 DATA_FILTER *
 FnIoCreateFilter(
+    _In_ KPROCESSOR_MODE RequestorMode,
     _In_ VOID *InputBuffer,
     _In_ UINT32 InputBufferLength
     )
@@ -30,7 +31,7 @@ FnIoCreateFilter(
         goto Exit;
     }
 
-    Status = FnIoIoctlBounceFilter(InputBuffer, InputBufferLength, &Filter->Params);
+    Status = FnIoIoctlBounceFilter(RequestorMode, InputBuffer, InputBufferLength, &Filter->Params);
     if (!NT_SUCCESS(Status)) {
         goto Exit;
     }

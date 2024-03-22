@@ -18,43 +18,43 @@ DefaultIrpDeviceIoControl(
 
     switch (IrpSp->Parameters.DeviceIoControl.IoControlCode) {
 
-    case IOCTL_RX_FILTER:
+    case FNLWF_IOCTL_RX_FILTER:
         Status = RxIrpFilter(Default->Rx, Irp, IrpSp);
         break;
 
-    case IOCTL_RX_GET_FRAME:
+    case FNLWF_IOCTL_RX_GET_FRAME:
         Status = RxIrpGetFrame(Default->Rx, Irp, IrpSp);
         break;
 
-    case IOCTL_RX_DEQUEUE_FRAME:
+    case FNLWF_IOCTL_RX_DEQUEUE_FRAME:
         Status = RxIrpDequeueFrame(Default->Rx, Irp, IrpSp);
         break;
 
-    case IOCTL_RX_FLUSH:
+    case FNLWF_IOCTL_RX_FLUSH:
         Status = RxIrpFlush(Default->Rx, Irp, IrpSp);
         break;
 
-    case IOCTL_TX_ENQUEUE:
+    case FNLWF_IOCTL_TX_ENQUEUE:
         Status = TxIrpEnqueue(Default->Tx, Irp, IrpSp);
         break;
 
-    case IOCTL_TX_FLUSH:
+    case FNLWF_IOCTL_TX_FLUSH:
         Status = TxIrpFlush(Default->Tx, Irp, IrpSp);
         break;
 
-    case IOCTL_OID_SUBMIT_REQUEST:
+    case FNLWF_IOCTL_OID_SUBMIT_REQUEST:
         Status = OidIrpSubmitRequest(Default->Filter, Irp, IrpSp);
         break;
 
-    case IOCTL_STATUS_SET_FILTER:
+    case FNLWF_IOCTL_STATUS_SET_FILTER:
         Status = StatusIrpFilter(Default->Status, Irp, IrpSp);
         break;
 
-    case IOCTL_STATUS_GET_INDICATION:
+    case FNLWF_IOCTL_STATUS_GET_INDICATION:
         Status = StatusIrpGetIndication(Default->Status, Irp, IrpSp);
         break;
 
-    case IOCTL_DATAPATH_GET_STATE:
+    case FNLWF_IOCTL_DATAPATH_GET_STATE:
         Status = FilterIrpGetDatapathState(Default->Filter, Irp, IrpSp);
         break;
 

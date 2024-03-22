@@ -1,0 +1,74 @@
+<?xml version="1.0" encoding="utf-8"?>
+<Project DefaultTargets="Build" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
+  <PropertyGroup>
+    <ProjectGuid>{02D631DF-E2E7-4A6E-9773-94A45B19C367}</ProjectGuid>
+    <TargetName>fnfunctionaltests</TargetName>
+    <!-- Temporary hack to disable linking stage in official OneBranch builds, because it's broken -->
+    <UndockedType Condition="'$(UndockedOfficial)' != 'true'">dll</UndockedType>
+    <UndockedType Condition="'$(UndockedOfficial)' == 'true'">lib</UndockedType>
+    <UndockedDir>$(SolutionDir)submodules\undocked\</UndockedDir>
+    <UndockedOut>$(SolutionDir)artifacts\</UndockedOut>
+    <UndockedSourceLink>true</UndockedSourceLink>
+  </PropertyGroup>
+  <Import Project="$(UndockedDir)vs\windows.undocked.props" />
+  <Import Project="$(SolutionDir)src\wnt.cpp.props" />
+  <ItemGroup>
+    <ProjectReference Include="$(SolutionDir)test\functional\bin\km\fnfunctionaltestdrv.vcxproj">
+      <Project>{fdaab453-4e69-4933-bc27-a917637b0df9}</Project>
+    </ProjectReference>
+    <ProjectReference Include="$(SolutionDir)test\functional\lib\fnfunctionaltestlib_um.vcxproj">
+      <Project>{f37c088b-c801-46c4-b210-ead7af7ffaee}</Project>
+    </ProjectReference>
+    <ProjectReference Include="$(SolutionDir)test\cxplat\lib\um\cxplat_um.vcxproj">
+      <Project>{93edb3a0-c6e4-42cc-85a3-92bfc44964d0}</Project>
+    </ProjectReference>
+    <ProjectReference Include="$(SolutionDir)test\pkthlp\um\pkthlp_um.vcxproj">
+      <Project>{e84ff937-7445-4b8e-ba40-dffacc09c060}</Project>
+    </ProjectReference>
+    <ProjectReference Include="$(SolutionDir)src\isr\svc\isrsvc.vcxproj">
+      <Project>{32916b02-626c-4bdb-af0c-c586670bba0d}</Project>
+    </ProjectReference>
+    <ProjectReference Include="$(SolutionDir)src\isr\sys\isrdrv.vcxproj">
+      <Project>{644a5488-7fb8-4c8b-a45a-981df9a56aef}</Project>
+    </ProjectReference>
+    <ProjectReference Include="$(SolutionDir)test\debugcrt\debugcrt.vcxproj">
+      <Project>{74f5716d-c62f-45d4-9cc2-4637440d5e4e}</Project>
+      <Private>false</Private>
+    </ProjectReference>
+  </ItemGroup>
+  <ItemGroup>
+    <ClCompile Include="main.cpp" />
+  </ItemGroup>
+  <ItemDefinitionGroup>
+    <PreBuildEvent>
+      <Command>
+        tracewpp.exe -odir:$(IntDir) -scan:$(SolutionDir)test\functional\fntrace.h $(ProjectDir)*.cpp -p:fntest -cfgdir:"$(WindowsSdkDir)bin\$(TargetPlatformVersion)\WppConfig\Rev1"
+      </Command>
+    </PreBuildEvent>
+    <ClCompile>
+      <AdditionalIncludeDirectories>
+        $(SolutionDir)test\functional;
+        $(SolutionDir)test\functional\bin\km;
+        $(VCInstallDir)UnitTest\include;
+        %(AdditionalIncludeDirectories)
+      </AdditionalIncludeDirectories>
+      <PreprocessorDefinitions>
+        UM_NDIS687=1;
+        %(PreprocessorDefinitions)
+      </PreprocessorDefinitions>
+    </ClCompile>
+    <Link>
+      <SubSystem>Windows</SubSystem>
+      <AdditionalDependencies>
+        ntdll.lib;
+        onecore.lib;
+        ws2_32.lib;
+        iphlpapi.lib;
+        advapi32.lib;
+        %(AdditionalDependencies)
+      </AdditionalDependencies>
+      <AdditionalLibraryDirectories>$(VCInstallDir)UnitTest\lib;%(AdditionalLibraryDirectories)</AdditionalLibraryDirectories>
+    </Link>
+  </ItemDefinitionGroup>
+  <Import Project="$(UndockedDir)vs\windows.undocked.targets" />
+</Project>

@@ -38,11 +38,11 @@ param (
     [string]$Arch = "x64",
 
     [Parameter(Mandatory = $false)]
-    [ValidateSet("", "fnmp", "fnlwf")]
+    [ValidateSet("", "fnmp", "fnlwf", "invokesystemrelay")]
     [string]$Install = "",
 
     [Parameter(Mandatory = $false)]
-    [ValidateSet("", "fnmp", "fnlwf")]
+    [ValidateSet("", "fnmp", "fnlwf", "invokesystemrelay")]
     [string]$Uninstall = "",
 
     [Parameter(Mandatory = $false)]
@@ -88,6 +88,8 @@ $FnMpServiceName = "FNMP"
 $FnLwfSys = "$ArtifactsDir\fnlwf\fnlwf.sys"
 $FnLwfInf = "$ArtifactsDir\fnlwf\fnlwf.inf"
 $FnLwfComponentId = "ms_fnlwf"
+$IsrDrvSys = "$ArtifactsDir\isrdrv.sys"
+$IsrSvcExe = "$ArtifactsDir\isrsvc.exe"
 
 # Ensure the output path exists.
 New-Item -ItemType Directory -Force -Path $LogsDir | Out-Null
@@ -332,6 +334,47 @@ function Uninstall-FnLwf {
     Write-Verbose "fnlwf.sys uninstall complete!"
 }
 
+# Installs the invokesystemrelay driver and service.
+function Install-InvokeSystemRelay {
+    if (!(Test-Path $IsrDrvSys)) {
+        Write-Error "$IsrDrvSys does not exist!"
+    }
+    if (!(Test-Path $IsrSvcExe)) {
+        Write-Error "$IsrSvcExe does not exist!"
+    }
+
+    try { sc.exe create "isrdrv" type= kernel binpath= $IsrDrvSys start= demand > $null }
+    catch { Write-Verbose "'sc.exe create isrdrv' threw exception!" }
+
+    Start-Service-With-Retry isrdrv
+
+    Write-Verbose "isrdrv.sys install complete!"
+
+    try { sc.exe create "isrsvc" binpath= $IsrSvcExe start= demand > $null }
+    catch { Write-Verbose "'sc.exe create isrsvc' threw exception!" }
+
+    Start-Service-With-Retry isrsvc
+
+    Write-Verbose "isrsvc.exe install complete!"
+}
+
+# Uninstalls the invokesystemrelay driver and service.
+function Uninstall-InvokeSystemRelay {
+    Write-Verbose "sc.exe stop isrsvc"
+    sc.exe stop isrsvc | Write-Verbose
+
+    Cleanup-Service isrsvc
+
+    Write-Verbose "isrsvc.exe uninstall complete!"
+
+    Write-Verbose "sc.exe stop isrdrv"
+    sc.exe stop isrdrv | Write-Verbose
+
+    Cleanup-Service isrdrv
+
+    Write-Verbose "isrdrv.sys uninstall complete!"
+}
+
 try {
     if ($Install -eq "fnmp") {
         Install-FnMp
@@ -339,12 +382,18 @@ try {
     if ($Install -eq "fnlwf") {
         Install-FnLwf
     }
+    if ($Install -eq "invokesystemrelay") {
+        Install-InvokeSystemRelay
+    }
 
     if ($Uninstall -eq "fnmp") {
         Uninstall-FnMp
     }
     if ($Uninstall -eq "fnlwf") {
         Uninstall-FnLwf
+    }
+    if ($Uninstall -eq "invokesystemrelay") {
+        Uninstall-InvokeSystemRelay
     }
 } catch {
     Write-Error $_ -ErrorAction $OriginalErrorActionPreference

@@ -1,0 +1,40 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<Project DefaultTargets="Build" ToolsVersion="12.0" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
+  <PropertyGroup>
+    <ProjectGuid>{3539d1da-2355-4352-865f-5120a59846eb}</ProjectGuid>
+    <TargetName>fnfunctionaltestlib_km</TargetName>
+    <UndockedType>drvlib</UndockedType>
+    <UndockedDir>$(SolutionDir)submodules\undocked\</UndockedDir>
+    <UndockedOut>$(SolutionDir)artifacts\</UndockedOut>
+    <UndockedSourceLink>true</UndockedSourceLink>
+  </PropertyGroup>
+  <Import Project="$(UndockedDir)vs\windows.undocked.props" />
+  <Import Project="$(SolutionDir)src\wnt.cpp.props" />
+  <Import Project="$(SolutionDir)src\wnt.cpp.kernel.props" />
+  <ItemGroup>
+    <ClCompile Include="tests.cpp" />
+  </ItemGroup>
+  <ItemDefinitionGroup>
+    <ClCompile>
+      <AdditionalIncludeDirectories>
+        $(SolutionDir)inc;
+        $(SolutionDir)test\cxplat\inc;
+        $(SolutionDir)test\functional;
+        $(SolutionDir)test\invokesystem\inc;
+        $(SolutionDir)submodules\net-offloads\include;
+        $(SolutionDir)submodules\wil\include;
+        $(SolutionDir)test\pkthlp;
+        %(AdditionalIncludeDirectories)
+      </AdditionalIncludeDirectories>
+      <PreprocessorDefinitions>
+        NDIS683=1;
+        %(PreprocessorDefinitions)
+      </PreprocessorDefinitions>
+      <WppEnabled>true</WppEnabled>
+      <WppScanConfigurationData>$(ProjectDir)..\bin\km\trace.h</WppScanConfigurationData>
+      <WppRecorderEnabled>true</WppRecorderEnabled>
+      <WppAdditionalOptions>-p:fntestdrv</WppAdditionalOptions>
+    </ClCompile>
+  </ItemDefinitionGroup>
+  <Import Project="$(UndockedDir)vs\windows.undocked.targets" />
+</Project>

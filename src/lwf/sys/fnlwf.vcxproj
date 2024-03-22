@@ -12,9 +12,6 @@
   <Import Project="$(SolutionDir)src\wnt.cpp.props" />
   <Import Project="$(SolutionDir)src\wnt.cpp.kernel.props" />
   <ItemGroup>
-    <ProjectReference Include="$(SolutionDir)src\lwf\lib\fnlwfapi.vcxproj">
-      <Project>{e73b68e4-1ed8-462f-a084-b5f68bef765f}</Project>
-    </ProjectReference>
     <ProjectReference Include="$(SolutionDir)src\common\lib\bounce\bounce.vcxproj">
       <Project>{4a8c9c36-9b11-4bcf-9c48-0f33d4470d66}</Project>
     </ProjectReference>

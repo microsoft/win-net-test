@@ -1,0 +1,34 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<Project DefaultTargets="Build" ToolsVersion="12.0" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
+  <PropertyGroup>
+    <ProjectGuid>{644a5488-7fb8-4c8b-a45a-981df9a56aef}</ProjectGuid>
+    <TargetName>isrdrv</TargetName>
+    <UndockedType>sys</UndockedType>
+    <UndockedDir>$(SolutionDir)submodules\undocked\</UndockedDir>
+    <UndockedOut>$(SolutionDir)artifacts\</UndockedOut>
+    <UndockedSourceLink>true</UndockedSourceLink>
+  </PropertyGroup>
+  <Import Project="$(UndockedDir)vs\windows.undocked.props" />
+  <Import Project="$(SolutionDir)src\wnt.cpp.props" />
+  <Import Project="$(SolutionDir)src\wnt.cpp.kernel.props" />
+  <ItemGroup>
+    <ClCompile Include="client.c" />
+    <ClCompile Include="dispatch.c" />
+    <ClCompile Include="requestqueue.c" />
+    <ClCompile Include="service.c" />
+    <ClInclude Include="precomp.h" />
+  </ItemGroup>
+  <ItemDefinitionGroup>
+    <ClCompile>
+      <AdditionalIncludeDirectories>
+        $(SolutionDir)inc;
+        %(AdditionalIncludeDirectories)
+      </AdditionalIncludeDirectories>
+      <WppEnabled>true</WppEnabled>
+      <WppScanConfigurationData>$(ProjectDir)trace.h</WppScanConfigurationData>
+      <WppRecorderEnabled>true</WppRecorderEnabled>
+      <WppAdditionalOptions>-p:isrdrv</WppAdditionalOptions>
+    </ClCompile>
+  </ItemDefinitionGroup>
+  <Import Project="$(UndockedDir)vs\windows.undocked.targets" />
+</Project>

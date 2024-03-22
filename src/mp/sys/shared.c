@@ -175,7 +175,7 @@ SharedIrpUpdateTaskOffload(
     if (In->OffloadParametersLength > 0) {
         Status =
             BounceBuffer(
-                &OffloadParameters, In->OffloadParameters, In->OffloadParametersLength,
+                &OffloadParameters, Irp->RequestorMode, In->OffloadParameters, In->OffloadParametersLength,
                 __alignof(NDIS_OFFLOAD_PARAMETERS));
         if (!NT_SUCCESS(Status)) {
             goto Exit;
@@ -289,39 +289,39 @@ SharedIrpDeviceIoControl(
 
     switch (IrpSp->Parameters.DeviceIoControl.IoControlCode) {
 
-    case IOCTL_RX_ENQUEUE:
+    case FNMP_IOCTL_RX_ENQUEUE:
         Status = SharedIrpRxEnqueue(Shared->Rx, Irp, IrpSp);
         break;
 
-    case IOCTL_RX_FLUSH:
+    case FNMP_IOCTL_RX_FLUSH:
         Status = SharedIrpRxFlush(Shared->Rx, Irp, IrpSp);
         break;
 
-    case IOCTL_TX_FILTER:
+    case FNMP_IOCTL_TX_FILTER:
         Status = SharedIrpTxFilter(Shared->Tx, Irp, IrpSp);
         break;
 
-    case IOCTL_TX_GET_FRAME:
+    case FNMP_IOCTL_TX_GET_FRAME:
         Status = SharedIrpTxGetFrame(Shared->Tx, Irp, IrpSp);
         break;
 
-    case IOCTL_TX_DEQUEUE_FRAME:
+    case FNMP_IOCTL_TX_DEQUEUE_FRAME:
         Status = SharedIrpTxDequeueFrame(Shared->Tx, Irp, IrpSp);
         break;
 
-    case IOCTL_TX_FLUSH:
+    case FNMP_IOCTL_TX_FLUSH:
         Status = SharedIrpTxFlush(Shared->Tx, Irp, IrpSp);
         break;
 
-    case IOCTL_MINIPORT_PAUSE_TIMESTAMP:
+    case FNMP_IOCTL_MINIPORT_PAUSE_TIMESTAMP:
         Status = SharedIrpGetMiniportPauseTimestamp(Shared, Irp, IrpSp);
         break;
 
-    case IOCTL_MINIPORT_SET_MTU:
+    case FNMP_IOCTL_MINIPORT_SET_MTU:
         Status = SharedIrpSetMtu(Shared, Irp, IrpSp);
         break;
 
-    case IOCTL_MINIPORT_UPDATE_TASK_OFFLOAD:
+    case FNMP_IOCTL_MINIPORT_UPDATE_TASK_OFFLOAD:
         Status = SharedIrpUpdateTaskOffload(Shared, Irp, IrpSp);
         break;
 

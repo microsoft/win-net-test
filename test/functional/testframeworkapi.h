@@ -10,10 +10,11 @@
 // use different test frameworks without changing test logic.
 //
 
+#if !defined(KERNEL_MODE)
 #include <windows.h>
+#endif
 
-VOID
-StopTest();
+EXTERN_C_START
 
 VOID
 LogTestFailure(
@@ -32,3 +33,5 @@ LogTestWarning(
     _Printf_format_string_ PCWSTR Format,
     ...
     );
+
+EXTERN_C_END

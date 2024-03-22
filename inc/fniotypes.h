@@ -7,7 +7,7 @@
 
 //
 // This header contains definitions for data IO related IOCTLs supported by the
-// functional test miniport (fnmp).
+// functional test miniport/lwf (fnmp/fnlwf).
 //
 
 EXTERN_C_START

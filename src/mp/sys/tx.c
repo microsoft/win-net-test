@@ -200,7 +200,7 @@ SharedIrpTxFilter(
     } else {
         DataFilter =
             FnIoCreateFilter(
-                Irp->AssociatedIrp.SystemBuffer,
+                Irp->RequestorMode, Irp->AssociatedIrp.SystemBuffer,
                 IrpSp->Parameters.DeviceIoControl.InputBufferLength);
         if (DataFilter == NULL) {
             Status = STATUS_NO_MEMORY;

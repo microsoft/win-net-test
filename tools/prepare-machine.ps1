@@ -156,11 +156,10 @@ if ($Cleanup) {
 
     if ($ForFunctionalTest) {
         $ForTest = $true
-        # Verifier configuration: standard flags on FNMP, FNLWF, and NDIS.
         # The NDIS verifier is required, otherwise allocations NDIS makes on
         # behalf of FNMP/FNLWF (e.g. NBLs) will not be verified.
-        Write-Verbose "verifier.exe /standard /driver fnmp.sys fnlwf.sys ndis.sys"
-        verifier.exe /standard /driver fnmp.sys fnlwf.sys ndis.sys | Write-Verbose
+        Write-Verbose "verifier.exe /standard /driver fnmp.sys fnlwf.sys ndis.sys fnfunctionaltestdrv.sys isrdrv.sys"
+        verifier.exe /standard /driver fnmp.sys fnlwf.sys ndis.sys fnfunctionaltestdrv.sys isrdrv.sys | Write-Verbose
         if (!$?) {
             $Reboot = $true
         }

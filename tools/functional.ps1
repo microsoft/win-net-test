@@ -25,6 +25,12 @@ This script runs the FNMP/FNLWF functional tests.
 .PARAMETER TestBinaryPath
     Path to the functional test binary (the binary passed to VSTest).
 
+.PARAMETER UserMode
+    Run user mode tests.
+
+.PARAMETER KernelMode
+    Run kernel mode tests.
+
 #>
 
 param (
@@ -49,11 +55,26 @@ param (
     [int]$Timeout = 0,
 
     [Parameter(Mandatory = $false)]
-    [string]$TestBinaryPath = ""
+    [string]$TestBinaryPath = "",
+
+    [Parameter(Mandatory = $false)]
+    [switch]$UserMode = $false,
+
+    [Parameter(Mandatory = $false)]
+    [switch]$KernelMode = $false
 )
 
 Set-StrictMode -Version 'Latest'
 $ErrorActionPreference = 'Stop'
+
+function CleanupKernelMode {
+    sc.exe stop fnfunctionaltestdrv | Write-Verbose
+    sc.exe delete fnfunctionaltestdrv | Write-Verbose
+    Remove-Item -Path "$SystemDriversPath\fnfunctionaltestdrv.sys" -ErrorAction SilentlyContinue
+    & "$RootDir\tools\setup.ps1" -Uninstall invokesystemrelay -Config $Config -Arch $Arch -ErrorAction 'Continue'
+    [Environment]::SetEnvironmentVariable("fnfunctionaltests::KernelModeEnabled", $null)
+    [Environment]::SetEnvironmentVariable("fnfunctionaltests::KernelModeDriverPath", $null)
+}
 
 # Important paths.
 $RootDir = Split-Path $PSScriptRoot -Parent
@@ -63,10 +84,15 @@ $ArtifactsDir = "$RootDir\artifacts\bin\$($WinArch)$($WinConfig)"
 $LogsDir = "$RootDir\artifacts\logs"
 $IterationFailureCount = 0
 $IterationTimeout = 0
+$SystemDriversPath = Join-Path $([Environment]::GetEnvironmentVariable("SystemRoot")) "System32\drivers"
 
 $VsTestPath = Get-VsTestPath
 if ($VsTestPath -eq $null) {
     Write-Error "Could not find VSTest path"
+}
+
+if ($UserMode -and $KernelMode) {
+    Write-Error "Only one of -UserMode and -KernelMode is supported"
 }
 
 if ($Timeout -gt 0) {
@@ -76,6 +102,14 @@ if ($Timeout -gt 0) {
     if ($IterationTimeout -le 0) {
         Write-Error "Timeout must allow at least $WatchdogReservedMinutes minutes per iteration"
     }
+}
+
+if ($KernelMode) {
+    # Ensure clean slate.
+    CleanupKernelMode
+    [System.Environment]::SetEnvironmentVariable('fnfunctionaltests::KernelModeEnabled', '1')
+    [System.Environment]::SetEnvironmentVariable('fnfunctionaltests::KernelModeDriverPath', "$SystemDriversPath\")
+    Copy-Item -Path "$ArtifactsDir\fnfunctionaltestdrv.sys" $SystemDriversPath
 }
 
 # Ensure the output path exists.
@@ -90,6 +124,12 @@ for ($i = 1; $i -le $Iterations; $i++) {
         }
 
         & "$RootDir\tools\log.ps1" -Start -Name $LogName -Profile FnFunctional.Verbose -Config $Config -Arch $Arch
+
+        if ($KernelMode) {
+            Write-Verbose "installing invokesystemrelay..."
+            & "$RootDir\tools\setup.ps1" -Install invokesystemrelay -Config $Config -Arch $Arch
+            Write-Verbose "installed invokesystemrelay."
+        }
 
         Write-Verbose "installing fnmp..."
         & "$RootDir\tools\setup.ps1" -Install fnmp -Config $Config -Arch $Arch
@@ -138,6 +178,9 @@ for ($i = 1; $i -le $Iterations; $i++) {
         }
         & "$RootDir\tools\setup.ps1" -Uninstall fnlwf -Config $Config -Arch $Arch -ErrorAction 'Continue'
         & "$RootDir\tools\setup.ps1" -Uninstall fnmp -Config $Config -Arch $Arch -ErrorAction 'Continue'
+        if ($KernelMode) {
+            CleanupKernelMode
+        }
         & "$RootDir\tools\log.ps1" -Stop -Name $LogName -Config $Config -Arch $Arch -ErrorAction 'Continue'
     }
 }

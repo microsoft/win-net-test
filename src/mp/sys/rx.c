@@ -85,8 +85,9 @@ SharedIrpRxEnqueue(
 
     Status =
         FnIoEnqueueFrameBegin(
-            Irp->AssociatedIrp.SystemBuffer, IrpSp->Parameters.DeviceIoControl.InputBufferLength,
-            NblPool, &EnqueueIn, &Nbl);
+            Irp->RequestorMode, Irp->AssociatedIrp.SystemBuffer,
+            IrpSp->Parameters.DeviceIoControl.InputBufferLength, NblPool,
+            &EnqueueIn, &Nbl);
     if (!NT_SUCCESS(Status)) {
         goto Exit;
     }
