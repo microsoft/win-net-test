@@ -2,6 +2,9 @@
   <ItemDefinitionGroup>
     <ClCompile>
       <TreatWarningAsError>true</TreatWarningAsError>
+      <!-- Disable C26812: The enum type '' is unscoped. Prefer 'enum class' over 'enum' -->
+      <!-- Disable C5252 : Multiple different types resulted in the same XFG type-hash -->
+      <DisableSpecificWarnings>26812;5252;%(DisableSpecificWarnings)</DisableSpecificWarnings>
     </ClCompile>
   </ItemDefinitionGroup>
 </Project>

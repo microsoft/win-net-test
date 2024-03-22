@@ -52,8 +52,6 @@
         $(VCInstallDir)UnitTest\include;
         %(AdditionalIncludeDirectories)
       </AdditionalIncludeDirectories>
-      <!-- Disable C5252 : Multiple different types resulted in the same XFG type-hash -->
-      <DisableSpecificWarnings>5252;%(DisableSpecificWarnings)</DisableSpecificWarnings>
       <PreprocessorDefinitions>
         UM_NDIS687=1;
         %(PreprocessorDefinitions)
