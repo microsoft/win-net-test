@@ -5,5 +5,5 @@ that is used as a hook into the lowest part of the [NDIS networking stack](https
 
 ## API
 
-Test code can interact with the miniport using the [fnmpapi](./inc/fnmpapi.h).
+Test code can interact with the miniport using the [fnmpapi](../inc/fnmpapi.h).
 Hooks for both the NDIS data path and the NDIS control are supported.

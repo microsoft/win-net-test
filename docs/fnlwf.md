@@ -5,5 +5,5 @@ that is used as a hook into the middle of the [NDIS networking stack](https://le
 
 ## API
 
-Test code can interact with the filter using the [fnlwfapi](./inc/fnlwfapi.h).
+Test code can interact with the filter using the [fnlwfapi](../inc/fnlwfapi.h).
 Hooks for both the NDIS data path and the NDIS control are supported.
