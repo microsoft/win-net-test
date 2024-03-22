@@ -60,7 +60,7 @@ jobs:
           !artifacts/bin/**/*.lastcodeanalysissucceeded
 
   functional_tests_user:
-    name: Functional Tests User Mode
+    name: Tests UM
     needs: build
     env:
       # For PRs
@@ -112,7 +112,7 @@ jobs:
         path: artifacts/logs
 
   functional_tests_kernel:
-    name: Functional Tests Kernel Mode
+    name: Tests KM
     needs: build
     env:
       # For PRs
