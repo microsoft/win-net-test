@@ -25,10 +25,6 @@
     <ResourceCompile Include="fnfunctionaltestdrv.rc" />
   </ItemGroup>
   <PropertyGroup Label="Configuration">
-    <TargetVersion>Windows10</TargetVersion>
-    <PlatformToolset>WindowsKernelModeDriver10.0</PlatformToolset>
-    <ConfigurationType>Driver</ConfigurationType>
-    <DriverType>KMDF</DriverType>
     <DriverTargetPlatform>Universal</DriverTargetPlatform>
     <_NT_TARGET_VERSION>0x0A00000A</_NT_TARGET_VERSION>
   </PropertyGroup>
