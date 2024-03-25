@@ -30,10 +30,11 @@ Remove-Item $DstPath -Recurse -ErrorAction Ignore
 New-Item -Path $DstPath -ItemType Directory > $null
 
 New-Item -Path $DstPath\bin -ItemType Directory > $null
+New-Item -Path $DstPath\bin\isr -ItemType Directory > $null
 copy -Recurse "artifacts\bin\$($WinArch)$($WinConfig)\fnmp\" $DstPath\bin
 copy -Recurse "artifacts\bin\$($WinArch)$($WinConfig)\fnlwf\" $DstPath\bin
-copy -Recurse "artifacts\bin\$($WinArch)$($WinConfig)\isrdrv.pdb" $DstPath\bin
-copy -Recurse "artifacts\bin\$($WinArch)$($WinConfig)\isrsvc.pdb" $DstPath\bin
+copy "artifacts\bin\$($WinArch)$($WinConfig)\isrdrv.sys" $DstPath\bin\isr
+copy "artifacts\bin\$($WinArch)$($WinConfig)\isrsvc.exe" $DstPath\bin\isr
 
 New-Item -Path $DstPath\symbols -ItemType Directory > $null
 copy "artifacts\bin\$($WinArch)$($WinConfig)\fnmp.pdb" $DstPath\symbols
