@@ -26,6 +26,9 @@ This script installs or uninstalls various project components.
     Supplies an optional directory to tools (devcon.exe, dswdevice.exe).
     Supply this if you are running this script outside of the FNMP repo.
 
+.PARAMETER FnMpCount
+    Supplies an optional number of FnMp instances to install/uninstall.
+
 #>
 
 param (
@@ -52,7 +55,10 @@ param (
     [string]$LogsDir = "",
 
     [Parameter(Mandatory = $false)]
-    [string]$ToolsDir = ""
+    [string]$ToolsDir = "",
+
+    [Parameter(Mandatory = $false)]
+    [int]$FnMpCount = 1
 )
 
 Set-StrictMode -Version 'Latest'
@@ -83,7 +89,7 @@ if ([string]::IsNullOrEmpty($ToolsDir)) {
 $FnMpSys = "$ArtifactsDir\fnmp\fnmp.sys"
 $FnMpInf = "$ArtifactsDir\fnmp\fnmp.inf"
 $FnMpComponentId = "ms_fnmp"
-$FnMpDeviceId0 = "fnmp0"
+$FnMpDeviceIdPrefix = "fnmp"
 $FnMpServiceName = "FNMP"
 $FnLwfSys = "$ArtifactsDir\fnlwf\fnlwf.sys"
 $FnLwfInf = "$ArtifactsDir\fnlwf\fnlwf.inf"
@@ -249,50 +255,62 @@ function Install-FnMp {
         Write-Error "pnputil.exe exit code: $LastExitCode"
     }
 
-    Write-Verbose "dswdevice.exe -i $FnMpDeviceId0 $FnMpComponentId"
-    & $DswDevice -i $FnMpDeviceId0 $FnMpComponentId | Write-Verbose
-    if ($LastExitCode) {
-        Write-Error "dswdevice.exe exit code: $LastExitCode"
+    for ($i = 0; $i -lt $FnMpCount; $i++) {
+        $DeviceId = $FnMpDeviceIdPrefix + "$i"
+        Write-Verbose "dswdevice.exe -i $DeviceId $FnMpComponentId"
+        & $DswDevice -i $DeviceId $FnMpComponentId | Write-Verbose
+        if ($LastExitCode) {
+            Write-Error "dswdevice.exe ($DeviceId) exit code: $LastExitCode"
+        }
     }
 
-    Wait-For-Adapters -IfDesc $FnMpServiceName
+    Wait-For-Adapters -IfDesc $FnMpServiceName -Count $FnMpCount
 
-    Write-Verbose "Renaming adapters"
-    Rename-NetAdapter-With-Retry FNMP FNMP
+    # In the use case of a single instance, perform some common configuration.
+    if ($FnMpCount -eq 1) {
+        Write-Verbose "Renaming adapters"
+        Rename-NetAdapter-With-Retry FNMP FNMP
 
-    Write-Verbose "Get-NetAdapter FNMP"
-    Get-NetAdapter FNMP | Format-Table | Out-String | Write-Verbose
+        Write-Verbose "Get-NetAdapter FNMP"
+        Get-NetAdapter FNMP | Format-Table | Out-String | Write-Verbose
 
-    Write-Verbose "Configure fnmp ipv4"
-    netsh int ipv4 set int interface=fnmp dadtransmits=0 | Write-Verbose
-    netsh int ipv4 add address name=fnmp address=192.168.200.1/24 | Write-Verbose
-    netsh int ipv4 add neighbor fnmp address=192.168.200.2 neighbor=22-22-22-22-00-02 | Write-Verbose
+        Write-Verbose "Configure fnmp ipv4"
+        netsh int ipv4 set int interface=fnmp dadtransmits=0 | Write-Verbose
+        netsh int ipv4 add address name=fnmp address=192.168.200.1/24 | Write-Verbose
+        netsh int ipv4 add neighbor fnmp address=192.168.200.2 neighbor=22-22-22-22-00-02 | Write-Verbose
 
-    Write-Verbose "Configure fnmp ipv6"
-    netsh int ipv6 set int interface=fnmp dadtransmits=0 | Write-Verbose
-    netsh int ipv6 add address interface=fnmp address=fc00::200:1/112 | Write-Verbose
-    netsh int ipv6 add neighbor fnmp address=fc00::200:2 neighbor=22-22-22-22-00-02 | Write-Verbose
+        Write-Verbose "Configure fnmp ipv6"
+        netsh int ipv6 set int interface=fnmp dadtransmits=0 | Write-Verbose
+        netsh int ipv6 add address interface=fnmp address=fc00::200:1/112 | Write-Verbose
+        netsh int ipv6 add neighbor fnmp address=fc00::200:2 neighbor=22-22-22-22-00-02 | Write-Verbose
+    }
 
     Write-Verbose "fnmp.sys install complete!"
 }
 
 # Uninstalls the fnmp driver.
 function Uninstall-FnMp {
-    netsh int ipv4 delete address fnmp 192.168.200.1 | Out-Null
-    netsh int ipv4 delete neighbors fnmp | Out-Null
-    netsh int ipv6 delete address fnmp fc00::200:1 | Out-Null
-    netsh int ipv6 delete neighbors fnmp | Out-Null
-
-    Write-Verbose "$DswDevice -u $FnMpDeviceId0"
-    cmd.exe /c "$DswDevice -u $FnMpDeviceId0 2>&1" | Write-Verbose
-    if (!$?) {
-        Write-Host "Deleting $FnMpDeviceId0 device failed: $LastExitCode"
+    if ($FnMpCount -eq 1) {
+        netsh int ipv4 delete address fnmp 192.168.200.1 | Out-Null
+        netsh int ipv4 delete neighbors fnmp | Out-Null
+        netsh int ipv6 delete address fnmp fc00::200:1 | Out-Null
+        netsh int ipv6 delete neighbors fnmp | Out-Null
     }
 
-    Write-Verbose "$DevCon remove @SWD\$FnMpDeviceId0\$FnMpDeviceId0"
-    cmd.exe /c "$DevCon remove @SWD\$FnMpDeviceId0\$FnMpDeviceId0 2>&1" | Write-Verbose
-    if (!$?) {
-        Write-Host "Removing $FnMpDeviceId0 device failed: $LastExitCode"
+    for ($i = 0; $i -lt $FnMpCount; $i++) {
+        $DeviceId = $FnMpDeviceIdPrefix + "$i"
+
+        Write-Verbose "$DswDevice -u $DeviceId"
+        cmd.exe /c "$DswDevice -u $DeviceId 2>&1" | Write-Verbose
+        if (!$?) {
+            Write-Host "Deleting $DeviceId device failed: $LastExitCode"
+        }
+
+        Write-Verbose "$DevCon remove @SWD\$DeviceId\$DeviceId"
+        cmd.exe /c "$DevCon remove @SWD\$DeviceId\$DeviceId 2>&1" | Write-Verbose
+        if (!$?) {
+            Write-Host "Removing $DeviceId device failed: $LastExitCode"
+        }
     }
 
     Cleanup-Service $FnMpServiceName
