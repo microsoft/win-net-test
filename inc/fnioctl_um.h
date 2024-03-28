@@ -20,8 +20,6 @@ EXTERN_C_START
 #define STATUS_UNSUCCESSFUL ((NTSTATUS)0xC0000001L)
 #endif
 
-typedef HANDLE FNIOCTL_HANDLE;
-
 //
 // This file implements common file handle and IOCTL helpers.
 //
@@ -36,6 +34,8 @@ typedef struct _FILE_FULL_EA_INFORMATION {
     USHORT EaValueLength;
     CHAR EaName[1];
 } FILE_FULL_EA_INFORMATION;
+
+typedef HANDLE FNIOCTL_HANDLE;
 
 inline
 HRESULT

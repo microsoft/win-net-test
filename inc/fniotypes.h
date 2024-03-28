@@ -10,8 +10,6 @@
 // functional test miniport/lwf (fnmp/fnlwf).
 //
 
-EXTERN_C_START
-
 #ifndef KERNEL_MODE
 //
 // This header depends on the following headers included in the following order.
@@ -24,6 +22,8 @@ EXTERN_C_START
 #include <iphlpapi.h>
 #include <ndisoobtypes.h>
 #endif
+
+EXTERN_C_START
 
 typedef struct _DATA_BUFFER {
     CONST UCHAR *VirtualAddress;
