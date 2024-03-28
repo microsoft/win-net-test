@@ -31,7 +31,7 @@ ZwWaitForSingleObject(
     _In_opt_ PLARGE_INTEGER Timeout
     );
 
-typedef VOID* FNIOCTL_HANDLE;
+typedef HANDLE FNIOCTL_HANDLE;
 
 inline
 NTSTATUS
