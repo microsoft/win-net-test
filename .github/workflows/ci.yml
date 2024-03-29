@@ -37,7 +37,7 @@ jobs:
       with:
         submodules: recursive
     - name: Setup MSBuild.exe
-      uses: microsoft/setup-msbuild@ab534842b4bdf384b8aaf93765dc6f721d9f5fab
+      uses: microsoft/setup-msbuild@v2
     - name: Prepare Machine
       shell: PowerShell
       run: tools/prepare-machine.ps1 -ForBuild -Verbose
