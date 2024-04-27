@@ -50,7 +50,7 @@ jobs:
       run: tools/sign.ps1 -Config ${{ matrix.configuration }} -Arch ${{ matrix.platform }}
     - name: Upload Artifacts
       if: matrix.os == 2022
-      uses: actions/upload-artifact@1746f4ab65b179e0ea60a494b83293b640dd5bba
+      uses: actions/upload-artifact@65462800fd760344b1a7b4382951275a0abb4808
       with:
         name: bin_${{ matrix.configuration }}_${{ matrix.platform }}
         path: |
@@ -106,7 +106,7 @@ jobs:
       shell: PowerShell
       run: tools/log.ps1 -Convert -Name fnfunc* -Verbose -Config ${{ matrix.configuration }} -Arch ${{ matrix.platform }}
     - name: Upload Logs
-      uses: actions/upload-artifact@1746f4ab65b179e0ea60a494b83293b640dd5bba
+      uses: actions/upload-artifact@65462800fd760344b1a7b4382951275a0abb4808
       if: ${{ always() }}
       with:
         name: logs_func_${{ matrix.apimode }}_${{ matrix.os }}_${{ matrix.configuration }}_${{ matrix.platform }}
@@ -136,7 +136,7 @@ jobs:
       shell: PowerShell
       run: tools/create-runtimekit.ps1 -Config ${{ matrix.configuration }} -Platform ${{ matrix.platform }}
     - name: Upload Release Artifacts
-      uses: actions/upload-artifact@1746f4ab65b179e0ea60a494b83293b640dd5bba
+      uses: actions/upload-artifact@65462800fd760344b1a7b4382951275a0abb4808
       with:
         name: release_artifacts_${{ matrix.configuration }}_${{ matrix.platform }}
         path: |
