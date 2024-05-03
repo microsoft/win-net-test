@@ -50,7 +50,6 @@ if ([string]::IsNullOrEmpty($Project)) {
 msbuild.exe $RootDir\wnt.sln `
     /t:restore `
     /p:RestorePackagesConfig=true `
-    /p:RestoreConfigFile=src\nuget.config `
     /p:Configuration=$Config `
     /p:Platform=$Platform
 if (!$?) {
