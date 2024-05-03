@@ -42,7 +42,7 @@ jobs:
       shell: PowerShell
       run: tools/prepare-machine.ps1 -ForBuild -Verbose
     - name: Nuget Restore
-      run: nuget.exe restore wnt.sln -ConfigFile src/nuget.config
+      run: nuget.exe restore wnt.sln
     - name: Build
       run: msbuild wnt.sln /m /p:configuration=${{ matrix.configuration }} /p:platform=${{ matrix.platform }}
     - name: Sign Binaries
