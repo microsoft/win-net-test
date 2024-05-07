@@ -496,8 +496,8 @@ static
 bool
 MpTxFilter(
     _In_ const unique_fnmp_handle& Handle,
-    _In_ const VOID *Pattern,
-    _In_ const VOID *Mask,
+    _In_opt_bytecount_(Length) const VOID *Pattern,
+    _In_opt_bytecount_(Length) const VOID *Mask,
     _In_ UINT32 Length
     )
 {
@@ -1166,6 +1166,25 @@ MpBasicTx()
         MpTxGetFrame(SharedMp, 0, &FrameLength, NULL, 1));
 
     TEST_TRUE(MpTxFlush(SharedMp));
+
+    //
+    // Verify clearing the filter also completes all filtered NBLs.
+    //
+
+    TEST_EQUAL(
+        (int)SendSize,
+        CxPlatSocketSendto(
+            UdpSocket.get(), (PCHAR)UdpPayload, SendSize, 0,
+            (PSOCKADDR)&RemoteAddr, sizeof(RemoteAddr)));
+
+    MpTxFrame = MpTxAllocateAndGetFrame(SharedMp, 0);
+    TEST_NOT_NULL(MpTxFrame.get());
+
+    TEST_TRUE(MpTxFilter(SharedMp, NULL, NULL, 0));
+    FrameLength = 0;
+    TEST_EQUAL(
+        FNMPAPI_STATUS_NOT_FOUND,
+        MpTxGetFrame(SharedMp, 0, &FrameLength, NULL, 0));
 }
 
 static

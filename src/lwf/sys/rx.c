@@ -19,21 +19,43 @@ typedef struct _DEFAULT_RX {
 } DEFAULT_RX;
 
 static
-VOID
+SIZE_T
 _Requires_lock_held_(&Rx->Default->Filter->Lock)
 RxClearFilter(
-    _Inout_ DEFAULT_RX *Rx
+    _Inout_ DEFAULT_RX *Rx,
+    _Out_ NET_BUFFER_LIST **NblChain
     )
 {
+    SIZE_T NblCount = 0;
+
+    *NblChain = NULL;
+
     if (!IsListEmpty(&Rx->DataFilterLink)) {
         RemoveEntryList(&Rx->DataFilterLink);
         InitializeListHead(&Rx->DataFilterLink);
     }
 
     if (Rx->DataFilter != NULL) {
+        NblCount = FnIoFlushAllFrames(Rx->DataFilter, NblChain);
         FnIoDeleteFilter(Rx->DataFilter);
         Rx->DataFilter = NULL;
     }
+
+    return NblCount;
+}
+
+static
+VOID
+RxCompleteNbls(
+    _In_ LWF_FILTER *Filter,
+    _In_ NET_BUFFER_LIST *NblChain,
+    _In_ SIZE_T NblCount
+    )
+{
+    ASSERT(NblCount <= MAXULONG);
+    NdisFIndicateReceiveNetBufferLists(
+        Filter->NdisFilterHandle, NblChain, NDIS_DEFAULT_PORT_NUMBER,
+        (ULONG)NblCount, 0);
 }
 
 static
@@ -69,21 +91,14 @@ RxCleanup(
 
     KeAcquireSpinLock(&Filter->Lock, &OldIrql);
 
-    if (Rx->DataFilter != NULL) {
-        NblCount = FnIoFlushAllFrames(Rx->DataFilter, &NblChain);
-    }
-
-    RxClearFilter(Rx);
+    NblCount = RxClearFilter(Rx, &NblChain);
 
     KeReleaseSpinLock(&Filter->Lock, OldIrql);
 
     ExFreePoolWithTag(Rx, POOLTAG_LWF_DEFAULT_RX);
 
     if (NblCount > 0) {
-        ASSERT(NblCount <= MAXULONG);
-        NdisFIndicateReceiveNetBufferLists(
-            Filter->NdisFilterHandle, NblChain, NDIS_DEFAULT_PORT_NUMBER,
-            (ULONG)NblCount, 0);
+        RxCompleteNbls(Filter, NblChain, NblCount);
     }
 }
 
@@ -130,6 +145,8 @@ RxIrpFilter(
     const DATA_FILTER_IN *In = Irp->AssociatedIrp.SystemBuffer;
     DATA_FILTER *DataFilter = NULL;
     KIRQL OldIrql;
+    SIZE_T NblCount = 0;
+    NET_BUFFER_LIST *NblChain = NULL;
     BOOLEAN ClearOnly = FALSE;
 
     if (IrpSp->Parameters.DeviceIoControl.InputBufferLength < sizeof(*In)) {
@@ -152,7 +169,7 @@ RxIrpFilter(
 
     KeAcquireSpinLock(&Filter->Lock, &OldIrql);
 
-    RxClearFilter(Rx);
+    NblCount = RxClearFilter(Rx, &NblChain);
 
     if (!ClearOnly) {
         Rx->DataFilter = DataFilter;
@@ -168,6 +185,10 @@ Exit:
 
     if (DataFilter != NULL) {
         FnIoDeleteFilter(DataFilter);
+    }
+
+    if (NblCount > 0) {
+        RxCompleteNbls(Filter, NblChain, NblCount);
     }
 
     return Status;
