@@ -19,21 +19,29 @@ typedef struct _SHARED_TX {
 } SHARED_TX;
 
 static
-VOID
+SIZE_T
 _Requires_lock_held_(&Tx->Shared->Adapter->Shared->Lock)
 SharedTxClearFilter(
-    _Inout_ SHARED_TX *Tx
+    _Inout_ SHARED_TX *Tx,
+    _Out_ NET_BUFFER_LIST **NblChain
     )
 {
+    SIZE_T NblCount = 0;
+
+    *NblChain = NULL;
+
     if (!IsListEmpty(&Tx->DataFilterLink)) {
         RemoveEntryList(&Tx->DataFilterLink);
         InitializeListHead(&Tx->DataFilterLink);
     }
 
     if (Tx->DataFilter != NULL) {
+        NblCount = FnIoFlushAllFrames(Tx->DataFilter, NblChain);
         FnIoDeleteFilter(Tx->DataFilter);
         Tx->DataFilter = NULL;
     }
+
+    return NblCount;
 }
 
 VOID
@@ -60,11 +68,7 @@ SharedTxCleanup(
 
     KeAcquireSpinLock(&AdapterShared->Lock, &OldIrql);
 
-    if (Tx->DataFilter != NULL) {
-        NblCount = FnIoFlushAllFrames(Tx->DataFilter, &NblChain);
-    }
-
-    SharedTxClearFilter(Tx);
+    NblCount = SharedTxClearFilter(Tx, &NblChain);
 
     KeReleaseSpinLock(&AdapterShared->Lock, OldIrql);
 
@@ -188,6 +192,8 @@ SharedIrpTxFilter(
     CONST DATA_FILTER_IN *In = Irp->AssociatedIrp.SystemBuffer;
     DATA_FILTER *DataFilter = NULL;
     KIRQL OldIrql;
+    SIZE_T NblCount = 0;
+    NET_BUFFER_LIST *NblChain = NULL;
     BOOLEAN ClearOnly = FALSE;
 
     if (IrpSp->Parameters.DeviceIoControl.InputBufferLength < sizeof(*In)) {
@@ -210,7 +216,7 @@ SharedIrpTxFilter(
 
     KeAcquireSpinLock(&AdapterShared->Lock, &OldIrql);
 
-    SharedTxClearFilter(Tx);
+    NblCount = SharedTxClearFilter(Tx, &NblChain);
 
     if (!ClearOnly) {
         Tx->DataFilter = DataFilter;
@@ -226,6 +232,10 @@ Exit:
 
     if (DataFilter != NULL) {
         FnIoDeleteFilter(DataFilter);
+    }
+
+    if (NblCount > 0) {
+        SharedTxCompleteNbls(AdapterShared, NblChain, NblCount);
     }
 
     return Status;

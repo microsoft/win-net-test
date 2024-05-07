@@ -146,8 +146,8 @@ FNLWFAPI
 FNLWFAPI_STATUS
 FnLwfRxFilter(
     _In_ FNLWF_HANDLE Handle,
-    _In_ const VOID *Pattern,
-    _In_ const VOID *Mask,
+    _In_opt_bytecount_(Length) const VOID *Pattern,
+    _In_opt_bytecount_(Length) const VOID *Mask,
     _In_ UINT32 Length
     )
 {
@@ -161,7 +161,7 @@ FnLwfRxFilter(
     // Captured NBLs are returned to NDIS either by closing the RX handle or by
     // dequeuing the packet and flushing the RX context.
     //
-    // Zero-length filters disable packet captures.
+    // Zero-length filters disable packet captures and release all frames.
     //
 
     In.Pattern = (const UCHAR *)Pattern;

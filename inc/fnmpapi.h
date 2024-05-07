@@ -167,8 +167,8 @@ FNMPAPI
 FNMPAPI_STATUS
 FnMpTxFilter(
     _In_ FNMP_HANDLE Handle,
-    _In_ const VOID *Pattern,
-    _In_ const VOID *Mask,
+    _In_opt_bytecount_(Length) const VOID *Pattern,
+    _In_opt_bytecount_(Length) const VOID *Mask,
     _In_ UINT32 Length
     )
 {
@@ -183,7 +183,7 @@ FnMpTxFilter(
     // Captured NBLs are returned to NDIS either by closing the TX handle or by
     // dequeuing the packet and flushing the TX context.
     //
-    // Zero-length filters disable packet captures.
+    // Zero-length filters disable packet captures and release all frames.
     //
 
     In.Pattern = (const UCHAR *)Pattern;
