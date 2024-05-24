@@ -17,9 +17,45 @@
 // Sockets API.
 //
 
+PAGEDX
 _IRQL_requires_max_(PASSIVE_LEVEL)
 CXPLAT_STATUS
-CxPlatSocketCreate(
+FnSockInitialize(
+    VOID
+    )
+{
+    INT WsaError;
+    CXPLAT_STATUS Status;
+    WSADATA WsaData;
+
+    TraceInfo("FnSockInitialize");
+
+    if ((WsaError = WSAStartup(MAKEWORD(2, 2), &WsaData)) != 0) {
+        TraceError(
+            "[ lib] ERROR, %u, %s.",
+            WsaError,
+            "WSAStartup");
+        Status = HRESULT_FROM_WIN32(WsaError);
+    } else {
+        Status = CXPLAT_STATUS_SUCCESS;
+    }
+
+    return Status;
+}
+
+PAGEDX
+_IRQL_requires_max_(PASSIVE_LEVEL)
+VOID
+FnSockUninitialize(
+    VOID
+    )
+{
+    WSACleanup();
+}
+
+_IRQL_requires_max_(PASSIVE_LEVEL)
+CXPLAT_STATUS
+FnSockCreate(
     _In_ INT AddressFamily,
     _In_ INT SocketType,
     _In_ INT Protocol,
@@ -46,7 +82,7 @@ CxPlatSocketCreate(
 
 _IRQL_requires_max_(PASSIVE_LEVEL)
 VOID
-CxPlatSocketClose(
+FnSockClose(
     _In_ CXPLAT_SOCKET Socket
     )
 {
@@ -55,7 +91,7 @@ CxPlatSocketClose(
 
 _IRQL_requires_max_(PASSIVE_LEVEL)
 CXPLAT_STATUS
-CxPlatSocketBind(
+FnSockBind(
     _In_ CXPLAT_SOCKET Socket,
     _In_reads_bytes_(AddressLength) const struct sockaddr* Address,
     _In_ INT AddressLength
@@ -80,7 +116,7 @@ CxPlatSocketBind(
 
 _IRQL_requires_max_(PASSIVE_LEVEL)
 CXPLAT_STATUS
-CxPlatSocketGetSockName(
+FnSockGetSockName(
     _In_ CXPLAT_SOCKET Socket,
     _Out_writes_bytes_(*AddressLength) struct sockaddr* Address,
     _Inout_ INT* AddressLength
@@ -105,7 +141,7 @@ CxPlatSocketGetSockName(
 
 _IRQL_requires_max_(PASSIVE_LEVEL)
 CXPLAT_STATUS
-CxPlatSocketSetSockOpt(
+FnSockSetSockOpt(
     _In_ CXPLAT_SOCKET Socket,
     _In_ ULONG Level,
     _In_ ULONG OptionName,
@@ -132,7 +168,7 @@ CxPlatSocketSetSockOpt(
 
 _IRQL_requires_max_(PASSIVE_LEVEL)
 INT
-CxPlatSocketSendto(
+FnSockSendto(
     _In_ CXPLAT_SOCKET Socket,
     _In_reads_bytes_(BufferLength) const CHAR* Buffer,
     _In_ INT BufferLength,
@@ -146,7 +182,7 @@ CxPlatSocketSendto(
 
 _IRQL_requires_max_(PASSIVE_LEVEL)
 INT
-CxPlatSocketRecv(
+FnSockRecv(
     _In_ CXPLAT_SOCKET Socket,
     _Out_writes_bytes_to_(BufferLength, return) CHAR* Buffer,
     _In_ INT BufferLength,
@@ -158,7 +194,7 @@ CxPlatSocketRecv(
 
 _IRQL_requires_max_(PASSIVE_LEVEL)
 INT
-CxPlatSocketGetLastError(
+FnSockGetLastError(
     VOID
     )
 {
@@ -523,24 +559,11 @@ CxPlatInitialize(
     VOID
     )
 {
-    INT WsaError;
     CXPLAT_STATUS Status;
-    WSADATA WsaData;
-    BOOLEAN WsaInitialized = FALSE;
 
-    TraceError("CxPlatInitialize");
+    TraceInfo("CxPlatInitialize");
 
     (VOID)QueryPerformanceFrequency((LARGE_INTEGER*)&CxPlatPerfFreq);
-
-    if ((WsaError = WSAStartup(MAKEWORD(2, 2), &WsaData)) != 0) {
-        TraceError(
-            "[ lib] ERROR, %u, %s.",
-            WsaError,
-            "WSAStartup");
-        Status = HRESULT_FROM_WIN32(WsaError);
-        goto Exit;
-    }
-    WsaInitialized = TRUE;
 
     Status = CxPlatProcessorInfoInit();
     if (CXPLAT_FAILED(Status)) {
@@ -550,12 +573,6 @@ CxPlatInitialize(
     Status = CXPLAT_STATUS_SUCCESS;
 
 Exit:
-
-    if (CXPLAT_FAILED(Status)) {
-        if (WsaInitialized) {
-            (VOID)WSACleanup();
-        }
-    }
 
     return Status;
 }
@@ -568,5 +585,4 @@ CxPlatUninitialize(
     )
 {
     CxPlatProcessorInfoUnInit();
-    WSACleanup();
 }

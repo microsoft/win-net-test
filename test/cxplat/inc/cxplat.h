@@ -149,9 +149,23 @@ CxPlatUninitialize(
 
 #endif
 
+PAGEDX
 _IRQL_requires_max_(PASSIVE_LEVEL)
 CXPLAT_STATUS
-CxPlatSocketCreate(
+FnSockInitialize(
+    VOID
+    );
+
+PAGEDX
+_IRQL_requires_max_(PASSIVE_LEVEL)
+VOID
+FnSockUninitialize(
+    VOID
+    );
+
+_IRQL_requires_max_(PASSIVE_LEVEL)
+CXPLAT_STATUS
+FnSockCreate(
     _In_ INT AddressFamily,
     _In_ INT SocketType,
     _In_ INT Protocol,
@@ -160,13 +174,13 @@ CxPlatSocketCreate(
 
 _IRQL_requires_max_(PASSIVE_LEVEL)
 VOID
-CxPlatSocketClose(
+FnSockClose(
     _In_ CXPLAT_SOCKET Socket
     );
 
 _IRQL_requires_max_(PASSIVE_LEVEL)
 CXPLAT_STATUS
-CxPlatSocketBind(
+FnSockBind(
     _In_ CXPLAT_SOCKET Socket,
     _In_reads_bytes_(AddressLength) const struct sockaddr* Address,
     _In_ INT AddressLength
@@ -174,7 +188,7 @@ CxPlatSocketBind(
 
 _IRQL_requires_max_(PASSIVE_LEVEL)
 CXPLAT_STATUS
-CxPlatSocketGetSockName(
+FnSockGetSockName(
     _In_ CXPLAT_SOCKET Socket,
     _Out_writes_bytes_(*AddressLength) struct sockaddr* Address,
     _Inout_ INT* AddressLength
@@ -182,7 +196,7 @@ CxPlatSocketGetSockName(
 
 _IRQL_requires_max_(PASSIVE_LEVEL)
 CXPLAT_STATUS
-CxPlatSocketSetSockOpt(
+FnSockSetSockOpt(
     _In_ CXPLAT_SOCKET Socket,
     _In_ ULONG Level,
     _In_ ULONG OptionName,
@@ -192,7 +206,7 @@ CxPlatSocketSetSockOpt(
 
 _IRQL_requires_max_(PASSIVE_LEVEL)
 INT
-CxPlatSocketSendto(
+FnSockSendto(
     _In_ CXPLAT_SOCKET Socket,
     _In_reads_bytes_(BufferLength) const CHAR* Buffer,
     _In_ INT BufferLength,
@@ -203,7 +217,7 @@ CxPlatSocketSendto(
 
 _IRQL_requires_max_(PASSIVE_LEVEL)
 INT
-CxPlatSocketRecv(
+FnSockRecv(
     _In_ CXPLAT_SOCKET Socket,
     _Out_writes_bytes_to_(BufferLength, return) CHAR* Buffer,
     _In_ INT BufferLength,
@@ -212,7 +226,7 @@ CxPlatSocketRecv(
 
 _IRQL_requires_max_(PASSIVE_LEVEL)
 INT
-CxPlatSocketGetLastError(
+FnSockGetLastError(
     VOID
     );
 

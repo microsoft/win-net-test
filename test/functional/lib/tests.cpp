@@ -79,7 +79,7 @@ template <typename T>
 using unique_malloc_ptr = wistd::unique_ptr<T, wil::function_deleter<decltype(&::CxPlatFreeNoTag), ::CxPlatFreeNoTag>>;
 using unique_fnmp_handle = wil::unique_any<FNMP_HANDLE, decltype(::FnMpClose), ::FnMpClose>;
 using unique_fnlwf_handle = wil::unique_any<FNLWF_HANDLE, decltype(::FnLwfClose), ::FnLwfClose>;
-using unique_cxplat_socket = wil::unique_any<CXPLAT_SOCKET, decltype(::CxPlatSocketClose), ::CxPlatSocketClose>;
+using unique_cxplat_socket = wil::unique_any<CXPLAT_SOCKET, decltype(::FnSockClose), ::FnSockClose>;
 using unique_cxplat_thread = wil::unique_any<CXPLAT_THREAD, decltype(::CxPlatThreadDelete), ::CxPlatThreadDelete>;
 
 #if defined(KERNEL_MODE)
@@ -857,23 +857,23 @@ CreateUdpSocket(
         TEST_TRUE_RET(WaitForWfpQuarantine(If), Socket);
     }
 
-    CxPlatSocketCreate(Af, SOCK_DGRAM, IPPROTO_UDP, &Socket);
+    FnSockCreate(Af, SOCK_DGRAM, IPPROTO_UDP, &Socket);
     TEST_NOT_NULL_RET(Socket.get(), Socket);
 
     SOCKADDR_INET Address = {0};
     Address.si_family = Af;
     TEST_CXPLAT_RET(
-        CxPlatSocketBind(Socket.get(), (SOCKADDR *)&Address, sizeof(Address)),
+        FnSockBind(Socket.get(), (SOCKADDR *)&Address, sizeof(Address)),
         Socket);
 
     INT AddressLength = sizeof(Address);
     TEST_CXPLAT_RET(
-        CxPlatSocketGetSockName(Socket.get(), (SOCKADDR *)&Address, &AddressLength),
+        FnSockGetSockName(Socket.get(), (SOCKADDR *)&Address, &AddressLength),
         Socket);
 
     INT TimeoutMs = TEST_TIMEOUT_ASYNC_MS;
     TEST_CXPLAT_RET(
-        CxPlatSocketSetSockOpt(
+        FnSockSetSockOpt(
             Socket.get(), SOL_SOCKET, SO_RCVTIMEO, (CHAR *)&TimeoutMs, sizeof(TimeoutMs)),
         Socket);
 
@@ -925,7 +925,7 @@ WaitForWfpQuarantine(
         RX_FRAME RxFrame;
         RxInitializeFrame(&RxFrame, If->GetQueueId(), UdpFrame, UdpFrameLength);
         if (SUCCEEDED(MpRxIndicateFrame(SharedMp, &RxFrame))) {
-            Bytes = CxPlatSocketRecv(UdpSocket.get(), RecvPayload, sizeof(RecvPayload), 0);
+            Bytes = FnSockRecv(UdpSocket.get(), RecvPayload, sizeof(RecvPayload), 0);
         } else {
             Bytes = (DWORD)-1;
         }
@@ -972,6 +972,7 @@ TestSetup()
 {
     BOOLEAN FirewallInitialized = FALSE;
     BOOLEAN CxPlatInitialized = FALSE;
+    BOOLEAN FnSockInitialized = FALSE;
     BOOLEAN FnMpApiInitialized = FALSE;
     BOOLEAN FnLwfApiInitialized = FALSE;
 
@@ -980,6 +981,9 @@ TestSetup()
 
     TEST_TRUE_GOTO(CXPLAT_SUCCEEDED(CxPlatInitialize()), Error);
     CxPlatInitialized = TRUE;
+
+    TEST_TRUE_GOTO(CXPLAT_SUCCEEDED(FnSockInitialize()), Error);
+    FnSockInitialized = TRUE;
 
     TEST_FNMPAPI_GOTO(FnMpLoadApi(&FnMpLoadApiContext), Error);
     FnMpApiInitialized = TRUE;
@@ -1010,6 +1014,9 @@ Error:
     if (FnMpApiInitialized) {
         FnMpUnloadApi(FnMpLoadApiContext);
     }
+    if (FnSockInitialized) {
+        FnSockUninitialize();
+    }
     if (CxPlatInitialized) {
         CxPlatUninitialize();
     }
@@ -1027,6 +1034,7 @@ TestCleanup()
     CxPlatFree(FnMpIf, POOL_TAG);
     FnLwfUnloadApi(FnLwfLoadApiContext);
     FnMpUnloadApi(FnMpLoadApiContext);
+    FnSockUninitialize();
     CxPlatUninitialize();
     TEST_EQUAL_RET(0, InvokeSystem(FirewallDeleteRuleString), false);
     return true;
@@ -1065,7 +1073,7 @@ MpBasicRx()
     TEST_FNMPAPI(MpRxIndicateFrame(SharedMp, &RxFrame));
     TEST_EQUAL(
         sizeof(UdpPayload),
-        CxPlatSocketRecv(UdpSocket.get(), RecvPayload, sizeof(RecvPayload), 0));
+        FnSockRecv(UdpSocket.get(), RecvPayload, sizeof(RecvPayload), 0));
     TEST_TRUE(RtlEqualMemory(UdpPayload, RecvPayload, sizeof(UdpPayload)));
 }
 
@@ -1101,17 +1109,17 @@ MpBasicTx()
     TEST_TRUE(SetSockAddr(FNMP_NEIGHBOR_IPV4_ADDRESS, 1234, AF_INET, &RemoteAddr));
 
     if (CXPLAT_FAILED(
-            CxPlatSocketSetSockOpt(
+            FnSockSetSockOpt(
                 UdpSocket.get(), IPPROTO_UDP, UDP_SEND_MSG_SIZE,
                 &ExpectedUdpPayloadSize, sizeof(ExpectedUdpPayloadSize)))) {
-        TEST_EQUAL(WSAEINVAL, CxPlatSocketGetLastError());
+        TEST_EQUAL(WSAEINVAL, FnSockGetLastError());
         Uso = FALSE;
         SendSize = ExpectedUdpPayloadSize;
     }
 
     TEST_EQUAL(
         (int)SendSize,
-        CxPlatSocketSendto(
+        FnSockSendto(
             UdpSocket.get(), (PCHAR)UdpPayload, SendSize, 0,
             (PSOCKADDR)&RemoteAddr, sizeof(RemoteAddr)));
 
@@ -1235,7 +1243,7 @@ MpBasicRxOffload()
     TEST_FNMPAPI(MpRxIndicateFrame(SharedMp, &RxFrame));
     TEST_EQUAL(
         sizeof(UdpPayload),
-        CxPlatSocketRecv(UdpSocket.get(), RecvPayload, sizeof(RecvPayload), 0));
+        FnSockRecv(UdpSocket.get(), RecvPayload, sizeof(RecvPayload), 0));
     TEST_TRUE(RtlEqualMemory(UdpPayload, RecvPayload, sizeof(UdpPayload)));
 
     NDIS_OFFLOAD_PARAMETERS OffloadParams;
@@ -1253,7 +1261,7 @@ MpBasicRxOffload()
     TEST_FNMPAPI(MpRxIndicateFrame(SharedMp, &RxFrame));
     TEST_EQUAL(
         sizeof(UdpPayload),
-        CxPlatSocketRecv(UdpSocket.get(), RecvPayload, sizeof(RecvPayload), 0));
+        FnSockRecv(UdpSocket.get(), RecvPayload, sizeof(RecvPayload), 0));
     TEST_TRUE(RtlEqualMemory(UdpPayload, RecvPayload, sizeof(UdpPayload)));
     RxFrame.Frame.Input.Checksum.Value = 0;
     UdpHdr->uh_sum--;
@@ -1273,7 +1281,7 @@ MpBasicRxOffload()
     TEST_FNMPAPI(MpRxIndicateFrame(SharedMp, &RxFrame));
     TEST_EQUAL(
         sizeof(UdpPayload),
-        CxPlatSocketRecv(UdpSocket.get(), RecvPayload, sizeof(RecvPayload), 0));
+        FnSockRecv(UdpSocket.get(), RecvPayload, sizeof(RecvPayload), 0));
     TEST_TRUE(RtlEqualMemory(UdpPayload, RecvPayload, sizeof(UdpPayload)));
     RxFrame.Frame.Input.Checksum.Value = 0;
     IpHdr->HeaderChecksum--;
@@ -1312,7 +1320,7 @@ MpBasicTxOffload()
 
     TEST_EQUAL(
         (int)sizeof(UdpPayload),
-        CxPlatSocketSendto(
+        FnSockSendto(
             UdpSocket.get(), (PCHAR)UdpPayload, sizeof(UdpPayload), 0,
             (PSOCKADDR)&RemoteAddr, sizeof(RemoteAddr)));
 
@@ -1329,7 +1337,7 @@ MpBasicTxOffload()
 
     TEST_EQUAL(
         (int)sizeof(UdpPayload),
-        CxPlatSocketSendto(
+        FnSockSendto(
             UdpSocket.get(), (PCHAR)UdpPayload, sizeof(UdpPayload), 0,
             (PSOCKADDR)&RemoteAddr, sizeof(RemoteAddr)));
 
