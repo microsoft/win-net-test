@@ -25,6 +25,9 @@
     <ProjectReference Include="$(SolutionDir)test\pkthlp\um\pkthlp_um.vcxproj">
       <Project>{e84ff937-7445-4b8e-ba40-dffacc09c060}</Project>
     </ProjectReference>
+    <ProjectReference Include="$(SolutionDir)src\sock\um\fnsock_um.vcxproj">
+      <Project>{dca385fb-b4b1-44cc-ba3f-9da4f619d86a}</Project>
+    </ProjectReference>
     <ProjectReference Include="$(SolutionDir)src\isr\svc\isrsvc.vcxproj">
       <Project>{32916b02-626c-4bdb-af0c-c586670bba0d}</Project>
     </ProjectReference>

@@ -1,8 +1,8 @@
 ﻿<?xml version="1.0" encoding="utf-8"?>
 <Project DefaultTargets="Build" ToolsVersion="12.0" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
   <PropertyGroup>
-    <ProjectGuid>{3539d1da-2355-4352-865f-5120a59846eb}</ProjectGuid>
-    <TargetName>fnfunctionaltestlib_km</TargetName>
+    <ProjectGuid>{ac661767-42c3-4525-8b90-d509a6048dc3}</ProjectGuid>
+    <TargetName>fnsock_km</TargetName>
     <UndockedType>drvlib</UndockedType>
     <UndockedDir>$(SolutionDir)submodules\undocked\</UndockedDir>
     <UndockedOut>$(SolutionDir)artifacts\</UndockedOut>
@@ -12,27 +12,19 @@
   <Import Project="$(SolutionDir)src\wnt.cpp.props" />
   <Import Project="$(SolutionDir)src\wnt.cpp.kernel.props" />
   <ItemGroup>
-    <ClCompile Include="tests.cpp" />
+    <ClCompile Include="sock.c" />
   </ItemGroup>
   <ItemDefinitionGroup>
     <ClCompile>
       <AdditionalIncludeDirectories>
         $(SolutionDir)inc;
-        $(SolutionDir)test\cxplat\inc;
-        $(SolutionDir)test\functional;
-        $(SolutionDir)submodules\net-offloads\include;
-        $(SolutionDir)submodules\wil\include;
-        $(SolutionDir)test\pkthlp;
+        $(SolutionDir)src\sock;
         %(AdditionalIncludeDirectories)
       </AdditionalIncludeDirectories>
-      <PreprocessorDefinitions>
-        NDIS683=1;
-        %(PreprocessorDefinitions)
-      </PreprocessorDefinitions>
       <WppEnabled>true</WppEnabled>
-      <WppScanConfigurationData>$(ProjectDir)..\bin\km\trace.h</WppScanConfigurationData>
+      <WppScanConfigurationData>$(SolutionDir)src\sock\trace.h</WppScanConfigurationData>
       <WppRecorderEnabled>true</WppRecorderEnabled>
-      <WppAdditionalOptions>-p:fntestdrv</WppAdditionalOptions>
+      <WppAdditionalOptions>-p:fnsock</WppAdditionalOptions>
     </ClCompile>
   </ItemDefinitionGroup>
   <Import Project="$(UndockedDir)vs\windows.undocked.targets" />
