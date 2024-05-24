@@ -7,6 +7,7 @@
 #include <wsk.h>
 
 #include "cxplat.h"
+#include "fnsock.h"
 #include "trace.h"
 
 #include "cxplat.tmh"
@@ -135,12 +136,12 @@ static NTSTATUS CxPlatSocketLastError;
 
 PAGEDX
 _IRQL_requires_max_(PASSIVE_LEVEL)
-CXPLAT_STATUS
+FNSOCK_STATUS
 FnSockInitialize(
     VOID
     )
 {
-    CXPLAT_STATUS Status;
+    NTSTATUS Status;
     WSK_CLIENT_NPI WskClientNpi = { NULL, &WskAppDispatch };
     BOOLEAN WskRegistered = FALSE;
     WSK_EVENT_CALLBACK_CONTROL CallbackControl =
@@ -156,7 +157,7 @@ FnSockInitialize(
     WskDatagramDispatch.WskReceiveFromEvent = CxPlatDatagramSocketReceive;
 
     Status = WskRegister(&WskClientNpi, &WskRegistration);
-    if (CXPLAT_FAILED(Status)) {
+    if (!NT_SUCCESS(Status)) {
         TraceError(
             "[ lib] ERROR, %u, %s.",
             Status,
@@ -174,7 +175,7 @@ FnSockInitialize(
             &WskRegistration,
             WSK_INFINITE_WAIT,
             &WskProviderNpi);
-    if (CXPLAT_FAILED(Status)) {
+    if (!NT_SUCCESS(Status)) {
         TraceError(
             "[ lib] ERROR, %u, %s.",
             Status,
@@ -193,7 +194,7 @@ FnSockInitialize(
             NULL,
             NULL,
             NULL);
-    if (CXPLAT_FAILED(Status)) {
+    if (!NT_SUCCESS(Status)) {
         TraceError(
             "[ lib] ERROR, %u, %s.",
             Status,
@@ -203,7 +204,7 @@ FnSockInitialize(
 
 Exit:
 
-    if (CXPLAT_FAILED(Status)) {
+    if (!NT_SUCCESS(Status)) {
         if (WskRegistered) {
             WskDeregister(&WskRegistration);
         }
@@ -344,7 +345,7 @@ CxPlatDataPathSendComplete(
 }
 
 _IRQL_requires_max_(PASSIVE_LEVEL)
-CXPLAT_STATUS
+FNSOCK_STATUS
 FnSockCreate(
     _In_ INT AddressFamily,
     _In_ INT SocketType,
@@ -352,7 +353,7 @@ FnSockCreate(
     _Out_ FNSOCK_HANDLE* Socket
     )
 {
-    CXPLAT_STATUS Status;
+    NTSTATUS Status;
     CXPLAT_SOCKET_BINDING* Binding = NULL;
     ULONG Flags = 0;
 
@@ -360,7 +361,7 @@ FnSockCreate(
         TraceError(
             "[data] ERROR, %s.",
             "Unsupported sock type or protocol");
-        Status = CXPLAT_STATUS_FAIL;
+        Status = STATUS_UNSUCCESSFUL;
         goto Exit;
     }
     Flags |= WSK_FLAG_DATAGRAM_SOCKET;
@@ -372,7 +373,7 @@ FnSockCreate(
         TraceError(
             "[data] ERROR, %s.",
             "Could not allocate memory for socket");
-        Status = CXPLAT_STATUS_FAIL;
+        Status = STATUS_UNSUCCESSFUL;
         goto Exit;
     }
 
@@ -427,9 +428,7 @@ Exit:
 
     if (!NT_SUCCESS(Status)) {
         CxPlatSocketLastError = Status;
-    }
 
-    if (CXPLAT_FAILED(Status)) {
         if (Binding != NULL) {
             IoCleanupIrp(&Binding->Irp);
             ExFreePoolWithTag(Binding, CXPLAT_POOL_SOCKET);
@@ -478,14 +477,14 @@ FnSockClose(
 }
 
 _IRQL_requires_max_(PASSIVE_LEVEL)
-CXPLAT_STATUS
+FNSOCK_STATUS
 FnSockBind(
     _In_ FNSOCK_HANDLE Socket,
     _In_reads_bytes_(AddressLength) const struct sockaddr* Address,
     _In_ INT AddressLength
     )
 {
-    CXPLAT_STATUS Status;
+    NTSTATUS Status;
     CXPLAT_SOCKET_BINDING* Binding = (CXPLAT_SOCKET_BINDING*)Socket;
 
     UNREFERENCED_PARAMETER(AddressLength);
@@ -532,14 +531,14 @@ Exit:
 }
 
 _IRQL_requires_max_(PASSIVE_LEVEL)
-CXPLAT_STATUS
+FNSOCK_STATUS
 FnSockGetSockName(
     _In_ FNSOCK_HANDLE Socket,
     _Out_writes_bytes_(*AddressLength) struct sockaddr* Address,
     _Inout_ INT* AddressLength
     )
 {
-    CXPLAT_STATUS Status;
+    NTSTATUS Status;
     CXPLAT_SOCKET_BINDING* Binding = (CXPLAT_SOCKET_BINDING*)Socket;
 
     UNREFERENCED_PARAMETER(AddressLength);
@@ -584,7 +583,7 @@ Exit:
 }
 
 _IRQL_requires_max_(PASSIVE_LEVEL)
-CXPLAT_STATUS
+FNSOCK_STATUS
 FnSockSetSockOpt(
     _In_ FNSOCK_HANDLE Socket,
     _In_ ULONG Level,
@@ -593,7 +592,7 @@ FnSockSetSockOpt(
     _In_ SIZE_T OptionLength
     )
 {
-    CXPLAT_STATUS Status;
+    NTSTATUS Status;
     CXPLAT_SOCKET_BINDING* Binding = (CXPLAT_SOCKET_BINDING*)Socket;
 
     if (Level == SOL_SOCKET && OptionName == SO_RCVTIMEO) {
@@ -605,7 +604,7 @@ FnSockSetSockOpt(
             goto Exit;
         }
         Binding->ReceiveTimeout = *(UINT32*)OptionValue;
-        Status = CXPLAT_STATUS_SUCCESS;
+        Status = STATUS_SUCCESS;
         goto Exit;
     }
 
@@ -666,7 +665,7 @@ FnSockSendto(
     _In_ INT AddressLength
     )
 {
-    CXPLAT_STATUS Status;
+    NTSTATUS Status;
     CXPLAT_SOCKET_BINDING* Binding = (CXPLAT_SOCKET_BINDING*)Socket;
     CXPLAT_SOCKET_SEND_DATA* SendData;
     INT BytesSent = 0;

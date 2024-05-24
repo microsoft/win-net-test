@@ -31,6 +31,7 @@
 #pragma warning(pop)
 
 #include <cxplat.h>
+#include <fnsock.h>
 #include <pkthlp.h>
 #include <fnmpapi.h>
 #include <fnlwfapi.h>

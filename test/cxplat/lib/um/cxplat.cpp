@@ -9,6 +9,7 @@
 #include <stdlib.h>
 
 #include "cxplat.h"
+#include "fnsock.h"
 #include "trace.h"
 
 #include "cxplat.tmh"
