@@ -1182,7 +1182,7 @@ MpBasicTx()
 
     TEST_EQUAL(
         (int)SendSize,
-        CxPlatSocketSendto(
+        FnSockSendto(
             UdpSocket.get(), (PCHAR)UdpPayload, SendSize, 0,
             (PSOCKADDR)&RemoteAddr, sizeof(RemoteAddr)));
 
