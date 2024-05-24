@@ -45,8 +45,6 @@ EXTERN_C_START
 
 #endif // defined(KERNEL_MODE)
 
-DECLARE_HANDLE(CXPLAT_SOCKET);
-
 PAGEDX
 _IRQL_requires_max_(PASSIVE_LEVEL)
 CXPLAT_STATUS
@@ -64,6 +62,8 @@ CxPlatUninitialize(
 //
 // Sockets API.
 //
+
+DECLARE_HANDLE(FNSOCK_HANDLE);
 
 /*
  * WinSock error codes are also defined in winerror.h
@@ -169,19 +169,19 @@ FnSockCreate(
     _In_ INT AddressFamily,
     _In_ INT SocketType,
     _In_ INT Protocol,
-    _Out_ CXPLAT_SOCKET* Socket
+    _Out_ FNSOCK_HANDLE* Socket
     );
 
 _IRQL_requires_max_(PASSIVE_LEVEL)
 VOID
 FnSockClose(
-    _In_ CXPLAT_SOCKET Socket
+    _In_ FNSOCK_HANDLE Socket
     );
 
 _IRQL_requires_max_(PASSIVE_LEVEL)
 CXPLAT_STATUS
 FnSockBind(
-    _In_ CXPLAT_SOCKET Socket,
+    _In_ FNSOCK_HANDLE Socket,
     _In_reads_bytes_(AddressLength) const struct sockaddr* Address,
     _In_ INT AddressLength
     );
@@ -189,7 +189,7 @@ FnSockBind(
 _IRQL_requires_max_(PASSIVE_LEVEL)
 CXPLAT_STATUS
 FnSockGetSockName(
-    _In_ CXPLAT_SOCKET Socket,
+    _In_ FNSOCK_HANDLE Socket,
     _Out_writes_bytes_(*AddressLength) struct sockaddr* Address,
     _Inout_ INT* AddressLength
     );
@@ -197,7 +197,7 @@ FnSockGetSockName(
 _IRQL_requires_max_(PASSIVE_LEVEL)
 CXPLAT_STATUS
 FnSockSetSockOpt(
-    _In_ CXPLAT_SOCKET Socket,
+    _In_ FNSOCK_HANDLE Socket,
     _In_ ULONG Level,
     _In_ ULONG OptionName,
     _In_reads_bytes_opt_(OptionLength) VOID* OptionValue,
@@ -207,7 +207,7 @@ FnSockSetSockOpt(
 _IRQL_requires_max_(PASSIVE_LEVEL)
 INT
 FnSockSendto(
-    _In_ CXPLAT_SOCKET Socket,
+    _In_ FNSOCK_HANDLE Socket,
     _In_reads_bytes_(BufferLength) const CHAR* Buffer,
     _In_ INT BufferLength,
     _In_ INT Flags,
@@ -218,7 +218,7 @@ FnSockSendto(
 _IRQL_requires_max_(PASSIVE_LEVEL)
 INT
 FnSockRecv(
-    _In_ CXPLAT_SOCKET Socket,
+    _In_ FNSOCK_HANDLE Socket,
     _Out_writes_bytes_to_(BufferLength, return) CHAR* Buffer,
     _In_ INT BufferLength,
     _In_ INT Flags

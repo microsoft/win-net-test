@@ -349,7 +349,7 @@ FnSockCreate(
     _In_ INT AddressFamily,
     _In_ INT SocketType,
     _In_ INT Protocol,
-    _Out_ CXPLAT_SOCKET* Socket
+    _Out_ FNSOCK_HANDLE* Socket
     )
 {
     CXPLAT_STATUS Status;
@@ -421,7 +421,7 @@ FnSockCreate(
     }
 
     Binding->Socket = (PWSK_SOCKET)(Binding->Irp.IoStatus.Information);
-    *Socket = (CXPLAT_SOCKET)Binding;
+    *Socket = (FNSOCK_HANDLE)Binding;
 
 Exit:
 
@@ -442,7 +442,7 @@ Exit:
 _IRQL_requires_max_(PASSIVE_LEVEL)
 VOID
 FnSockClose(
-    _In_ CXPLAT_SOCKET Socket
+    _In_ FNSOCK_HANDLE Socket
     )
 {
     CXPLAT_SOCKET_BINDING* Binding = (CXPLAT_SOCKET_BINDING*)Socket;
@@ -480,7 +480,7 @@ FnSockClose(
 _IRQL_requires_max_(PASSIVE_LEVEL)
 CXPLAT_STATUS
 FnSockBind(
-    _In_ CXPLAT_SOCKET Socket,
+    _In_ FNSOCK_HANDLE Socket,
     _In_reads_bytes_(AddressLength) const struct sockaddr* Address,
     _In_ INT AddressLength
     )
@@ -534,7 +534,7 @@ Exit:
 _IRQL_requires_max_(PASSIVE_LEVEL)
 CXPLAT_STATUS
 FnSockGetSockName(
-    _In_ CXPLAT_SOCKET Socket,
+    _In_ FNSOCK_HANDLE Socket,
     _Out_writes_bytes_(*AddressLength) struct sockaddr* Address,
     _Inout_ INT* AddressLength
     )
@@ -586,7 +586,7 @@ Exit:
 _IRQL_requires_max_(PASSIVE_LEVEL)
 CXPLAT_STATUS
 FnSockSetSockOpt(
-    _In_ CXPLAT_SOCKET Socket,
+    _In_ FNSOCK_HANDLE Socket,
     _In_ ULONG Level,
     _In_ ULONG OptionName,
     _In_reads_bytes_opt_(OptionLength) VOID* OptionValue,
@@ -658,7 +658,7 @@ Exit:
 _IRQL_requires_max_(PASSIVE_LEVEL)
 INT
 FnSockSendto(
-    _In_ CXPLAT_SOCKET Socket,
+    _In_ FNSOCK_HANDLE Socket,
     _In_reads_bytes_(BufferLength) const CHAR* Buffer,
     _In_ INT BufferLength,
     _In_ INT Flags,
@@ -762,7 +762,7 @@ Exit:
 _IRQL_requires_max_(PASSIVE_LEVEL)
 INT
 FnSockRecv(
-    _In_ CXPLAT_SOCKET Socket,
+    _In_ FNSOCK_HANDLE Socket,
     _Out_writes_bytes_to_(BufferLength, return) CHAR* Buffer,
     _In_ INT BufferLength,
     _In_ INT Flags

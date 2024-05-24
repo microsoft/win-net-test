@@ -79,7 +79,7 @@ template <typename T>
 using unique_malloc_ptr = wistd::unique_ptr<T, wil::function_deleter<decltype(&::CxPlatFreeNoTag), ::CxPlatFreeNoTag>>;
 using unique_fnmp_handle = wil::unique_any<FNMP_HANDLE, decltype(::FnMpClose), ::FnMpClose>;
 using unique_fnlwf_handle = wil::unique_any<FNLWF_HANDLE, decltype(::FnLwfClose), ::FnLwfClose>;
-using unique_cxplat_socket = wil::unique_any<CXPLAT_SOCKET, decltype(::FnSockClose), ::FnSockClose>;
+using unique_fnsock_handle = wil::unique_any<FNSOCK_HANDLE, decltype(::FnSockClose), ::FnSockClose>;
 using unique_cxplat_thread = wil::unique_any<CXPLAT_THREAD, decltype(::CxPlatThreadDelete), ::CxPlatThreadDelete>;
 
 #if defined(KERNEL_MODE)
@@ -839,14 +839,14 @@ WaitForWfpQuarantine(
     );
 
 static
-unique_cxplat_socket
+unique_fnsock_handle
 CreateUdpSocket(
     _In_ ADDRESS_FAMILY Af,
     _In_opt_ const TestInterface *If,
     _Out_ UINT16 *LocalPort
     )
 {
-    unique_cxplat_socket Socket;
+    unique_fnsock_handle Socket;
 
     *LocalPort = 0;
 
