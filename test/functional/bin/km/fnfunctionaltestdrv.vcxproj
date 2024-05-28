@@ -18,6 +18,9 @@
     <ProjectReference Include="$(SolutionDir)test\cxplat\lib\km\cxplat_km.vcxproj">
       <Project>{06f8bd85-f946-40da-9173-e20fb69fedb0}</Project>
     </ProjectReference>
+    <ProjectReference Include="$(SolutionDir)src\sock\km\fnsock_km.vcxproj">
+      <Project>{ac661767-42c3-4525-8b90-d509a6048dc3}</Project>
+    </ProjectReference>
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="control.cpp" />

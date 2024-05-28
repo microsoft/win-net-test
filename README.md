@@ -8,6 +8,7 @@ This repository hosts tools used to test networking on Windows.
 
 * [Functional Miniport (FnMp)](./docs/fnmp.md)
 * [Functional Lwf (FnLwf)](./docs/fnlwf.md)
+* [Functional Sockets (FnSock)](./docs/fnsock.md)
 * [Invoke System Relay (Isr)](./docs/isr.md)
 * [Development](./docs/development.md)
 
