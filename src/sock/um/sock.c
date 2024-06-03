@@ -168,11 +168,14 @@ FnSockSendto(
     _In_ FNSOCK_HANDLE Socket,
     _In_reads_bytes_(BufferLength) const CHAR* Buffer,
     _In_ INT BufferLength,
+    _In_ BOOLEAN BufferIsNonPagedPool,
     _In_ INT Flags,
     _In_reads_bytes_(AddressLength) const struct sockaddr* Address,
     _In_ INT AddressLength
     )
 {
+    UNREFERENCED_PARAMETER(BufferIsNonPagedPool);
+
     return sendto((SOCKET)Socket, Buffer, BufferLength, Flags, Address, AddressLength);
 }
 
@@ -182,9 +185,12 @@ FnSockRecv(
     _In_ FNSOCK_HANDLE Socket,
     _Out_writes_bytes_to_(BufferLength, return) CHAR* Buffer,
     _In_ INT BufferLength,
+    _In_ BOOLEAN BufferIsNonPagedPool,
     _In_ INT Flags
     )
 {
+    UNREFERENCED_PARAMETER(BufferIsNonPagedPool);
+
     return recv((SOCKET)Socket, Buffer, BufferLength, Flags);
 }
 

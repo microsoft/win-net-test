@@ -926,7 +926,7 @@ WaitForWfpQuarantine(
         RX_FRAME RxFrame;
         RxInitializeFrame(&RxFrame, If->GetQueueId(), UdpFrame, UdpFrameLength);
         if (SUCCEEDED(MpRxIndicateFrame(SharedMp, &RxFrame))) {
-            Bytes = FnSockRecv(UdpSocket.get(), RecvPayload, sizeof(RecvPayload), 0);
+            Bytes = FnSockRecv(UdpSocket.get(), RecvPayload, sizeof(RecvPayload), FALSE, 0);
         } else {
             Bytes = (DWORD)-1;
         }
@@ -1074,7 +1074,7 @@ MpBasicRx()
     TEST_FNMPAPI(MpRxIndicateFrame(SharedMp, &RxFrame));
     TEST_EQUAL(
         sizeof(UdpPayload),
-        FnSockRecv(UdpSocket.get(), RecvPayload, sizeof(RecvPayload), 0));
+        FnSockRecv(UdpSocket.get(), RecvPayload, sizeof(RecvPayload), FALSE, 0));
     TEST_TRUE(RtlEqualMemory(UdpPayload, RecvPayload, sizeof(UdpPayload)));
 }
 
@@ -1121,7 +1121,7 @@ MpBasicTx()
     TEST_EQUAL(
         (int)SendSize,
         FnSockSendto(
-            UdpSocket.get(), (PCHAR)UdpPayload, SendSize, 0,
+            UdpSocket.get(), (PCHAR)UdpPayload, SendSize, FALSE, 0,
             (PSOCKADDR)&RemoteAddr, sizeof(RemoteAddr)));
 
     auto MpTxFrame = MpTxAllocateAndGetFrame(SharedMp, 0);
@@ -1183,7 +1183,7 @@ MpBasicTx()
     TEST_EQUAL(
         (int)SendSize,
         FnSockSendto(
-            UdpSocket.get(), (PCHAR)UdpPayload, SendSize, 0,
+            UdpSocket.get(), (PCHAR)UdpPayload, SendSize, FALSE, 0,
             (PSOCKADDR)&RemoteAddr, sizeof(RemoteAddr)));
 
     MpTxFrame = MpTxAllocateAndGetFrame(SharedMp, 0);
@@ -1244,7 +1244,7 @@ MpBasicRxOffload()
     TEST_FNMPAPI(MpRxIndicateFrame(SharedMp, &RxFrame));
     TEST_EQUAL(
         sizeof(UdpPayload),
-        FnSockRecv(UdpSocket.get(), RecvPayload, sizeof(RecvPayload), 0));
+        FnSockRecv(UdpSocket.get(), RecvPayload, sizeof(RecvPayload), FALSE, 0));
     TEST_TRUE(RtlEqualMemory(UdpPayload, RecvPayload, sizeof(UdpPayload)));
 
     NDIS_OFFLOAD_PARAMETERS OffloadParams;
@@ -1262,7 +1262,7 @@ MpBasicRxOffload()
     TEST_FNMPAPI(MpRxIndicateFrame(SharedMp, &RxFrame));
     TEST_EQUAL(
         sizeof(UdpPayload),
-        FnSockRecv(UdpSocket.get(), RecvPayload, sizeof(RecvPayload), 0));
+        FnSockRecv(UdpSocket.get(), RecvPayload, sizeof(RecvPayload), FALSE, 0));
     TEST_TRUE(RtlEqualMemory(UdpPayload, RecvPayload, sizeof(UdpPayload)));
     RxFrame.Frame.Input.Checksum.Value = 0;
     UdpHdr->uh_sum--;
@@ -1282,7 +1282,7 @@ MpBasicRxOffload()
     TEST_FNMPAPI(MpRxIndicateFrame(SharedMp, &RxFrame));
     TEST_EQUAL(
         sizeof(UdpPayload),
-        FnSockRecv(UdpSocket.get(), RecvPayload, sizeof(RecvPayload), 0));
+        FnSockRecv(UdpSocket.get(), RecvPayload, sizeof(RecvPayload), FALSE, 0));
     TEST_TRUE(RtlEqualMemory(UdpPayload, RecvPayload, sizeof(UdpPayload)));
     RxFrame.Frame.Input.Checksum.Value = 0;
     IpHdr->HeaderChecksum--;
@@ -1322,7 +1322,7 @@ MpBasicTxOffload()
     TEST_EQUAL(
         (int)sizeof(UdpPayload),
         FnSockSendto(
-            UdpSocket.get(), (PCHAR)UdpPayload, sizeof(UdpPayload), 0,
+            UdpSocket.get(), (PCHAR)UdpPayload, sizeof(UdpPayload), FALSE, 0,
             (PSOCKADDR)&RemoteAddr, sizeof(RemoteAddr)));
 
     auto MpTxFrame = MpTxAllocateAndGetFrame(SharedMp, 0);
@@ -1339,7 +1339,7 @@ MpBasicTxOffload()
     TEST_EQUAL(
         (int)sizeof(UdpPayload),
         FnSockSendto(
-            UdpSocket.get(), (PCHAR)UdpPayload, sizeof(UdpPayload), 0,
+            UdpSocket.get(), (PCHAR)UdpPayload, sizeof(UdpPayload), FALSE, 0,
             (PSOCKADDR)&RemoteAddr, sizeof(RemoteAddr)));
 
     MpTxFrame = MpTxAllocateAndGetFrame(SharedMp, 0);
