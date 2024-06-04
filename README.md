@@ -10,6 +10,7 @@ This repository hosts tools used to test networking on Windows.
 * [Functional Lwf (FnLwf)](./docs/fnlwf.md)
 * [Functional Sockets (FnSock)](./docs/fnsock.md)
 * [Invoke System Relay (Isr)](./docs/isr.md)
+* [WSK Client (wskclient)](./docs/wskclient.md)
 * [Development](./docs/development.md)
 
 ## Contributing
