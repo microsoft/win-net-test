@@ -117,7 +117,8 @@ FnSockCreate(
     *Socket = NULL;
 
     Binding =
-        (FNSOCK_SOCKET_BINDING*)ExAllocatePoolZero(
+#pragma warning( suppress : 4996 )
+        (FNSOCK_SOCKET_BINDING*)ExAllocatePoolWithTag(
             NonPagedPoolNx, sizeof(*Binding), FNSOCK_POOL_SOCKET);
     if (Binding == NULL) {
         TraceError(
@@ -405,7 +406,8 @@ FnSockSendto(
     UNREFERENCED_PARAMETER(AddressLength);
 
     SendContext =
-        (FNSOCK_SOCKET_SEND_CONTEXT*)ExAllocatePoolZero(
+#pragma warning( suppress : 4996 )
+        (FNSOCK_SOCKET_SEND_CONTEXT*)ExAllocatePoolWithTag(
             NonPagedPoolNx, sizeof(*SendContext), FNSOCK_POOL_SOCKET_SEND);
     if (SendContext == NULL) {
         TraceError(
@@ -597,7 +599,8 @@ FnSockDatagramSocketReceive(
 
         FNSOCK_SOCKET_RECV_DATA* RecvData = NULL;
         RecvData =
-            (FNSOCK_SOCKET_RECV_DATA*)ExAllocatePoolZero(
+#pragma warning( suppress : 4996 )
+            (FNSOCK_SOCKET_RECV_DATA*)ExAllocatePoolWithTag(
                 NonPagedPoolNx, sizeof(*RecvData) + DataLength, FNSOCK_POOL_SOCKET_RECV);
         if (RecvData == NULL) {
             TraceError(

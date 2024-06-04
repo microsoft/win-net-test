@@ -610,7 +610,7 @@ WskAcceptAsync(
     // (regardless of whether the call was pended).
 
     #pragma warning( suppress : 4996 )
-    Completion = ExAllocatePool2(POOL_FLAG_NON_PAGED, sizeof(*Completion), 'tseT');
+    Completion = ExAllocatePoolWithTag(NonPagedPoolNx, sizeof(*Completion), 'tseT');
     if (Completion == NULL) {
         Status = STATUS_INSUFFICIENT_RESOURCES;
         goto Failure;
@@ -850,7 +850,7 @@ WskDisconnectAsync(
     // On success, caller must follow up with a call to WskDisconnectAwait,
 
     #pragma warning( suppress : 4996 )
-    Completion = ExAllocatePool2(POOL_FLAG_NON_PAGED, sizeof(*Completion), 'tseT');
+    Completion = ExAllocatePoolWithTag(NonPagedPoolNx, sizeof(*Completion), 'tseT');
     if (Completion == NULL) {
         Status = STATUS_INSUFFICIENT_RESOURCES;
         goto Failure;
@@ -1107,7 +1107,7 @@ WskSendAsync(
     // On success, caller must follow up with a call to WskSendAwait.
 
     #pragma warning( suppress : 4996 )
-    Completion = ExAllocatePool2(POOL_FLAG_NON_PAGED, sizeof(*Completion), 'tseT');
+    Completion = ExAllocatePoolWithTag(NonPagedPoolNx, sizeof(*Completion), 'tseT');
     if (Completion == NULL) {
         Status = STATUS_INSUFFICIENT_RESOURCES;
         goto Failure;
@@ -1414,7 +1414,7 @@ WskReceiveAsync(
     // On success, caller must follow up with a call to WskSendAwait.
 
     #pragma warning( suppress : 4996 )
-    Completion = ExAllocatePool2(POOL_FLAG_NON_PAGED, sizeof(*Completion), 'tseT');
+    Completion = ExAllocatePoolWithTag(NonPagedPoolNx, sizeof(*Completion), 'tseT');
     if (Completion == NULL) {
         Status = STATUS_INSUFFICIENT_RESOURCES;
         goto Failure;
@@ -1605,7 +1605,7 @@ WskSendToAsync(
     ASSERT(BufLen > 0);
 
     #pragma warning( suppress : 4996 )
-    Completion = ExAllocatePool2(POOL_FLAG_NON_PAGED, sizeof(*Completion), 'tseT');
+    Completion = ExAllocatePoolWithTag(NonPagedPoolNx, sizeof(*Completion), 'tseT');
     if (Completion == NULL) {
         Status = STATUS_INSUFFICIENT_RESOURCES;
         goto Failure;
