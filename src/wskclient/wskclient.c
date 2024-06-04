@@ -1602,10 +1602,6 @@ WskSendToAsync(
 
     // On success, caller must follow up with a call to WskSendToAwait.
 
-#if !DBG
-    UNREFERENCED_PARAMETER(ExpectedBytesSent);
-#endif
-
     ASSERT(BufLen > 0);
 
     #pragma warning( suppress : 4996 )
