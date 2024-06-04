@@ -10,6 +10,7 @@ typedef struct _WSKCONNECTEX_COMPLETION {
     WSK_BUF WskBuf;
     KEVENT Event;
     NTSTATUS Status;
+    BOOLEAN BufLocked;
 } WSKCONNECTEX_COMPLETION, *PWSKCONNECTEX_COMPLETION;
 
 typedef struct _WSKDISCONNECT_COMPLETION {
@@ -92,7 +93,8 @@ WskConnectExSync(
     int SockType,
     PSOCKADDR Addr,
     char *Buf,
-    ULONG BufLen
+    ULONG BufLen,
+    BOOLEAN BufIsNonPagedPool
     );
 
 NTSTATUS
@@ -102,6 +104,7 @@ WskConnectExAsync(
     PSOCKADDR Addr,
     char *Buf,
     ULONG BufLen,
+    BOOLEAN BufIsNonPagedPool,
     _Out_ PVOID* ConnectCompletion
     );
 
@@ -198,6 +201,7 @@ WskSendExSync(
     int SockType,
     char *Buf,
     ULONG BufLen,
+    BOOLEAN BufIsNonPagedPool,
     char* Control,
     ULONG ControlLen,
     ULONG ExpectedBytesSent,
@@ -211,6 +215,7 @@ WskSendAsync(
     int SockType,
     char *Buf,
     ULONG BufLen,
+    BOOLEAN BufIsNonPagedPool,
     ULONG Flags,
     _Out_ PVOID* SendCompletion
     );
@@ -241,6 +246,7 @@ WskReceiveExSync(
     int SockType,
     char *Buf,
     ULONG BufLen,
+    BOOLEAN BufIsNonPagedPool,
     PCMSGHDR Control,
     PULONG ControlLen,
     ULONG ExpectedBytesReceived,
@@ -254,6 +260,7 @@ WskReceiveAsync(
     int SockType,
     char *Buf,
     ULONG BufLen,
+    BOOLEAN BufIsNonPagedPool,
     _Out_ PVOID* ReceiveCompletion
     );
 

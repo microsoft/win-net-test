@@ -46,6 +46,70 @@ WskClientDereg(
 }
 
 static
+NTSTATUS
+InitializeWskBuf(
+    _In_ char *Buf,
+    _In_ ULONG BufLen,
+    _In_ ULONG BufOffset,
+    _In_ BOOLEAN BufIsNonPagedPool,
+    _Out_ WSK_BUF* WskBuf,
+    _Out_ BOOLEAN* BufLocked
+    )
+{
+    NTSTATUS Status;
+    PMDL Mdl = NULL;
+
+    RtlZeroMemory(WskBuf, sizeof(*WskBuf));
+    *BufLocked = FALSE;
+
+    Mdl = IoAllocateMdl(Buf, BufLen, FALSE, FALSE, NULL);
+    if (Mdl == NULL) {
+        Status = STATUS_INSUFFICIENT_RESOURCES;
+        goto Cleanup;
+    }
+
+    if (BufIsNonPagedPool) {
+        MmBuildMdlForNonPagedPool(Mdl);
+    } else {
+        try {
+            MmProbeAndLockPages(Mdl, KernelMode, IoWriteAccess);
+        } except(EXCEPTION_EXECUTE_HANDLER) {
+            LOG("MmProbeAndLockPages failed\n");
+            Status = STATUS_INSUFFICIENT_RESOURCES;
+            goto Cleanup;
+        }
+        *BufLocked = TRUE;
+    }
+
+    WskBuf->Length = BufLen;
+    WskBuf->Offset = BufOffset;
+    WskBuf->Mdl = Mdl;
+    Mdl = NULL;
+    Status = STATUS_SUCCESS;
+
+Cleanup:
+    if (Mdl != NULL) {
+        IoFreeMdl(Mdl);
+    }
+    return STATUS_SUCCESS;
+}
+
+static
+VOID
+UninitializeWskBuf(
+    _In_ WSK_BUF* WskBuf,
+    _In_ BOOLEAN BufLocked
+    )
+{
+    if (WskBuf->Mdl != NULL) {
+        if (BufLocked) {
+            MmUnlockPages(WskBuf->Mdl);
+        }
+        IoFreeMdl(WskBuf->Mdl);
+    }
+}
+
+static
 _Function_class_(IO_COMPLETION_ROUTINE)
 NTSTATUS
 GenericCompletionRoutine(
@@ -300,14 +364,16 @@ WskConnectExSync(
     int SockType,
     PSOCKADDR Addr,
     char *Buf,
-    ULONG BufLen
+    ULONG BufLen,
+    BOOLEAN BufIsNonPagedPool
     )
 {
-    PIRP Irp;
+    PIRP Irp = NULL;
     NTSTATUS Status;
     KEVENT Event;
     PFN_WSK_CONNECT_EX WskConnectEx;
     WSK_BUF WskBuf = {0};
+    BOOLEAN BufLocked = FALSE;
 
     switch (SockType) {
     case WSK_FLAG_CONNECTION_SOCKET:
@@ -318,21 +384,23 @@ WskConnectExSync(
         break;
     default:
         ASSERT(FALSE);
-        return STATUS_UNSUCCESSFUL;
+        Status = STATUS_UNSUCCESSFUL;
+        goto Cleanup;
     }
 
     Irp = IoAllocateIrp(1, FALSE);
     if (Irp == NULL) {
-        return STATUS_INSUFFICIENT_RESOURCES;
+        Status = STATUS_INSUFFICIENT_RESOURCES;
+        goto Cleanup;
     }
     KeInitializeEvent(&Event, NotificationEvent, FALSE);
     IoSetCompletionRoutine(Irp, GenericCompletionRoutine, &Event, TRUE, TRUE, TRUE);
 
     if (Buf != NULL) {
-        WskBuf.Mdl = IoAllocateMdl(Buf, BufLen, FALSE, FALSE, NULL);
-        MmBuildMdlForNonPagedPool(WskBuf.Mdl);
-        WskBuf.Offset = 0;
-        WskBuf.Length = BufLen;
+        Status = InitializeWskBuf(Buf, BufLen, 0, BufIsNonPagedPool, &WskBuf, &BufLocked);
+        if (!NT_SUCCESS(Status)) {
+            goto Cleanup;
+        }
         Status = WskConnectEx(Sock, Addr, &WskBuf, 0, Irp);
     } else {
         Status = WskConnectEx(Sock, Addr, NULL, 0, Irp);
@@ -344,10 +412,11 @@ WskConnectExSync(
         LOG("WskConnectEx failed with %d\n", Status);
     }
     Status = Irp->IoStatus.Status;
-    IoFreeIrp(Irp);
-    if (Buf != NULL) {
-        IoFreeMdl(WskBuf.Mdl);
+Cleanup:
+    if (Irp != NULL) {
+        IoFreeIrp(Irp);
     }
+    UninitializeWskBuf(&WskBuf, BufLocked);
     return Status;
 }
 
@@ -358,13 +427,14 @@ WskConnectExAsync(
     PSOCKADDR Addr,
     char *Buf,
     ULONG BufLen,
+    BOOLEAN BufIsNonPagedPool,
     _Out_ PVOID* ConnectCompletion
     )
 {
-    PIRP Irp;
+    PIRP Irp = NULL;
     NTSTATUS Status;
     PFN_WSK_CONNECT_EX WskConnectEx;
-    PWSKCONNECTEX_COMPLETION Completion;
+    PWSKCONNECTEX_COMPLETION Completion = NULL;
 
     // On success, caller must follow up with a call to WskConnectExAwait
     // (regardless of whether the call was pended). If the call was pended, the
@@ -373,7 +443,8 @@ WskConnectExAsync(
     #pragma warning( suppress : 4996 )
     Completion = ExAllocatePoolWithTag(NonPagedPoolNx, sizeof(*Completion), 'tseT');
     if (Completion == NULL) {
-        return STATUS_INSUFFICIENT_RESOURCES;
+        Status = STATUS_INSUFFICIENT_RESOURCES;
+        goto Failure;
     }
     RtlZeroMemory(Completion, sizeof(*Completion));
 
@@ -386,22 +457,25 @@ WskConnectExAsync(
         break;
     default:
         ASSERT(FALSE);
-        return STATUS_UNSUCCESSFUL;
+        Status = STATUS_UNSUCCESSFUL;
+        goto Failure;
     }
 
     Irp = IoAllocateIrp(1, FALSE);
     if (Irp == NULL) {
-        ExFreePool(Completion);
-        return STATUS_INSUFFICIENT_RESOURCES;
+        Status = STATUS_INSUFFICIENT_RESOURCES;
+        goto Failure;
     }
     KeInitializeEvent(&Completion->Event, NotificationEvent, FALSE);
     IoSetCompletionRoutine(Irp, GenericCompletionRoutine, &Completion->Event, TRUE, TRUE, TRUE);
 
     if (Buf != NULL) {
-        Completion->WskBuf.Mdl = IoAllocateMdl(Buf, BufLen, FALSE, FALSE, NULL);
-        MmBuildMdlForNonPagedPool(Completion->WskBuf.Mdl);
-        Completion->WskBuf.Offset = 0;
-        Completion->WskBuf.Length = BufLen;
+        Status =
+            InitializeWskBuf(
+                Buf, BufLen, 0, BufIsNonPagedPool, &Completion->WskBuf, &Completion->BufLocked);
+        if (!NT_SUCCESS(Status)) {
+            goto Failure;
+        }
         Status = WskConnectEx(Sock, Addr, &Completion->WskBuf, 0, Irp);
     } else {
         Status = WskConnectEx(Sock, Addr, NULL, 0, Irp);
@@ -412,12 +486,16 @@ WskConnectExAsync(
         Completion->Irp = Irp;
         Status = STATUS_SUCCESS;
         *ConnectCompletion = Completion;
-    } else {
-        LOG("WskConnectEx failed with %d\n", Status);
+        return Status;
+    }
+
+    LOG("WskConnectEx failed with %d\n", Status);
+Failure:
+    if (Irp != NULL) {
         IoFreeIrp(Irp);
-        if (Buf != NULL) {
-            IoFreeMdl(Completion->WskBuf.Mdl);
-        }
+    }
+    if (Completion != NULL) {
+        UninitializeWskBuf(&Completion->WskBuf, Completion->BufLocked);
         ExFreePool(Completion);
     }
 
@@ -446,9 +524,7 @@ WskConnectExAwait(
         Status = STATUS_TIMEOUT;
     }
     IoFreeIrp(Irp);
-    if (Completion->WskBuf.Mdl != NULL) {
-        IoFreeMdl(Completion->WskBuf.Mdl);
-    }
+    UninitializeWskBuf(&Completion->WskBuf, Completion->BufLocked);
     ExFreePool(Completion);
     return Status;
 }
@@ -463,11 +539,7 @@ WskConnectExCancel(
     IoCancelIrp(Irp);
     KeWaitForSingleObject(&Completion->Event, Executive, KernelMode, FALSE, NULL);
     IoFreeIrp(Irp);
-
-    if (Completion->WskBuf.Mdl != NULL) {
-        IoFreeMdl(Completion->WskBuf.Mdl);
-    }
-
+    UninitializeWskBuf(&Completion->WskBuf, Completion->BufLocked);
     ExFreePool(Completion);
 }
 
@@ -524,10 +596,10 @@ WskAcceptAsync(
     _Out_ PVOID* AcceptCompletion
     )
 {
-    PIRP Irp;
+    PIRP Irp = NULL;
     NTSTATUS Status;
     PFN_WSK_ACCEPT WskAccept;
-    PWSKACCEPT_COMPLETION Completion;
+    PWSKACCEPT_COMPLETION Completion = NULL;
 
     // On success, caller must follow up with a call to WskAcceptAwait
     // (regardless of whether the call was pended).
@@ -535,7 +607,8 @@ WskAcceptAsync(
     #pragma warning( suppress : 4996 )
     Completion = ExAllocatePool2(POOL_FLAG_NON_PAGED, sizeof(*Completion), 'tseT');
     if (Completion == NULL) {
-        return STATUS_INSUFFICIENT_RESOURCES;
+        Status = STATUS_INSUFFICIENT_RESOURCES;
+        goto Failure;
     }
 
     switch (SockType) {
@@ -547,13 +620,14 @@ WskAcceptAsync(
         break;
     default:
         ASSERT(FALSE);
-        return STATUS_UNSUCCESSFUL;
+        Status = STATUS_UNSUCCESSFUL;
+        goto Failure;
     }
 
     Irp = IoAllocateIrp(1, FALSE);
     if (Irp == NULL) {
-        ExFreePool(Completion);
-        return STATUS_INSUFFICIENT_RESOURCES;
+        Status = STATUS_INSUFFICIENT_RESOURCES;
+        goto Failure;
     }
     KeInitializeEvent(&Completion->Event, NotificationEvent, FALSE);
     IoSetCompletionRoutine(Irp, GenericCompletionRoutine, &Completion->Event, TRUE, TRUE, TRUE);
@@ -564,8 +638,15 @@ WskAcceptAsync(
         Completion->Irp = Irp;
         Status = STATUS_SUCCESS;
         *AcceptCompletion = Completion;
-    } else {
-        LOG("WskAccept failed with %d\n", Status);
+        return Status;
+    }
+
+    LOG("WskAccept failed with %d\n", Status);
+Failure:
+    if (Irp != NULL) {
+        IoFreeIrp(Irp);
+    }
+    if (Completion != NULL) {
         ExFreePool(Completion);
     }
 
@@ -655,7 +736,7 @@ WskDisconnectSync(
     BOOLEAN BufIsNonPagedPool
     )
 {
-    PIRP Irp;
+    PIRP Irp = NULL;
     NTSTATUS Status;
     KEVENT Event;
     PFN_WSK_DISCONNECT WskDisconnect;
@@ -671,31 +752,22 @@ WskDisconnectSync(
         break;
     default:
         ASSERT(FALSE);
-        return STATUS_UNSUCCESSFUL;
+        Status = STATUS_UNSUCCESSFUL;
+        goto Cleanup;
     }
 
     Irp = IoAllocateIrp(1, FALSE);
     if (Irp == NULL) {
-        return STATUS_INSUFFICIENT_RESOURCES;
+        Status = STATUS_INSUFFICIENT_RESOURCES;
+        goto Cleanup;
     }
     KeInitializeEvent(&Event, NotificationEvent, FALSE);
     IoSetCompletionRoutine(Irp, GenericCompletionRoutine, &Event, TRUE, TRUE, TRUE);
     if (Buf != NULL) {
-        WskBuf.Mdl = IoAllocateMdl(Buf, BufLen, FALSE, FALSE, NULL);
-        if (BufIsNonPagedPool) {
-            MmBuildMdlForNonPagedPool(WskBuf.Mdl);
-        } else {
-            try {
-                MmProbeAndLockPages(WskBuf.Mdl, KernelMode, IoWriteAccess);
-            } except(EXCEPTION_EXECUTE_HANDLER) {
-                LOG("MmProbeAndLockPages failed\n");
-                Status = STATUS_INSUFFICIENT_RESOURCES;
-                goto Cleanup;
-            }
-            BufLocked = TRUE;
+        Status = InitializeWskBuf(Buf, BufLen, 0, BufIsNonPagedPool, &WskBuf, &BufLocked);
+        if (!NT_SUCCESS(Status)) {
+            goto Cleanup;
         }
-        WskBuf.Offset = 0;
-        WskBuf.Length = BufLen;
         Status = WskDisconnect(Sock, &WskBuf, 0, Irp);
     } else {
         Status = WskDisconnect(Sock, NULL, 0, Irp);
@@ -707,13 +779,10 @@ WskDisconnectSync(
     }
     Status = Irp->IoStatus.Status;
 Cleanup:
-    if (BufLocked) {
-        MmUnlockPages(WskBuf.Mdl);
+    if (Irp != NULL) {
+        IoFreeIrp(Irp);
     }
-    IoFreeIrp(Irp);
-    if (Buf != NULL) {
-        IoFreeMdl(WskBuf.Mdl);
-    }
+    UninitializeWskBuf(&WskBuf, BufLocked);
     return Status;
 }
 
@@ -768,17 +837,18 @@ WskDisconnectAsync(
     _Out_ PWSKDISCONNECT_COMPLETION* DisconnectCompletion
     )
 {
-    PIRP Irp;
+    PIRP Irp = NULL;
     NTSTATUS Status;
     PFN_WSK_DISCONNECT WskDisconnect;
-    PWSKDISCONNECT_COMPLETION Completion;
+    PWSKDISCONNECT_COMPLETION Completion = NULL;
 
     // On success, caller must follow up with a call to WskDisconnectAwait,
 
     #pragma warning( suppress : 4996 )
     Completion = ExAllocatePool2(POOL_FLAG_NON_PAGED, sizeof(*Completion), 'tseT');
     if (Completion == NULL) {
-        return STATUS_INSUFFICIENT_RESOURCES;
+        Status = STATUS_INSUFFICIENT_RESOURCES;
+        goto Failure;
     }
     RtlZeroMemory(Completion, sizeof(*Completion));
 
@@ -791,34 +861,26 @@ WskDisconnectAsync(
         break;
     default:
         ASSERT(FALSE);
-        return STATUS_UNSUCCESSFUL;
+        Status = STATUS_UNSUCCESSFUL;
+        goto Failure;
     }
 
     Irp = IoAllocateIrp(1, FALSE);
     if (Irp == NULL) {
-        ExFreePool(Completion);
-        return STATUS_INSUFFICIENT_RESOURCES;
+        Status = STATUS_INSUFFICIENT_RESOURCES;
+        goto Failure;
     }
     KeInitializeEvent(&Completion->Event, NotificationEvent, FALSE);
     IoSetCompletionRoutine(Irp, GenericCompletionRoutine, &Completion->Event, TRUE, TRUE, TRUE);
 
     if (Buf != NULL) {
         ASSERT(Flags == 0);
-        Completion->WskBuf.Mdl = IoAllocateMdl(Buf, BufLen, FALSE, FALSE, NULL);
-        if (BufIsNonPagedPool) {
-            MmBuildMdlForNonPagedPool(Completion->WskBuf.Mdl);
-        } else {
-            try {
-                MmProbeAndLockPages(Completion->WskBuf.Mdl, KernelMode, IoWriteAccess);
-            } except(EXCEPTION_EXECUTE_HANDLER) {
-                LOG("MmProbeAndLockPages failed\n");
-                Status = STATUS_INSUFFICIENT_RESOURCES;
-                goto Failure;
-            }
-            Completion->BufLocked = TRUE;
+        Status =
+            InitializeWskBuf(
+                Buf, BufLen, 0, BufIsNonPagedPool, &Completion->WskBuf, &Completion->BufLocked);
+        if (!NT_SUCCESS(Status)) {
+            goto Failure;
         }
-        Completion->WskBuf.Offset = 0;
-        Completion->WskBuf.Length = BufLen;
         Status = WskDisconnect(Sock, &Completion->WskBuf, Flags, Irp);
     } else {
         Status = WskDisconnect(Sock, NULL, Flags, Irp);
@@ -835,14 +897,13 @@ WskDisconnectAsync(
 
     LOG("WskDisconnect failed with %d\n", Status);
 Failure:
-    if (Completion->BufLocked) {
-        MmUnlockPages(Completion->WskBuf.Mdl);
+    if (Irp != NULL) {
+        IoFreeIrp(Irp);
     }
-    IoFreeIrp(Irp);
-    if (Completion->WskBuf.Mdl != NULL) {
-        IoFreeMdl(Completion->WskBuf.Mdl);
+    if (Completion != NULL) {
+        UninitializeWskBuf(&Completion->WskBuf, Completion->BufLocked);
+        ExFreePool(Completion);
     }
-    ExFreePool(Completion);
 
     return Status;
 }
@@ -868,13 +929,8 @@ WskDisconnectAwait(
         Status = STATUS_TIMEOUT;
     }
 
-    if (Completion->BufLocked) {
-        MmUnlockPages(Completion->WskBuf.Mdl);
-    }
     IoFreeIrp(Irp);
-    if (Completion->WskBuf.Mdl != NULL) {
-        IoFreeMdl(Completion->WskBuf.Mdl);
-    }
+    UninitializeWskBuf(&Completion->WskBuf, Completion->BufLocked);
     ExFreePool(Completion);
     return Status;
 }
@@ -904,21 +960,10 @@ WskSendSync(
 
     ASSERT(BufLen > 0);
 
-    WskBuf.Mdl = IoAllocateMdl(Buf, BufLen, FALSE, FALSE, NULL);
-    if (BufIsNonPagedPool) {
-        MmBuildMdlForNonPagedPool(WskBuf.Mdl);
-    } else {
-        try {
-            MmProbeAndLockPages(WskBuf.Mdl, KernelMode, IoWriteAccess);
-        } except(EXCEPTION_EXECUTE_HANDLER) {
-            LOG("MmProbeAndLockPages failed\n");
-            Status = STATUS_INSUFFICIENT_RESOURCES;
-            goto Cleanup;
-        }
-        BufLocked = TRUE;
+    Status = InitializeWskBuf(Buf, BufLen, 0, BufIsNonPagedPool, &WskBuf, &BufLocked);
+    if (!NT_SUCCESS(Status)) {
+        goto Cleanup;
     }
-    WskBuf.Offset = 0;
-    WskBuf.Length = BufLen;
 
     switch (SockType) {
     case WSK_FLAG_CONNECTION_SOCKET:
@@ -958,12 +1003,7 @@ Cleanup:
     if (Irp != NULL) {
         IoFreeIrp(Irp);
     }
-    if (WskBuf.Mdl != NULL) {
-        if (BufLocked) {
-            MmUnlockPages(WskBuf.Mdl);
-        }
-        IoFreeMdl(WskBuf.Mdl);
-    }
+    UninitializeWskBuf(&WskBuf, BufLocked);
     return Status;
 }
 
@@ -973,6 +1013,7 @@ WskSendExSync(
     int SockType,
     char *Buf,
     ULONG BufLen,
+    BOOLEAN BufIsNonPagedPool,
     char* Control,
     ULONG ControlLen,
     ULONG ExpectedBytesSent,
@@ -980,11 +1021,12 @@ WskSendExSync(
     _Out_opt_ ULONG *BytesSent
     )
 {
-    PIRP Irp;
+    PIRP Irp = NULL;
     NTSTATUS Status;
     KEVENT Event;
     PFN_WSK_SEND_EX WskSendEx;
-    WSK_BUF WskBuf;
+    WSK_BUF WskBuf = {0};
+    BOOLEAN BufLocked = FALSE;
 
 #if !DBG
     UNREFERENCED_PARAMETER(ExpectedBytesSent);
@@ -992,10 +1034,10 @@ WskSendExSync(
 
     ASSERT(BufLen > 0);
 
-    WskBuf.Mdl = IoAllocateMdl(Buf, BufLen, FALSE, FALSE, NULL);
-    MmBuildMdlForNonPagedPool(WskBuf.Mdl);
-    WskBuf.Offset = 0;
-    WskBuf.Length = BufLen;
+    Status = InitializeWskBuf(Buf, BufLen, 0, BufIsNonPagedPool, &WskBuf, &BufLocked);
+    if (!NT_SUCCESS(Status)) {
+        goto Cleanup;
+    }
 
     switch (SockType) {
     case WSK_FLAG_CONNECTION_SOCKET:
@@ -1006,12 +1048,14 @@ WskSendExSync(
         break;
     default:
         ASSERT(FALSE);
-        return STATUS_UNSUCCESSFUL;
+        Status = STATUS_UNSUCCESSFUL;
+        goto Cleanup;
     }
 
     Irp = IoAllocateIrp(1, FALSE);
     if (Irp == NULL) {
-        return STATUS_INSUFFICIENT_RESOURCES;
+        Status = STATUS_INSUFFICIENT_RESOURCES;
+        goto Cleanup;
     }
     KeInitializeEvent(&Event, NotificationEvent, FALSE);
     IoSetCompletionRoutine(Irp, GenericCompletionRoutine, &Event, TRUE, TRUE, TRUE);
@@ -1029,8 +1073,11 @@ WskSendExSync(
     if (ExpectedBytesSent != WSKCLIENT_UNKNOWN_BYTES) {
         ASSERT((ULONG)Irp->IoStatus.Information == ExpectedBytesSent);
     }
-    IoFreeIrp(Irp);
-    IoFreeMdl(WskBuf.Mdl);
+Cleanup:
+    if (Irp != NULL) {
+        IoFreeIrp(Irp);
+    }
+    UninitializeWskBuf(&WskBuf, BufLocked);
     return Status;
 }
 
@@ -1040,14 +1087,16 @@ WskSendAsync(
     int SockType,
     char *Buf,
     ULONG BufLen,
+    BOOLEAN BufIsNonPagedPool,
     ULONG Flags,
     _Out_ PVOID* SendCompletion
     )
 {
-    PIRP Irp;
+    PIRP Irp = NULL;
     NTSTATUS Status;
     PFN_WSK_SEND WskSend;
-    PWSKIOREQUEST_COMPLETION Completion;
+    PWSKIOREQUEST_COMPLETION Completion = NULL;
+
     ASSERT(BufLen > 0);
 
     // On success, caller must follow up with a call to WskSendAwait.
@@ -1055,7 +1104,8 @@ WskSendAsync(
     #pragma warning( suppress : 4996 )
     Completion = ExAllocatePool2(POOL_FLAG_NON_PAGED, sizeof(*Completion), 'tseT');
     if (Completion == NULL) {
-        return STATUS_INSUFFICIENT_RESOURCES;
+        Status = STATUS_INSUFFICIENT_RESOURCES;
+        goto Failure;
     }
     RtlZeroMemory(Completion, sizeof(*Completion));
 
@@ -1068,21 +1118,24 @@ WskSendAsync(
         break;
     default:
         ASSERT(FALSE);
-        return STATUS_UNSUCCESSFUL;
+        Status = STATUS_UNSUCCESSFUL;
+        goto Failure;
     }
 
     Irp = IoAllocateIrp(1, FALSE);
     if (Irp == NULL) {
-        ExFreePool(Completion);
-        return STATUS_INSUFFICIENT_RESOURCES;
+        Status = STATUS_INSUFFICIENT_RESOURCES;
+        goto Failure;
     }
     KeInitializeEvent(&Completion->Event, NotificationEvent, FALSE);
     IoSetCompletionRoutine(Irp, GenericCompletionRoutine, &Completion->Event, TRUE, TRUE, TRUE);
 
-    Completion->WskBuf.Mdl = IoAllocateMdl(Buf, BufLen, FALSE, FALSE, NULL);
-    MmBuildMdlForNonPagedPool(Completion->WskBuf.Mdl);
-    Completion->WskBuf.Offset = 0;
-    Completion->WskBuf.Length = BufLen;
+    Status =
+        InitializeWskBuf(
+            Buf, BufLen, 0, BufIsNonPagedPool, &Completion->WskBuf, &Completion->BufLocked);
+    if (!NT_SUCCESS(Status)) {
+        goto Failure;
+    }
 
     Status = WskSend(Sock, &Completion->WskBuf, Flags, Irp);
 
@@ -1092,12 +1145,16 @@ WskSendAsync(
         Completion->Irp = Irp;
         Status = STATUS_SUCCESS;
         *SendCompletion = Completion;
-    } else {
-        LOG("WskSend failed with %d\n", Status);
+        return Status;
+    }
+
+    LOG("WskSend failed with %d\n", Status);
+Failure:
+    if (Irp != NULL) {
         IoFreeIrp(Irp);
-        if (Completion->WskBuf.Mdl != NULL) {
-            IoFreeMdl(Completion->WskBuf.Mdl);
-        }
+    }
+    if (Completion != NULL) {
+        UninitializeWskBuf(&Completion->WskBuf, Completion->BufLocked);
         ExFreePool(Completion);
     }
 
@@ -1130,18 +1187,14 @@ WskSendAwait(
         Status = WskWaitForIrpCompletion(&Completion->Event, Irp, TimeoutMs);
     }
 
-    if (!NT_SUCCESS(Status))
-    {
+    if (!NT_SUCCESS(Status)) {
         LOG("WskSend IO failed with %d\n", Status);
-        if (Status == STATUS_CANCELLED)
-        {
+        if (Status == STATUS_CANCELLED) {
             // We hit our Timeout and cancelled the Irp. STATUS_TIMEOUT is a better
             // Status in this case.
             Status = STATUS_TIMEOUT;
         }
-    }
-    else
-    {
+    } else {
         if (BytesSent != NULL) {
             *BytesSent = (ULONG)Irp->IoStatus.Information;
         }
@@ -1151,12 +1204,7 @@ WskSendAwait(
     }
 
     IoFreeIrp(Irp);
-    if (Completion->WskBuf.Mdl != NULL) {
-        if (Completion->BufLocked) {
-            MmUnlockPages(Completion->WskBuf.Mdl);
-        }
-        IoFreeMdl(Completion->WskBuf.Mdl);
-    }
+    UninitializeWskBuf(&Completion->WskBuf, Completion->BufLocked);
     ExFreePool(Completion);
     return Status;
 }
@@ -1191,21 +1239,10 @@ WskReceiveSync(
         *BytesReceived = 0;
     }
 
-    WskBuf.Mdl = IoAllocateMdl(Buf, BufLen, FALSE, FALSE, NULL);
-    if (BufIsNonPagedPool) {
-        MmBuildMdlForNonPagedPool(WskBuf.Mdl);
-    } else {
-        try {
-            MmProbeAndLockPages(WskBuf.Mdl, KernelMode, IoWriteAccess);
-        } except(EXCEPTION_EXECUTE_HANDLER) {
-            LOG("MmProbeAndLockPages failed\n");
-            Status = STATUS_INSUFFICIENT_RESOURCES;
-            goto Cleanup;
-        }
-        BufLocked = TRUE;
+    Status = InitializeWskBuf(Buf, BufLen, 0, BufIsNonPagedPool, &WskBuf, &BufLocked);
+    if (!NT_SUCCESS(Status)) {
+        goto Cleanup;
     }
-    WskBuf.Offset = 0;
-    WskBuf.Length = BufLen;
 
     switch (SockType) {
     case WSK_FLAG_CONNECTION_SOCKET:
@@ -1261,12 +1298,7 @@ Cleanup:
     if (Irp != NULL) {
         IoFreeIrp(Irp);
     }
-    if (WskBuf.Mdl != NULL) {
-        if (BufLocked) {
-            MmUnlockPages(WskBuf.Mdl);
-        }
-        IoFreeMdl(WskBuf.Mdl);
-    }
+    UninitializeWskBuf(&WskBuf, BufLocked);
     return Status;
 }
 
@@ -1276,6 +1308,7 @@ WskReceiveExSync(
     int SockType,
     char *Buf,
     ULONG BufLen,
+    BOOLEAN BufIsNonPagedPool,
     PCMSGHDR Control,
     PULONG ControlLen,
     ULONG ExpectedBytesReceived,
@@ -1283,11 +1316,12 @@ WskReceiveExSync(
     _Out_opt_ ULONG *BytesReceived
     )
 {
-    PIRP Irp;
+    PIRP Irp = NULL;
     NTSTATUS Status;
     KEVENT Event;
     PFN_WSK_RECEIVE_EX WskReceiveEx;
-    WSK_BUF WskBuf;
+    WSK_BUF WskBuf = {0};
+    BOOLEAN BufLocked = FALSE;
 
 #if !DBG
     UNREFERENCED_PARAMETER(ExpectedBytesReceived);
@@ -1299,10 +1333,10 @@ WskReceiveExSync(
         *BytesReceived = 0;
     }
 
-    WskBuf.Mdl = IoAllocateMdl(Buf, BufLen, FALSE, FALSE, NULL);
-    MmBuildMdlForNonPagedPool(WskBuf.Mdl);
-    WskBuf.Offset = 0;
-    WskBuf.Length = BufLen;
+    Status = InitializeWskBuf(Buf, BufLen, 0, BufIsNonPagedPool, &WskBuf, &BufLocked);
+    if (!NT_SUCCESS(Status)) {
+        goto Cleanup;
+    }
 
     switch (SockType) {
     case WSK_FLAG_CONNECTION_SOCKET:
@@ -1313,12 +1347,14 @@ WskReceiveExSync(
         break;
     default:
         ASSERT(FALSE);
-        return STATUS_UNSUCCESSFUL;
+        Status = STATUS_UNSUCCESSFUL;
+        goto Cleanup;
     }
 
     Irp = IoAllocateIrp(1, FALSE);
     if (Irp == NULL) {
-        return STATUS_INSUFFICIENT_RESOURCES;
+        Status = STATUS_INSUFFICIENT_RESOURCES;
+        goto Cleanup;
     }
     KeInitializeEvent(&Event, NotificationEvent, FALSE);
     IoSetCompletionRoutine(Irp, GenericCompletionRoutine, &Event, TRUE, TRUE, TRUE);
@@ -1345,8 +1381,11 @@ WskReceiveExSync(
         }
     }
 
-    IoFreeIrp(Irp);
-    IoFreeMdl(WskBuf.Mdl);
+Cleanup:
+    if (Irp != NULL) {
+        IoFreeIrp(Irp);
+    }
+    UninitializeWskBuf(&WskBuf, BufLocked);
     return Status;
 }
 
@@ -1356,13 +1395,15 @@ WskReceiveAsync(
     int SockType,
     char *Buf,
     ULONG BufLen,
+    BOOLEAN BufIsNonPagedPool,
     _Out_ PVOID* ReceiveCompletion
     )
 {
-    PIRP Irp;
+    PIRP Irp = NULL;
     NTSTATUS Status;
     PFN_WSK_RECEIVE WskReceive;
-    PWSKIOREQUEST_COMPLETION Completion;
+    PWSKIOREQUEST_COMPLETION Completion = NULL;
+
     ASSERT(BufLen > 0);
 
     // On success, caller must follow up with a call to WskSendAwait.
@@ -1370,7 +1411,8 @@ WskReceiveAsync(
     #pragma warning( suppress : 4996 )
     Completion = ExAllocatePool2(POOL_FLAG_NON_PAGED, sizeof(*Completion), 'tseT');
     if (Completion == NULL) {
-        return STATUS_INSUFFICIENT_RESOURCES;
+        Status = STATUS_INSUFFICIENT_RESOURCES;
+        goto Failure;
     }
     RtlZeroMemory(Completion, sizeof(*Completion));
 
@@ -1383,21 +1425,24 @@ WskReceiveAsync(
         break;
     default:
         ASSERT(FALSE);
-        return STATUS_UNSUCCESSFUL;
+        Status = STATUS_UNSUCCESSFUL;
+        goto Failure;
     }
 
     Irp = IoAllocateIrp(1, FALSE);
     if (Irp == NULL) {
-        ExFreePool(Completion);
-        return STATUS_INSUFFICIENT_RESOURCES;
+        Status = STATUS_INSUFFICIENT_RESOURCES;
+        goto Failure;
     }
     KeInitializeEvent(&Completion->Event, NotificationEvent, FALSE);
     IoSetCompletionRoutine(Irp, GenericCompletionRoutine, &Completion->Event, TRUE, TRUE, TRUE);
 
-    Completion->WskBuf.Mdl = IoAllocateMdl(Buf, BufLen, FALSE, FALSE, NULL);
-    MmBuildMdlForNonPagedPool(Completion->WskBuf.Mdl);
-    Completion->WskBuf.Offset = 0;
-    Completion->WskBuf.Length = BufLen;
+    Status =
+        InitializeWskBuf(
+            Buf, BufLen, 0, BufIsNonPagedPool, &Completion->WskBuf, &Completion->BufLocked);
+    if (!NT_SUCCESS(Status)) {
+        goto Failure;
+    }
 
     Status = WskReceive(Sock, &Completion->WskBuf, WSK_FLAG_WAITALL, Irp);
 
@@ -1407,12 +1452,16 @@ WskReceiveAsync(
         Completion->Irp = Irp;
         Status = STATUS_SUCCESS;
         *ReceiveCompletion = Completion;
-    } else {
-        LOG("WskReceive failed with %d\n", Status);
+        return Status;
+    }
+
+    LOG("WskReceive failed with %d\n", Status);
+Failure:
+    if (Irp != NULL) {
         IoFreeIrp(Irp);
-        if (Completion->WskBuf.Mdl != NULL) {
-            IoFreeMdl(Completion->WskBuf.Mdl);
-        }
+    }
+    if (Completion != NULL) {
+        UninitializeWskBuf(&Completion->WskBuf, Completion->BufLocked);
         ExFreePool(Completion);
     }
 
@@ -1445,19 +1494,15 @@ WskReceiveAwait(
         Status = WskWaitForIrpCompletion(&Completion->Event, Irp, TimeoutMs);
     }
 
-    if (!NT_SUCCESS(Status))
-    {
-        if (Status == STATUS_CANCELLED)
-        {
+    if (!NT_SUCCESS(Status)) {
+        if (Status == STATUS_CANCELLED) {
             // We hit our Timeout and cancelled the Irp. STATUS_TIMEOUT is a better
             // Status in this case.
             Status = STATUS_TIMEOUT;
         }
 
         LOG("WskReceive IO failed with %d\n", Status);
-    }
-    else
-    {
+    } else {
         if (BytesReceived != NULL) {
             *BytesReceived = (ULONG)Irp->IoStatus.Information;
         }
@@ -1467,9 +1512,7 @@ WskReceiveAwait(
     }
 
     IoFreeIrp(Irp);
-    if (Completion->WskBuf.Mdl != NULL) {
-        IoFreeMdl(Completion->WskBuf.Mdl);
-    }
+    UninitializeWskBuf(&Completion->WskBuf, Completion->BufLocked);
     ExFreePool(Completion);
     return Status;
 }
@@ -1500,26 +1543,16 @@ WskSendToSync(
 
     ASSERT(BufLen > 0);
 
-    WskBuf.Mdl = IoAllocateMdl(Buf, BufLen, FALSE, FALSE, NULL);
-    if (BufIsNonPagedPool) {
-        MmBuildMdlForNonPagedPool(WskBuf.Mdl);
-    } else {
-        try {
-            MmProbeAndLockPages(WskBuf.Mdl, KernelMode, IoWriteAccess);
-        } except(EXCEPTION_EXECUTE_HANDLER) {
-            LOG("MmProbeAndLockPages failed\n");
-            Status = STATUS_INSUFFICIENT_RESOURCES;
-            goto Cleanup;
-        }
-        BufLocked = TRUE;
+    Status = InitializeWskBuf(Buf, BufLen, 0, BufIsNonPagedPool, &WskBuf, &BufLocked);
+    if (!NT_SUCCESS(Status)) {
+        goto Cleanup;
     }
-    WskBuf.Offset = 0;
-    WskBuf.Length = BufLen;
 
     WskSendTo = ((PWSK_PROVIDER_DATAGRAM_DISPATCH)Sock->Dispatch)->WskSendTo;
     Irp = IoAllocateIrp(1, FALSE);
     if (Irp == NULL) {
-        return STATUS_INSUFFICIENT_RESOURCES;
+        Status = STATUS_INSUFFICIENT_RESOURCES;
+        goto Cleanup;
     }
     KeInitializeEvent(&Event, NotificationEvent, FALSE);
     IoSetCompletionRoutine(Irp, GenericCompletionRoutine, &Event, TRUE, TRUE, TRUE);
@@ -1541,12 +1574,7 @@ Cleanup:
     if (Irp != NULL) {
         IoFreeIrp(Irp);
     }
-    if (WskBuf.Mdl != NULL) {
-        if (BufLocked) {
-            MmUnlockPages(WskBuf.Mdl);
-        }
-        IoFreeMdl(WskBuf.Mdl);
-    }
+    UninitializeWskBuf(&WskBuf, BufLocked);
     return Status;
 }
 
@@ -1580,61 +1608,45 @@ WskSendToAsync(
     if (Completion == NULL) {
         LOG("ExAllocatePool2 failed\n");
         Status = STATUS_INSUFFICIENT_RESOURCES;
-        goto Cleanup;
+        goto Failure;
     }
     RtlZeroMemory(Completion, sizeof(*Completion));
 
-    Completion->WskBuf.Mdl = IoAllocateMdl(Buf, BufLen, FALSE, FALSE, NULL);
-    if (BufIsNonPagedPool) {
-        MmBuildMdlForNonPagedPool(Completion->WskBuf.Mdl);
-    } else {
-        try {
-            MmProbeAndLockPages(Completion->WskBuf.Mdl, KernelMode, IoWriteAccess);
-        } except(EXCEPTION_EXECUTE_HANDLER) {
-            LOG("MmProbeAndLockPages failed\n");
-            Status = STATUS_INSUFFICIENT_RESOURCES;
-            goto Cleanup;
-        }
-        Completion->BufLocked = TRUE;
+    Status =
+        InitializeWskBuf(
+            Buf, BufLen, 0, BufIsNonPagedPool, &Completion->WskBuf, &Completion->BufLocked);
+    if (!NT_SUCCESS(Status)) {
+        goto Failure;
     }
-    Completion->WskBuf.Offset = 0;
-    Completion->WskBuf.Length = BufLen;
 
     WskSendTo = ((PWSK_PROVIDER_DATAGRAM_DISPATCH)Sock->Dispatch)->WskSendTo;
     Irp = IoAllocateIrp(1, FALSE);
     if (Irp == NULL) {
         LOG("IoAllocateIrp failed\n");
         Status = STATUS_INSUFFICIENT_RESOURCES;
-        goto Cleanup;
+        goto Failure;
     }
     KeInitializeEvent(&Completion->Event, NotificationEvent, FALSE);
     IoSetCompletionRoutine(Irp, GenericCompletionRoutine, &Completion->Event, TRUE, TRUE, TRUE);
     Status = WskSendTo(Sock, &Completion->WskBuf, 0, RemoteAddr, ControlLen, Control, Irp);
-    if (!NT_SUCCESS(Status)) {
-        LOG("WskSendTo failed with %d\n", Status);
-        goto Cleanup;
+
+    if (NT_SUCCESS(Status)) {
+        // N.B. This includes the STATUS_PENDING case.
+        Completion->Status = Status;
+        Completion->Irp = Irp;
+        Status = STATUS_SUCCESS;
+        *SendCompletion = Completion;
+        return Status;
     }
 
-    // N.B. This includes the STATUS_PENDING case.
-    Completion->Status = Status;
-    Completion->Irp = Irp;
-    Status = STATUS_SUCCESS;
-    *SendCompletion = Completion;
-
-Cleanup:
-    if (!NT_SUCCESS(Status)) {
-        if (Completion != NULL) {
-            if (Irp != NULL) {
-                IoFreeIrp(Irp);
-            }
-            if (Completion->WskBuf.Mdl != NULL) {
-                if (Completion->BufLocked) {
-                    MmUnlockPages(Completion->WskBuf.Mdl);
-                }
-                IoFreeMdl(Completion->WskBuf.Mdl);
-            }
-            ExFreePool(Completion);
-        }
+    LOG("WskSendTo failed with %d\n", Status);
+Failure:
+    if (Irp != NULL) {
+        IoFreeIrp(Irp);
+    }
+    if (Completion != NULL) {
+        UninitializeWskBuf(&Completion->WskBuf, Completion->BufLocked);
+        ExFreePool(Completion);
     }
     return Status;
 }
