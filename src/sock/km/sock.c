@@ -3,6 +3,13 @@
 // Licensed under the MIT License.
 //
 
+//
+// Implements a user mode WinSock like sockets API with WSK. The main pieces
+// needed to bridge the gap between user mode and kernel mode WinSock are fire
+// and forget TX behavior and RX buffering behavior. This module implements
+// both of those pieces and leverages wskclient for the basic WSK interactions.
+//
+
 #include <ntddk.h>
 #include <wsk.h>
 
@@ -31,47 +38,14 @@ typedef struct FNSOCK_SOCKET_BINDING {
 
     ULONG SockType;
 
-    //
-    // Event used to wait for completion of socket functions.
-    //
-    // KEVENT WskCompletionEvent;
-
-    //
-    // IRP used for socket functions.
-    //
-    // union {
-    //     IRP Irp;
-    //     UCHAR IrpBuffer[sizeof(IRP) + sizeof(IO_STACK_LOCATION)];
-    // };
-
     KSPIN_LOCK SendContextLock;
     LIST_ENTRY SendContextList;
 
     KSPIN_LOCK RecvDataLock;
     LIST_ENTRY RecvDataList;
-    // KEVENT RecvDataEvent;
 
     UINT32 ReceiveTimeout;
 } FNSOCK_SOCKET_BINDING;
-
-// typedef struct FNSOCK_SOCKET_SEND_DATA {
-//     FNSOCK_SOCKET_BINDING* Binding;
-
-//     //
-//     // The IRP buffer for the async WskSendMessages call.
-//     //
-//     union {
-//         IRP Irp;
-//         UCHAR IrpBuffer[sizeof(IRP) + sizeof(IO_STACK_LOCATION)];
-//     };
-
-//     //
-//     // Contains the list of FNSOCK_DATAPATH_SEND_BUFFER.
-//     //
-//     WSK_BUF_LIST WskBufs;
-//     PMDL Mdl;
-//     UCHAR Data[0];
-// } FNSOCK_SOCKET_SEND_DATA;
 
 typedef struct FNSOCK_SOCKET_RECV_DATA {
     LIST_ENTRY Link;
@@ -84,24 +58,9 @@ typedef struct FNSOCK_SOCKET_SEND_CONTEXT {
     VOID* WskClientSendContext;
 } FNSOCK_SOCKET_SEND_CONTEXT;
 
-// static WSK_REGISTRATION WskRegistration;
-// static WSK_PROVIDER_NPI WskProviderNpi;
 static WSK_CLIENT_DATAGRAM_DISPATCH WskDatagramDispatch;
 
-//
-// WSK Client version
-//
-// static const WSK_CLIENT_DISPATCH WskAppDispatch = {
-//     MAKE_WSK_VERSION(1,0), // Use WSK version 1.0
-//     0,    // Reserved
-//     NULL  // WskClientEvent callback not required for WSK version 1.0
-// };
-
 static NTSTATUS FnSockSocketLastError;
-
-// IO_COMPLETION_ROUTINE FnSockDataPathIoCompletion;
-// IO_COMPLETION_ROUTINE FnSockWskCloseSocketIoCompletion;
-// IO_COMPLETION_ROUTINE FnSockDataPathSendComplete;
 
 _IRQL_requires_max_(DISPATCH_LEVEL)
 _Must_inspect_result_
@@ -140,124 +99,6 @@ FnSockUninitialize(
 
     WskClientDereg();
 }
-
-// _IRQL_requires_max_(PASSIVE_LEVEL)
-// void
-// FnSockSocketDeleteComplete(
-//     _In_ FNSOCK_SOCKET_BINDING* Binding
-//     )
-// {
-//     while (!IsListEmpty(&Binding->RecvDataList)) {
-//         LIST_ENTRY* Entry;
-//         FNSOCK_SOCKET_RECV_DATA* RecvData;
-
-//         Entry = RemoveHeadList(&Binding->RecvDataList);
-//         RecvData = CONTAINING_RECORD(Entry, FNSOCK_SOCKET_RECV_DATA, Link);
-//         ExFreePoolWithTag(RecvData, FNSOCK_POOL_SOCKET_RECV);
-//     }
-//     IoCleanupIrp(&Binding->Irp);
-//     ExFreePoolWithTag(Binding, FNSOCK_POOL_SOCKET);
-// }
-
-//
-// Used for all WSK IoCompletion routines
-//
-// _Use_decl_annotations_
-// NTSTATUS
-// FnSockDataPathIoCompletion(
-//     PDEVICE_OBJECT DeviceObject,
-//     PIRP Irp,
-//     VOID* Context
-//     )
-// {
-//     UNREFERENCED_PARAMETER(DeviceObject);
-//     UNREFERENCED_PARAMETER(Irp);
-
-//     NT_ASSERT(Context != NULL);
-//     __analysis_assume(Context != NULL);
-//     KeSetEvent((KEVENT*)Context, IO_NO_INCREMENT, FALSE);
-
-//     //
-//     // Always return STATUS_MORE_PROCESSING_REQUIRED to
-//     // terminate the completion processing of the IRP.
-//     //
-//     return STATUS_MORE_PROCESSING_REQUIRED;
-// }
-
-//
-// Completion callbacks for IRP used with WskCloseSocket
-//
-// _Use_decl_annotations_
-// NTSTATUS
-// FnSockWskCloseSocketIoCompletion(
-//     PDEVICE_OBJECT DeviceObject,
-//     PIRP Irp,
-//     VOID* Context
-//     )
-// {
-//     FNSOCK_SOCKET_BINDING* Binding;
-
-//     UNREFERENCED_PARAMETER(DeviceObject);
-
-//     NT_ASSERT(Context != NULL);
-//     __analysis_assume(Context != NULL);
-//     Binding = (FNSOCK_SOCKET_BINDING*)Context;
-
-//     if (Irp->PendingReturned) {
-//         if (!NT_SUCCESS(Binding->Irp.IoStatus.Status)) {
-//             TraceError(
-//                 "[data][%p] ERROR, %u, %s.",
-//                 Binding,
-//                 Binding->Irp.IoStatus.Status,
-//                 "WskCloseSocket completion");
-//         }
-
-//         FnSockSocketDeleteComplete(Binding);
-//     }
-
-//     //
-//     // Always return STATUS_MORE_PROCESSING_REQUIRED to
-//     // terminate the completion processing of the IRP.
-//     //
-//     return STATUS_MORE_PROCESSING_REQUIRED;
-// }
-
-// _Use_decl_annotations_
-// NTSTATUS
-// FnSockDataPathSendComplete(
-//     PDEVICE_OBJECT DeviceObject,
-//     PIRP Irp,
-//     VOID* Context
-//     )
-// {
-//     FNSOCK_SOCKET_SEND_DATA* SendData;
-//     FNSOCK_SOCKET_BINDING* Binding;
-
-//     UNREFERENCED_PARAMETER(DeviceObject);
-
-//     NT_ASSERT(Context != NULL);
-//     __analysis_assume(Context != NULL);
-//     SendData = (FNSOCK_SOCKET_SEND_DATA*)Context;
-//     Binding = SendData->Binding;
-
-//     if (!NT_SUCCESS(Irp->IoStatus.Status)) {
-//         TraceError(
-//             "[data][%p] ERROR, %u, %s.",
-//             Binding,
-//             Irp->IoStatus.Status,
-//             "WskSendMessages completion");
-//     }
-
-//     IoCleanupIrp(&SendData->Irp);
-//     NT_ASSERT(SendData->WskBufs.Next == NULL);
-//     if (SendData->WskBufs.Buffer.Mdl != NULL) {
-//         NT_ASSERT(SendData->WskBufs.Buffer.Mdl->Next == NULL);
-//         IoFreeMdl(SendData->WskBufs.Buffer.Mdl);
-//     }
-//     ExFreePoolWithTag(SendData, FNSOCK_POOL_SOCKET_SEND);
-
-//     return STATUS_MORE_PROCESSING_REQUIRED;
-// }
 
 _IRQL_requires_max_(PASSIVE_LEVEL)
 FNSOCK_STATUS
@@ -320,52 +161,10 @@ FnSockCreate(
         goto Exit;
     }
 
-    // KeInitializeEvent(&Binding->WskCompletionEvent, SynchronizationEvent, FALSE);
-    // KeInitializeEvent(&Binding->RecvDataEvent, NotificationEvent, FALSE);
     KeInitializeSpinLock(&Binding->RecvDataLock);
     InitializeListHead(&Binding->RecvDataList);
     KeInitializeSpinLock(&Binding->SendContextLock);
     InitializeListHead(&Binding->SendContextList);
-
-    // IoInitializeIrp(
-    //     &Binding->Irp,
-    //     sizeof(Binding->IrpBuffer),
-    //     1);
-    // IoSetCompletionRoutine(
-    //     &Binding->Irp,
-    //     FnSockDataPathIoCompletion,
-    //     &Binding->WskCompletionEvent,
-    //     TRUE,
-    //     TRUE,
-    //     TRUE);
-
-    // Status =
-    //     WskProviderNpi.Dispatch->
-    //     WskSocket(
-    //      WskProviderNpi.Client,
-    //         (ADDRESS_FAMILY)AddressFamily,
-    //         (USHORT)SocketType,
-    //         Protocol,
-    //         Flags,
-    //         Binding,
-    //         &WskDatagramDispatch,
-    //         NULL,
-    //         NULL,
-    //         NULL,
-    //         &Binding->Irp);
-    // if (Status == STATUS_PENDING) {
-    //     KeWaitForSingleObject(&Binding->WskCompletionEvent, Executive, KernelMode, FALSE, NULL);
-    //     Status = Binding->Irp.IoStatus.Status;
-    // }
-
-    // if (!NT_SUCCESS(Status)) {
-    //     TraceError(
-    //         "[data][%p] ERROR, %u, %s.",
-    //         Binding,
-    //         Status,
-    //         "WskSocket");
-    //     goto Exit;
-    // }
 
     *Socket = (FNSOCK_HANDLE)Binding;
 
@@ -390,25 +189,6 @@ FnSockClose(
 {
     NTSTATUS Status;
     FNSOCK_SOCKET_BINDING* Binding = (FNSOCK_SOCKET_BINDING*)Socket;
-
-    // IoReuseIrp(&Binding->Irp, STATUS_SUCCESS);
-    // IoSetCompletionRoutine(
-    //     &Binding->Irp,
-    //     FnSockWskCloseSocketIoCompletion,
-    //     Binding,
-    //     TRUE,
-    //     TRUE,
-    //     TRUE);
-
-    // NTSTATUS Status =
-    //     Binding->DgrmSocket->Dispatch->
-    //     WskCloseSocket(
-    //         Binding->Socket,
-    //         &Binding->Irp);
-
-    // if (Status == STATUS_PENDING) {
-    //     return; // The rest is handled asynchronously
-    // }
 
     while (!IsListEmpty(&Binding->SendContextList)) {
         LIST_ENTRY* Entry;
@@ -455,7 +235,6 @@ FnSockClose(
         ExFreePoolWithTag(RecvData, FNSOCK_POOL_SOCKET_RECV);
     }
 
-    // FnSockSocketDeleteComplete(Binding);
     ExFreePoolWithTag(Binding, FNSOCK_POOL_SOCKET);
 }
 
@@ -471,29 +250,6 @@ FnSockBind(
     FNSOCK_SOCKET_BINDING* Binding = (FNSOCK_SOCKET_BINDING*)Socket;
 
     UNREFERENCED_PARAMETER(AddressLength);
-
-    // IoReuseIrp(&Binding->Irp, STATUS_SUCCESS);
-    // IoSetCompletionRoutine(
-    //     &Binding->Irp,
-    //     FnSockDataPathIoCompletion,
-    //     &Binding->WskCompletionEvent,
-    //     TRUE,
-    //     TRUE,
-    //     TRUE);
-    // KeResetEvent(&Binding->WskCompletionEvent);
-
-    // Status =
-    //     Binding->DgrmSocket->Dispatch->
-    //     WskBind(
-    //         Binding->Socket,
-    //         (PSOCKADDR)Address,
-    //         0, // No flags
-    //         &Binding->Irp
-    //         );
-    // if (Status == STATUS_PENDING) {
-    //     KeWaitForSingleObject(&Binding->WskCompletionEvent, Executive, KernelMode, FALSE, NULL);
-    //     Status = Binding->Irp.IoStatus.Status;
-    // }
 
     Status =
         WskBindSync(
@@ -546,27 +302,6 @@ FnSockGetSockName(
 
     UNREFERENCED_PARAMETER(AddressLength);
 
-    // IoReuseIrp(&Binding->Irp, STATUS_SUCCESS);
-    // IoSetCompletionRoutine(
-    //     &Binding->Irp,
-    //     FnSockDataPathIoCompletion,
-    //     &Binding->WskCompletionEvent,
-    //     TRUE,
-    //     TRUE,
-    //     TRUE);
-    // KeResetEvent(&Binding->WskCompletionEvent);
-
-    // Status =
-    //     Binding->DgrmSocket->Dispatch->
-    //     WskGetLocalAddress(
-    //         Binding->Socket,
-    //         (PSOCKADDR)Address,
-    //         &Binding->Irp);
-    // if (Status == STATUS_PENDING) {
-    //     KeWaitForSingleObject(&Binding->WskCompletionEvent, Executive, KernelMode, FALSE, NULL);
-    //     Status = Binding->Irp.IoStatus.Status;
-    // }
-
     Status =
         WskGetLocalAddrSync(
             Binding->Socket,
@@ -604,7 +339,9 @@ FnSockSetSockOpt(
     FNSOCK_SOCKET_BINDING* Binding = (FNSOCK_SOCKET_BINDING*)Socket;
 
     if (Level == SOL_SOCKET && OptionName == SO_RCVTIMEO) {
-        if (OptionLength < sizeof(UINT32) || OptionValue == NULL || *(UINT32*)OptionValue == MAXUINT32) {
+        if (OptionLength < sizeof(UINT32) ||
+            OptionValue == NULL ||
+            *(UINT32*)OptionValue == MAXUINT32) {
             TraceError(
                 "[data] ERROR, %s.",
                 "SO_RCVTIMEO invalid parameter");
@@ -615,34 +352,6 @@ FnSockSetSockOpt(
         Status = STATUS_SUCCESS;
         goto Exit;
     }
-
-    // IoReuseIrp(&Binding->Irp, STATUS_SUCCESS);
-    // IoSetCompletionRoutine(
-    //     &Binding->Irp,
-    //     FnSockDataPathIoCompletion,
-    //     &Binding->WskCompletionEvent,
-    //     TRUE,
-    //     TRUE,
-    //     TRUE);
-    // KeResetEvent(&Binding->WskCompletionEvent);
-
-    // Status =
-    //     Binding->DgrmSocket->Dispatch->
-    //     WskControlSocket(
-    //         Binding->Socket,
-    //         WskSetOption,
-    //         OptionName,
-    //         Level,
-    //         OptionLength,
-    //         OptionValue,
-    //         0,
-    //         NULL,
-    //         NULL,
-    //         &Binding->Irp);
-    // if (Status == STATUS_PENDING) {
-    //     KeWaitForSingleObject(&Binding->WskCompletionEvent, Executive, KernelMode, FALSE, NULL);
-    //     Status = Binding->Irp.IoStatus.Status;
-    // }
 
     Status =
         WskControlSocketSync(
@@ -688,64 +397,12 @@ FnSockSendto(
 {
     NTSTATUS Status;
     FNSOCK_SOCKET_BINDING* Binding = (FNSOCK_SOCKET_BINDING*)Socket;
-    // FNSOCK_SOCKET_SEND_DATA* SendData;
     FNSOCK_SOCKET_SEND_CONTEXT* SendContext;
     INT BytesSent = 0;
+    KIRQL PrevIrql;
 
     UNREFERENCED_PARAMETER(Flags);
     UNREFERENCED_PARAMETER(AddressLength);
-
-    // SendData =
-    //     (FNSOCK_SOCKET_SEND_DATA*)ExAllocatePoolZero(
-    //         NonPagedPoolNx, sizeof(*SendData) + BufferLength, FNSOCK_POOL_SOCKET_SEND);
-    // if (SendData == NULL) {
-    //     TraceError(
-    //         "[data] ERROR, %s.",
-    //         "Could not allocate memory for socket send");
-    //     Status = STATUS_NO_MEMORY;
-    //     goto Exit;
-    // }
-
-    // SendData->WskBufs.Next = NULL;
-    // SendData->WskBufs.Buffer.Length = BufferLength;
-    // SendData->WskBufs.Buffer.Offset = 0;
-    // RtlCopyMemory(SendData->Data, Buffer, BufferLength);
-
-    // SendData->WskBufs.Buffer.Mdl = IoAllocateMdl(SendData->Data, BufferLength, FALSE, FALSE, NULL);
-    // if (SendData->WskBufs.Buffer.Mdl == NULL) {
-    //     TraceError(
-    //         "[data] ERROR, %s.",
-    //         "Could not allocate memory for socket send MDL");
-    //     Status = STATUS_NO_MEMORY;
-    //     goto Exit;
-    // }
-
-    // MmBuildMdlForNonPagedPool(SendData->WskBufs.Buffer.Mdl);
-
-    // SendData->Binding = Binding;
-
-    // IoInitializeIrp(
-    //     &SendData->Irp,
-    //     sizeof(SendData->IrpBuffer),
-    //     1);
-    // IoSetCompletionRoutine(
-    //     &SendData->Irp,
-    //     FnSockDataPathSendComplete,
-    //     SendData,
-    //     TRUE,
-    //     TRUE,
-    //     TRUE);
-
-    // Status =
-    //     Binding->DgrmSocket->Dispatch->
-    //     WskSendMessages(
-    //         Binding->Socket,
-    //         &SendData->WskBufs,
-    //         0,
-    //         (PSOCKADDR)Address,
-    //         0,
-    //         NULL,
-    //         &SendData->Irp);
 
     SendContext =
         (FNSOCK_SOCKET_SEND_CONTEXT*)ExAllocatePoolZero(
@@ -758,6 +415,13 @@ FnSockSendto(
         goto Exit;
     }
 
+    //
+    // To emulate the fire and forget behavior of user mode WinSock with WSK,
+    // allocate a send context, initiate a send and clean up the send context
+    // later when the socket is closed. Accumulating send contexts throughout
+    // the lifetime of the socket is not ideal and this emulation can be
+    // improved upon if needed.
+    //
     Status =
         WskSendToAsync(
             Binding->Socket,
@@ -768,19 +432,15 @@ FnSockSendto(
             0,
             NULL,
             &SendContext->WskClientSendContext);
-
     if (!NT_SUCCESS(Status)) {
         TraceError(
             "[data][%p] ERROR, %u, %s.",
             Binding,
             Status,
             "WskSendToSync");
-
-        // // Callback still gets invoked on failure to do the cleanup.
         goto Exit;
     }
 
-    KIRQL PrevIrql;
     KeAcquireSpinLock(&Binding->SendContextLock, &PrevIrql);
     InsertTailList(&Binding->SendContextList, &SendContext->Link);
     KeReleaseSpinLock(&Binding->SendContextLock, PrevIrql);
@@ -794,16 +454,6 @@ Exit:
         FnSockSocketLastError = Status;
 
         BytesSent = -1;
-
-        // if (SendData != NULL) {
-        //     NT_ASSERT(SendData->WskBufs.Next == NULL);
-        //     if (SendData->WskBufs.Buffer.Mdl != NULL) {
-        //         IoCleanupIrp(&SendData->Irp);
-        //         NT_ASSERT(SendData->WskBufs.Buffer.Mdl->Next == NULL);
-        //         IoFreeMdl(SendData->WskBufs.Buffer.Mdl);
-        //     }
-        //     ExFreePoolWithTag(SendData, FNSOCK_POOL_SOCKET_SEND);
-        // }
 
         if (SendContext != NULL) {
             ExFreePoolWithTag(SendContext, FNSOCK_POOL_SOCKET_SEND);
@@ -831,27 +481,6 @@ FnSockRecv(
     UNREFERENCED_PARAMETER(Flags);
 
     KeAcquireSpinLock(&Binding->RecvDataLock, &PrevIrql);
-
-    // if (IsListEmpty(&Binding->RecvDataList)) {
-    //     LARGE_INTEGER Storage;
-    //     LARGE_INTEGER* Timeout100Ns;
-
-    //     KeReleaseSpinLock(&Binding->RecvDataLock, PrevIrql);
-
-    //     if (Binding->ReceiveTimeout != 0) {
-    //         Timeout100Ns = &Storage;
-    //         Timeout100Ns->QuadPart = -1 * ((ULONGLONG)Binding->ReceiveTimeout * 10000);
-    //     } else {
-    //         Timeout100Ns = NULL;
-    //     }
-
-    //     Status = KeWaitForSingleObject(&Binding->RecvDataEvent, Executive, KernelMode, FALSE, Timeout100Ns);
-    //     if (Status == STATUS_TIMEOUT) {
-    //         goto Exit;
-    //     }
-    //     KeAcquireSpinLock(&Binding->RecvDataLock, &PrevIrql);
-    //     KeResetEvent(&Binding->RecvDataEvent);
-    // }
 
     if (!IsListEmpty(&Binding->RecvDataList)) {
         LIST_ENTRY* Entry;
@@ -981,7 +610,10 @@ FnSockDatagramSocketReceive(
         CopiedLength = 0;
         while (CopiedLength < DataLength && Mdl != NULL) {
             SIZE_T CopySize = min(MmGetMdlByteCount(Mdl) - MdlOffset, DataLength - CopiedLength);
-            RtlCopyMemory(RecvData->Data + CopiedLength, (UCHAR*)Mdl->MappedSystemVa + MdlOffset, CopySize);
+            RtlCopyMemory(
+                RecvData->Data + CopiedLength,
+                (UCHAR*)Mdl->MappedSystemVa + MdlOffset,
+                CopySize);
             CopiedLength += CopySize;
 
             Mdl = Mdl->Next;
@@ -991,7 +623,6 @@ FnSockDatagramSocketReceive(
         KIRQL PrevIrql;
         KeAcquireSpinLock(&Binding->RecvDataLock, &PrevIrql);
         InsertTailList(&Binding->RecvDataList, &RecvData->Link);
-        // KeSetEvent(&Binding->RecvDataEvent, IO_NO_INCREMENT, FALSE);
         KeReleaseSpinLock(&Binding->RecvDataLock, PrevIrql);
     }
 
