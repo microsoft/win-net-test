@@ -1607,7 +1607,6 @@ WskSendToAsync(
     #pragma warning( suppress : 4996 )
     Completion = ExAllocatePool2(POOL_FLAG_NON_PAGED, sizeof(*Completion), 'tseT');
     if (Completion == NULL) {
-        LOG("ExAllocatePool2 failed\n");
         Status = STATUS_INSUFFICIENT_RESOURCES;
         goto Failure;
     }
@@ -1623,7 +1622,6 @@ WskSendToAsync(
     WskSendTo = ((PWSK_PROVIDER_DATAGRAM_DISPATCH)Sock->Dispatch)->WskSendTo;
     Irp = IoAllocateIrp(1, FALSE);
     if (Irp == NULL) {
-        LOG("IoAllocateIrp failed\n");
         Status = STATUS_INSUFFICIENT_RESOURCES;
         goto Failure;
     }
