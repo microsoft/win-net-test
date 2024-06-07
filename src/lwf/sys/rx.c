@@ -56,6 +56,7 @@ RxCompleteNbls(
     NdisFIndicateReceiveNetBufferLists(
         Filter->NdisFilterHandle, NblChain, NDIS_DEFAULT_PORT_NUMBER,
         (ULONG)NblCount, 0);
+    ExReleaseRundownProtectionEx(&Filter->NblRundown, (ULONG)NblCount);
 }
 
 static
@@ -296,6 +297,7 @@ RxIrpFlush(
         NdisFIndicateReceiveNetBufferLists(
             Filter->NdisFilterHandle, NblChain, NDIS_DEFAULT_PORT_NUMBER,
             (ULONG)NblCount, 0);
+        ExReleaseRundownProtectionEx(&Filter->NblRundown, (ULONG)NblCount);
         Status = STATUS_SUCCESS;
     } else {
         Status = STATUS_NOT_FOUND;
@@ -348,17 +350,23 @@ FilterReceiveNetBufferLists(
     NdisInitializeNblCountedQueue(&IndicateChain);
     NdisAppendNblChainToNblCountedQueue(&NblChain, NetBufferLists);
 
-    KeAcquireSpinLock(&Filter->Lock, &OldIrql);
+    if (ExAcquireRundownProtectionEx(&Filter->NblRundown, NumberOfNetBufferLists)) {
+        KeAcquireSpinLock(&Filter->Lock, &OldIrql);
 
-    while (!NdisIsNblCountedQueueEmpty(&NblChain)) {
-        NET_BUFFER_LIST *Nbl = NdisPopFirstNblFromNblCountedQueue(&NblChain);
+        while (!NdisIsNblCountedQueueEmpty(&NblChain)) {
+            NET_BUFFER_LIST *Nbl = NdisPopFirstNblFromNblCountedQueue(&NblChain);
 
-        if (!RxFilterNbl(Filter, Nbl)) {
-            NdisAppendSingleNblToNblCountedQueue(&IndicateChain, Nbl);
+            if (!RxFilterNbl(Filter, Nbl)) {
+                NdisAppendSingleNblToNblCountedQueue(&IndicateChain, Nbl);
+            }
         }
-    }
 
-    KeReleaseSpinLock(&Filter->Lock, OldIrql);
+        KeReleaseSpinLock(&Filter->Lock, OldIrql);
+
+        ExReleaseRundownProtectionEx(&Filter->NblRundown, (ULONG)IndicateChain.NblCount);
+    } else {
+        NdisAppendNblCountedQueueToNblCountedQueueFast(&IndicateChain, &NblChain);
+    }
 
     if (!NdisIsNblCountedQueueEmpty(&IndicateChain)) {
         ASSERT(IndicateChain.NblCount <= MAXULONG);
