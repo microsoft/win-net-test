@@ -34,4 +34,10 @@ LwfBasicTx();
 VOID
 LwfBasicOid();
 
+VOID
+SockBasicTcp(USHORT AddressFamily);
+
+VOID
+SockBasicRaw(USHORT AddressFamily);
+
 EXTERN_C_END

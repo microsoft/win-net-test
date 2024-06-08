@@ -169,6 +169,60 @@ FnSockSetSockOpt(
     );
 
 _IRQL_requires_max_(PASSIVE_LEVEL)
+FNSOCK_STATUS
+FnSockGetSockOpt(
+    _In_ FNSOCK_HANDLE Socket,
+    _In_ ULONG Level,
+    _In_ ULONG OptionName,
+    _Out_writes_bytes_(*OptionLength) VOID* OptionValue,
+    _Inout_ SIZE_T* OptionLength
+    );
+
+_IRQL_requires_max_(PASSIVE_LEVEL)
+FNSOCK_STATUS
+FnSockIoctl(
+    _In_ FNSOCK_HANDLE Socket,
+    _In_ ULONG ControlCode,
+    _In_reads_bytes_opt_(InputLength) VOID* Input,
+    _In_ ULONG InputLength,
+    _Out_writes_bytes_opt_(OutputLength) VOID* Output,
+    _In_ ULONG OutputLength,
+    _Out_ ULONG* BytesReturned
+    );
+
+_IRQL_requires_max_(PASSIVE_LEVEL)
+FNSOCK_STATUS
+FnSockListen(
+    _In_ FNSOCK_HANDLE Socket,
+    _In_ ULONG Backlog
+    );
+
+_IRQL_requires_max_(PASSIVE_LEVEL)
+FNSOCK_HANDLE
+FnSockAccept(
+    _In_ FNSOCK_HANDLE Socket,
+    _Out_writes_bytes_(*AddressLength) struct sockaddr* Address,
+    _Inout_ INT* AddressLength
+    );
+
+FNSOCK_STATUS
+FnSockConnect(
+    _In_ FNSOCK_HANDLE Socket,
+    _In_reads_bytes_(AddressLength) struct sockaddr* Address,
+    _In_ INT AddressLength
+    );
+
+_IRQL_requires_max_(PASSIVE_LEVEL)
+INT
+FnSockSend(
+    _In_ FNSOCK_HANDLE Socket,
+    _In_reads_bytes_(BufferLength) const CHAR* Buffer,
+    _In_ INT BufferLength,
+    _In_ BOOLEAN BufferIsNonPagedPool,
+    _In_ INT Flags
+    );
+
+_IRQL_requires_max_(PASSIVE_LEVEL)
 INT
 FnSockSendto(
     _In_ FNSOCK_HANDLE Socket,

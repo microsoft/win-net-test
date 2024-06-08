@@ -325,6 +325,8 @@ size_t IOCTL_BUFFER_SIZES[] =
     0,
     0,
     0,
+    sizeof(USHORT),
+    sizeof(USHORT),
 };
 
 static_assert(
@@ -332,6 +334,7 @@ static_assert(
     "IOCTL_BUFFER_SIZES must be kept in sync with the IOCTLs");
 
 typedef union {
+    USHORT AddressFamily;
 } IOCTL_PARAMS;
 
 #define TestDrvCtlRun(X) \
@@ -446,6 +449,14 @@ TestDrvCtlEvtIoDeviceControl(
         break;
     case IOCTL_LWF_BASIC_OID:
         TestDrvCtlRun(LwfBasicOid());
+        break;
+    case IOCTL_SOCK_BASIC_TCP:
+        NT_ASSERT(Params != nullptr);
+        TestDrvCtlRun(SockBasicTcp(Params->AddressFamily));
+        break;
+    case IOCTL_SOCK_BASIC_RAW:
+        NT_ASSERT(Params != nullptr);
+        TestDrvCtlRun(SockBasicRaw(Params->AddressFamily));
         break;
     default:
         Status = STATUS_INVALID_PARAMETER;
