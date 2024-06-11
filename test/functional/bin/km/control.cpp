@@ -451,11 +451,11 @@ TestDrvCtlEvtIoDeviceControl(
         TestDrvCtlRun(LwfBasicOid());
         break;
     case IOCTL_SOCK_BASIC_TCP:
-        NT_ASSERT(Params != nullptr);
+        NT_FRE_ASSERT(Params != nullptr);
         TestDrvCtlRun(SockBasicTcp(Params->AddressFamily));
         break;
     case IOCTL_SOCK_BASIC_RAW:
-        NT_ASSERT(Params != nullptr);
+        NT_FRE_ASSERT(Params != nullptr);
         TestDrvCtlRun(SockBasicRaw(Params->AddressFamily));
         break;
     default:
