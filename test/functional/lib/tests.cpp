@@ -1617,6 +1617,15 @@ SockBasicTcp(
     DWORD Opt;
     SIZE_T OptLen = sizeof(Opt);
     TEST_CXPLAT(FnSockGetSockOpt(ClientSocket.get(), IPPROTO_TCP, TCP_KEEPCNT, &Opt, &OptLen));
+
+#ifndef KERNEL_MODE
+    LINGER lingerInfo;
+    lingerInfo.l_onoff = 1;
+    lingerInfo.l_linger = 0;
+    TEST_CXPLAT(
+        FnSockSetSockOpt(
+            AcceptSocket.get(), SOL_SOCKET, SO_LINGER, (CHAR *)&lingerInfo, sizeof(lingerInfo)));
+#endif
 }
 
 EXTERN_C
