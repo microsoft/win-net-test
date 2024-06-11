@@ -18,6 +18,7 @@
     <ClCompile>
       <AdditionalIncludeDirectories>
         $(SolutionDir)inc;
+        $(SolutionDir)src\common\inc;
         $(SolutionDir)src\sock;
         %(AdditionalIncludeDirectories)
       </AdditionalIncludeDirectories>

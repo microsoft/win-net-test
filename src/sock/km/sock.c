@@ -18,15 +18,11 @@
 #include <wsk.h>
 
 #include "fnsock.h"
+#include "pooltag.h"
 #include "trace.h"
 #include "wskclient.h"
 
 #include "sock.tmh"
-
-#define FNSOCK_POOL_SOCKET        'kSsF' // FsSk
-#define FNSOCK_POOL_SOCKET_SEND   'sSsF' // FsSs
-#define FNSOCK_POOL_SOCKET_RECV   'rSsF' // FsSr
-#define FNSOCK_POOL_SOCKET_ACCEPT 'aSsF' // FsSa
 
 typedef struct _WSK_DATAGRAM_SOCKET {
     const WSK_PROVIDER_DATAGRAM_DISPATCH* Dispatch;
@@ -192,7 +188,7 @@ FnSockCreate(
     Binding =
 #pragma warning( suppress : 4996 )
         (FNSOCK_SOCKET_BINDING*)ExAllocatePoolWithTag(
-            NonPagedPoolNx, sizeof(*Binding), FNSOCK_POOL_SOCKET);
+            NonPagedPoolNx, sizeof(*Binding), POOLTAG_FNSOCK_SOCKET);
     if (Binding == NULL) {
         TraceError(
             "[data] ERROR, %s.",
@@ -245,7 +241,7 @@ Exit:
         FnSockSocketLastError = Status;
 
         if (Binding != NULL) {
-            ExFreePoolWithTag(Binding, FNSOCK_POOL_SOCKET);
+            ExFreePoolWithTag(Binding, POOLTAG_FNSOCK_SOCKET);
         }
     }
 
@@ -283,7 +279,7 @@ FnSockClose(
                 "WskSendToAwait");
         }
 
-        ExFreePoolWithTag(SendContext, FNSOCK_POOL_SOCKET_SEND);
+        ExFreePoolWithTag(SendContext, POOLTAG_FNSOCK_SEND);
     }
 
     Status =
@@ -303,7 +299,7 @@ FnSockClose(
 
         Entry = RemoveHeadList(&Binding->RecvDataList);
         RecvData = CONTAINING_RECORD(Entry, FNSOCK_SOCKET_RECV_DATA, Link);
-        ExFreePoolWithTag(RecvData, FNSOCK_POOL_SOCKET_RECV);
+        ExFreePoolWithTag(RecvData, POOLTAG_FNSOCK_RECV);
     }
 
     while (!IsListEmpty(&Binding->AcceptList)) {
@@ -322,11 +318,11 @@ FnSockClose(
                 Status,
                 "WskCloseSocketSync(accepted)");
         }
-        ExFreePoolWithTag(AcceptContext->AcceptedSocket, FNSOCK_POOL_SOCKET);
-        ExFreePoolWithTag(AcceptContext, FNSOCK_POOL_SOCKET_ACCEPT);
+        ExFreePoolWithTag(AcceptContext->AcceptedSocket, POOLTAG_FNSOCK_SOCKET);
+        ExFreePoolWithTag(AcceptContext, POOLTAG_FNSOCK_ACCEPT);
     }
 
-    ExFreePoolWithTag(Binding, FNSOCK_POOL_SOCKET);
+    ExFreePoolWithTag(Binding, POOLTAG_FNSOCK_SOCKET);
 }
 
 _IRQL_requires_max_(PASSIVE_LEVEL)
@@ -715,7 +711,7 @@ FnSockAccept(
 Exit:
 
     if (AcceptContext != NULL) {
-        ExFreePoolWithTag(AcceptContext, FNSOCK_POOL_SOCKET_ACCEPT);
+        ExFreePoolWithTag(AcceptContext, POOLTAG_FNSOCK_ACCEPT);
     }
 
     if (!NT_SUCCESS(Status)) {
@@ -819,7 +815,7 @@ FnSockSend(
     SendContext =
 #pragma warning( suppress : 4996 )
         (FNSOCK_SOCKET_SEND_CONTEXT*)ExAllocatePoolWithTag(
-            NonPagedPoolNx, sizeof(*SendContext), FNSOCK_POOL_SOCKET_SEND);
+            NonPagedPoolNx, sizeof(*SendContext), POOLTAG_FNSOCK_SEND);
     if (SendContext == NULL) {
         TraceError(
             "[data] ERROR, %s.",
@@ -869,7 +865,7 @@ Exit:
         BytesSent = -1;
 
         if (SendContext != NULL) {
-            ExFreePoolWithTag(SendContext, FNSOCK_POOL_SOCKET_SEND);
+            ExFreePoolWithTag(SendContext, POOLTAG_FNSOCK_SEND);
         }
     }
 
@@ -900,7 +896,7 @@ FnSockSendto(
     SendContext =
 #pragma warning( suppress : 4996 )
         (FNSOCK_SOCKET_SEND_CONTEXT*)ExAllocatePoolWithTag(
-            NonPagedPoolNx, sizeof(*SendContext), FNSOCK_POOL_SOCKET_SEND);
+            NonPagedPoolNx, sizeof(*SendContext), POOLTAG_FNSOCK_SEND);
     if (SendContext == NULL) {
         TraceError(
             "[data] ERROR, %s.",
@@ -951,7 +947,7 @@ Exit:
         BytesSent = -1;
 
         if (SendContext != NULL) {
-            ExFreePoolWithTag(SendContext, FNSOCK_POOL_SOCKET_SEND);
+            ExFreePoolWithTag(SendContext, POOLTAG_FNSOCK_SEND);
         }
     }
 
@@ -1027,7 +1023,7 @@ FnSockRecv(
     }
     RtlCopyMemory(Buffer, RecvData->Data, min(RecvData->DataLength, (ULONG)BufferLength));
 
-    ExFreePoolWithTag(RecvData, FNSOCK_POOL_SOCKET_RECV);
+    ExFreePoolWithTag(RecvData, POOLTAG_FNSOCK_RECV);
 
 Exit:
 
@@ -1084,7 +1080,7 @@ QueueRecvData(
     RecvData =
 #pragma warning( suppress : 4996 )
         (FNSOCK_SOCKET_RECV_DATA*)ExAllocatePoolWithTag(
-            NonPagedPoolNx, AllocSize, FNSOCK_POOL_SOCKET_RECV);
+            NonPagedPoolNx, AllocSize, POOLTAG_FNSOCK_RECV);
     if (RecvData == NULL) {
         TraceError(
             "[%p] Dropping data due to insufficient memory.",
@@ -1211,7 +1207,7 @@ FnSockStreamSocketAccept(
     NewBinding =
 #pragma warning( suppress : 4996 )
         (FNSOCK_SOCKET_BINDING*)ExAllocatePoolWithTag(
-            NonPagedPoolNx, sizeof(*NewBinding), FNSOCK_POOL_SOCKET);
+            NonPagedPoolNx, sizeof(*NewBinding), POOLTAG_FNSOCK_SOCKET);
     if (NewBinding == NULL) {
         TraceError(
             "[data] ERROR, %s.",
@@ -1224,7 +1220,7 @@ FnSockStreamSocketAccept(
     AcceptContext =
 #pragma warning( suppress : 4996 )
         (FNSOCK_SOCKET_ACCEPT_CONTEXT*)ExAllocatePoolWithTag(
-            NonPagedPoolNx, sizeof(*AcceptContext), FNSOCK_POOL_SOCKET_ACCEPT);
+            NonPagedPoolNx, sizeof(*AcceptContext), POOLTAG_FNSOCK_ACCEPT);
     if (AcceptContext == NULL) {
         TraceError(
             "[data] ERROR, %s.",
@@ -1254,10 +1250,10 @@ Exit:
 
     if (!NT_SUCCESS(Status)) {
         if (AcceptContext != NULL) {
-            ExFreePoolWithTag(AcceptContext, FNSOCK_POOL_SOCKET_ACCEPT);
+            ExFreePoolWithTag(AcceptContext, POOLTAG_FNSOCK_ACCEPT);
         }
         if (NewBinding != NULL) {
-            ExFreePoolWithTag(NewBinding, FNSOCK_POOL_SOCKET);
+            ExFreePoolWithTag(NewBinding, POOLTAG_FNSOCK_SOCKET);
         }
     }
 
