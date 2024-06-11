@@ -1126,14 +1126,24 @@ FnSockDatagramSocketReceive(
 {
     FNSOCK_SOCKET_BINDING* Binding = (FNSOCK_SOCKET_BINDING*)SocketContext;
 
-    NT_ASSERT(SocketContext != NULL);
     UNREFERENCED_PARAMETER(Flags);
+
+    NT_ASSERT(Binding != NULL);
+    if (Binding == NULL) {
+        TraceError(
+            "[%p] Unexpected context in WSK callback.",
+            Binding);
+        return STATUS_SUCCESS;
+    }
 
     //
     // Check to see if the DataIndicate is NULL, which indicates that the
     // socket has been closed
     //
     if (DataIndicationHead == NULL) {
+        TraceWarn(
+            "[%p] Unexpected socket state in WSK callback.",
+            Binding);
         return STATUS_SUCCESS;
     }
 
@@ -1178,10 +1188,20 @@ FnSockStreamSocketAccept(
     FNSOCK_SOCKET_ACCEPT_CONTEXT* AcceptContext = NULL;
     KIRQL PrevIrql;
 
-    NT_ASSERT(SocketContext);
     UNREFERENCED_PARAMETER(Flags);
     UNREFERENCED_PARAMETER(LocalAddress);
     UNREFERENCED_PARAMETER(RemoteAddress);
+
+    *AcceptSocketContext = NULL;
+    *AcceptSocketDispatch = NULL;
+
+    NT_ASSERT(Binding != NULL);
+    if (Binding == NULL) {
+        TraceError(
+            "[%p] Unexpected context in WSK callback.",
+            Binding);
+        return STATUS_SUCCESS;
+    }
 
     //
     // If AcceptSocket is NULL, we are supposed to close the listening socket.
@@ -1258,8 +1278,15 @@ FnSockStreamSocketReceive(
 {
     FNSOCK_SOCKET_BINDING* Binding = (FNSOCK_SOCKET_BINDING*)SocketContext;
 
-    NT_ASSERT(SocketContext != NULL);
     UNREFERENCED_PARAMETER(Flags);
+
+    NT_ASSERT(Binding != NULL);
+    if (Binding == NULL) {
+        TraceError(
+            "[%p] Unexpected context in WSK callback.",
+            Binding);
+        return STATUS_SUCCESS;
+    }
 
     //
     // Check to see if the DataIndicate is NULL, which indicates that the
