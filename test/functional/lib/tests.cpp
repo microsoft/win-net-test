@@ -1554,7 +1554,8 @@ LwfBasicOid()
         MpInfoBuffer = MpOidAllocateAndGetRequest(ExclusiveMp, OidKeys[Index], &MpInfoBufferLength);
         TEST_NOT_NULL(MpInfoBuffer.get());
 
-        TEST_TRUE(MpOidCompleteRequest(ExclusiveMp, OidKeys[Index], STATUS_SUCCESS, NULL, 0));
+        TEST_TRUE(MpOidCompleteRequest(
+            ExclusiveMp, OidKeys[Index], STATUS_SUCCESS, &LwfInfoBuffer, LwfInfoBufferLength));
 
         TEST_TRUE(CxPlatThreadWait(AsyncThread.get(), TEST_TIMEOUT_ASYNC_MS));
         TEST_FNMPAPI(Req.Status);
