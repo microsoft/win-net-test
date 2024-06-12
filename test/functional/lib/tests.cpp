@@ -666,6 +666,23 @@ MpOidAllocateAndGetRequest(
 }
 
 static
+bool
+MpOidCompleteRequest(
+    _In_ const unique_fnmp_handle& Handle,
+    _In_ OID_KEY Key,
+    _In_ NDIS_STATUS CompletionStatus,
+    _In_opt_ VOID *InformationBuffer,
+    _In_ UINT32 InformationBufferLength
+    )
+{
+    TEST_FNMPAPI_RET(
+        FnMpOidCompleteRequest(
+            Handle.get(), Key, CompletionStatus, InformationBuffer, InformationBufferLength),
+        false);
+    return true;
+}
+
+static
 unique_fnlwf_handle
 LwfOpenDefault(
     _In_ UINT32 IfIndex
@@ -1536,7 +1553,8 @@ LwfBasicOid()
 
         MpInfoBuffer = MpOidAllocateAndGetRequest(ExclusiveMp, OidKeys[Index], &MpInfoBufferLength);
         TEST_NOT_NULL(MpInfoBuffer.get());
-        ExclusiveMp.reset();
+
+        TEST_TRUE(MpOidCompleteRequest(ExclusiveMp, OidKeys[Index], STATUS_SUCCESS, NULL, 0));
 
         TEST_TRUE(CxPlatThreadWait(AsyncThread.get(), TEST_TIMEOUT_ASYNC_MS));
         TEST_FNMPAPI(Req.Status);
