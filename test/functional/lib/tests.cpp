@@ -38,6 +38,7 @@
 #if defined(KERNEL_MODE)
 #include <invokesystemrelay.h>
 #endif
+#include <qeo_ndis.h>
 
 #include "fntrace.h"
 #include "fntest.h"
@@ -1475,7 +1476,7 @@ EXTERN_C
 VOID
 LwfBasicOid()
 {
-    OID_KEY OidKeys[2];
+    OID_KEY OidKeys[3];
     UINT32 MpInfoBufferLength;
     unique_malloc_ptr<VOID> MpInfoBuffer;
     UINT32 LwfInfoBufferLength;
@@ -1504,6 +1505,13 @@ LwfBasicOid()
     // Set.
     //
     InitializeOidKey(&OidKeys[1], OID_GEN_CURRENT_PACKET_FILTER, NdisRequestSetInformation);
+
+    //
+    // Method. (Direct OID)
+    //
+    InitializeOidKey(
+        &OidKeys[2], OID_QUIC_CONNECTION_ENCRYPTION_PROTOTYPE, NdisRequestMethod,
+        OID_REQUEST_INTERFACE_DIRECT);
 
     for (UINT32 Index = 0; Index < RTL_NUMBER_OF(OidKeys); Index++) {
         auto ExclusiveMp = MpOpenExclusive(FnMpIf->GetIfIndex());

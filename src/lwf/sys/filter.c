@@ -129,6 +129,8 @@ FilterStart(
     FChars.SetFilterModuleOptionsHandler     = FilterSetOptions;
     FChars.OidRequestHandler                 = FilterOidRequest;
     FChars.OidRequestCompleteHandler         = FilterOidRequestComplete;
+    FChars.DirectOidRequestHandler           = FilterDirectOidRequest;
+    FChars.DirectOidRequestCompleteHandler   = FilterDirectOidRequestComplete;
     FChars.StatusHandler                     = FilterStatus;
     FChars.ReturnNetBufferListsHandler       = FilterReturnNetBufferLists;
     FChars.ReceiveNetBufferListsHandler      = FilterReceiveNetBufferLists;
