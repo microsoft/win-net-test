@@ -163,6 +163,154 @@ FnSockSetSockOpt(
 }
 
 _IRQL_requires_max_(PASSIVE_LEVEL)
+FNSOCK_STATUS
+FnSockGetSockOpt(
+    _In_ FNSOCK_HANDLE Socket,
+    _In_ ULONG Level,
+    _In_ ULONG OptionName,
+    _Out_writes_bytes_(*OptionLength) VOID* OptionValue,
+    _Inout_ SIZE_T* OptionLength
+    )
+{
+    HRESULT Status;
+    INT Error;
+
+    Error = getsockopt((SOCKET)Socket, Level, OptionName, (CHAR*)OptionValue, (INT*)OptionLength);
+    if (Error == SOCKET_ERROR) {
+        TraceError(
+            "[ lib] ERROR, %u, %s.",
+            WSAGetLastError(),
+            "getsockopt");
+        Status = E_FAIL;
+    } else {
+        Status = S_OK;
+    }
+
+    return Status;
+}
+
+_IRQL_requires_max_(PASSIVE_LEVEL)
+FNSOCK_STATUS
+FnSockIoctl(
+    _In_ FNSOCK_HANDLE Socket,
+    _In_ ULONG ControlCode,
+    _In_reads_bytes_opt_(InputLength) VOID* Input,
+    _In_ ULONG InputLength,
+    _Out_writes_bytes_opt_(OutputLength) VOID* Output,
+    _In_ ULONG OutputLength,
+    _Out_ ULONG* BytesReturned
+    )
+{
+    HRESULT Status;
+    INT Error;
+
+    Error =
+        WSAIoctl(
+            (SOCKET)Socket, ControlCode, Input, InputLength, Output, OutputLength, BytesReturned,
+            NULL, NULL);
+    if (Error == SOCKET_ERROR) {
+        TraceError(
+            "[ lib] ERROR, %u, %s.",
+            WSAGetLastError(),
+            "WSAIoctl");
+        Status = E_FAIL;
+    } else {
+        Status = S_OK;
+    }
+
+    return Status;
+}
+
+_IRQL_requires_max_(PASSIVE_LEVEL)
+FNSOCK_STATUS
+FnSockListen(
+    _In_ FNSOCK_HANDLE Socket,
+    _In_ ULONG Backlog
+    )
+{
+    HRESULT Status;
+    INT Error;
+
+    Error = listen((SOCKET)Socket, Backlog);
+    if (Error == SOCKET_ERROR) {
+        TraceError(
+            "[ lib] ERROR, %u, %s.",
+            WSAGetLastError(),
+            "listen");
+        Status = E_FAIL;
+    } else {
+        Status = S_OK;
+    }
+
+    return Status;
+}
+
+_IRQL_requires_max_(PASSIVE_LEVEL)
+FNSOCK_HANDLE
+FnSockAccept(
+    _In_ FNSOCK_HANDLE Socket,
+    _Out_writes_bytes_(*AddressLength) struct sockaddr* Address,
+    _Inout_ INT* AddressLength
+    )
+{
+    HRESULT Status;
+    SOCKET AcceptedSocket;
+
+    AcceptedSocket = accept((SOCKET)Socket, Address, AddressLength);
+    if (AcceptedSocket == INVALID_SOCKET) {
+        TraceError(
+            "[ lib] ERROR, %u, %s.",
+            WSAGetLastError(),
+            "accept");
+        Status = E_FAIL;
+        AcceptedSocket = 0;
+    } else {
+        Status = S_OK;
+    }
+
+    return (FNSOCK_HANDLE)AcceptedSocket;
+}
+
+FNSOCK_STATUS
+FnSockConnect(
+    _In_ FNSOCK_HANDLE Socket,
+    _In_reads_bytes_(AddressLength) struct sockaddr* Address,
+    _In_ INT AddressLength
+    )
+{
+    HRESULT Status;
+    INT Error;
+
+    Error = connect((SOCKET)Socket, Address, AddressLength);
+    if (Error == SOCKET_ERROR) {
+        TraceError(
+            "[ lib] ERROR, %u, %s.",
+            WSAGetLastError(),
+            "connect");
+        Status = E_FAIL;
+    } else {
+        Status = S_OK;
+    }
+
+    return Status;
+}
+
+_IRQL_requires_max_(PASSIVE_LEVEL)
+INT
+FnSockSend(
+    _In_ FNSOCK_HANDLE Socket,
+    _In_reads_bytes_(BufferLength) const CHAR* Buffer,
+    _In_ INT BufferLength,
+    _In_ BOOLEAN BufferIsNonPagedPool,
+    _In_ INT Flags
+    )
+{
+    UNREFERENCED_PARAMETER(BufferIsNonPagedPool);
+
+    return send((SOCKET)Socket, Buffer, BufferLength, Flags);
+}
+
+_IRQL_requires_max_(PASSIVE_LEVEL)
 INT
 FnSockSendto(
     _In_ FNSOCK_HANDLE Socket,

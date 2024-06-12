@@ -3,6 +3,7 @@
 // Licensed under the MIT License.
 //
 
+#include <winsock2.h>
 #include <windows.h>
 #include <winioctl.h>
 #include <CppUnitTest.h>
@@ -493,6 +494,42 @@ public:
             TEST_TRUE(TestDriverClient.Run(IOCTL_LWF_BASIC_OID));
         } else {
             ::LwfBasicOid();
+        }
+    }
+};
+
+TEST_CLASS(fnsockfunctionaltests)
+{
+public:
+    TEST_METHOD(SockBasicTcpV4) {
+        if (TestingKernelMode) {
+            TEST_TRUE(TestDriverClient.Run(IOCTL_SOCK_BASIC_TCP, AF_INET));
+        } else {
+            ::SockBasicTcp(AF_INET);
+        }
+    }
+
+    TEST_METHOD(SockBasicTcpV6) {
+        if (TestingKernelMode) {
+            TEST_TRUE(TestDriverClient.Run(IOCTL_SOCK_BASIC_TCP, AF_INET6));
+        } else {
+            ::SockBasicTcp(AF_INET6);
+        }
+    }
+
+    TEST_METHOD(SockBasicRawV4) {
+        if (TestingKernelMode) {
+            TEST_TRUE(TestDriverClient.Run(IOCTL_SOCK_BASIC_RAW, AF_INET));
+        } else {
+            ::SockBasicRaw(AF_INET);
+        }
+    }
+
+    TEST_METHOD(SockBasicRawV6) {
+        if (TestingKernelMode) {
+            TEST_TRUE(TestDriverClient.Run(IOCTL_SOCK_BASIC_RAW, AF_INET6));
+        } else {
+            ::SockBasicRaw(AF_INET6);
         }
     }
 };

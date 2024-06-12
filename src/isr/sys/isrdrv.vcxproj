@@ -22,6 +22,7 @@
     <ClCompile>
       <AdditionalIncludeDirectories>
         $(SolutionDir)inc;
+        $(SolutionDir)src\common\inc;
         %(AdditionalIncludeDirectories)
       </AdditionalIncludeDirectories>
       <WppEnabled>true</WppEnabled>

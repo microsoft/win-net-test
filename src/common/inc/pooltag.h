@@ -25,3 +25,12 @@
 #define POOLTAG_LWF_DEFAULT_RX             'rDfL' // LfDr
 #define POOLTAG_LWF_DEFAULT_STATUS         'sDfL' // LfDs
 #define POOLTAG_LWF_DEFAULT_TX             'tDfL' // LfDt
+
+#define POOLTAG_ISR_CLIENT                 'CrsI' // IsrC
+#define POOLTAG_ISR_REQUEST                'RrsI' // IsrR
+#define POOLTAG_ISR_SERVICE                'SrsI' // IsrS
+
+#define POOLTAG_FNSOCK_SOCKET              'kSsF' // FsSk
+#define POOLTAG_FNSOCK_SEND                'sSsF' // FsSs
+#define POOLTAG_FNSOCK_RECV                'rSsF' // FsSr
+#define POOLTAG_FNSOCK_ACCEPT              'aSsF' // FsSa

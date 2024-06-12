@@ -948,6 +948,7 @@ SetSockAddr(
     _Out_ PSOCKADDR_STORAGE SockAddr
     )
 {
+    RtlZeroMemory(SockAddr, sizeof(*SockAddr));
     SockAddr->ss_family = Af;
     SS_PORT(SockAddr) = htons(Port);
     if (Af == AF_INET6) {
@@ -1534,4 +1535,131 @@ LwfBasicOid()
 
         TEST_EQUAL(LwfInfoBufferLength, sizeof(ULONG));
     }
+}
+
+EXTERN_C
+VOID
+SockBasicTcp(
+    USHORT AddressFamily
+    )
+{
+
+    unique_fnsock_handle ListenSocket;
+    TEST_CXPLAT(
+        FnSockCreate(
+            AddressFamily,
+            SOCK_STREAM,
+            IPPROTO_TCP,
+            &ListenSocket));
+    TEST_NOT_NULL(ListenSocket.get());
+
+    SOCKADDR_INET Address = {0};
+    Address.si_family = AddressFamily;
+
+    TEST_CXPLAT(
+        FnSockBind(
+            ListenSocket.get(),
+            (SOCKADDR *)&Address,
+            sizeof(Address)));
+
+    INT AddressLength = sizeof(Address);
+    TEST_CXPLAT(FnSockGetSockName(ListenSocket.get(), (SOCKADDR *)&Address, &AddressLength));
+
+    TEST_CXPLAT(FnSockListen(ListenSocket.get(), 32));
+
+    unique_fnsock_handle ClientSocket;
+    TEST_CXPLAT(
+        FnSockCreate(
+            AddressFamily,
+            SOCK_STREAM,
+            IPPROTO_TCP,
+            &ClientSocket));
+    TEST_NOT_NULL(ClientSocket.get());
+
+    if (AddressFamily == AF_INET) {
+        Address.Ipv4.sin_addr.s_addr = htonl(INADDR_LOOPBACK);
+    } else {
+        IN6_SET_ADDR_LOOPBACK(&Address.Ipv6.sin6_addr);
+    }
+
+    INT TimeoutMs = TEST_TIMEOUT_ASYNC_MS;
+    TEST_CXPLAT(
+        FnSockSetSockOpt(
+            ClientSocket.get(), SOL_SOCKET, SO_RCVTIMEO, (CHAR *)&TimeoutMs, sizeof(TimeoutMs)));
+    TEST_CXPLAT(
+        FnSockSetSockOpt(
+            ListenSocket.get(), SOL_SOCKET, SO_RCVTIMEO, (CHAR *)&TimeoutMs, sizeof(TimeoutMs)));
+
+    TEST_CXPLAT(FnSockConnect(ClientSocket.get(), (SOCKADDR *)&Address, AddressLength));
+
+    unique_fnsock_handle AcceptSocket(FnSockAccept(ListenSocket.get(), (SOCKADDR *)&Address, &AddressLength));
+    TEST_NOT_NULL(AcceptSocket.get());
+
+    TEST_CXPLAT(
+        FnSockSetSockOpt(
+            AcceptSocket.get(), SOL_SOCKET, SO_RCVTIMEO, (CHAR *)&TimeoutMs, sizeof(TimeoutMs)));
+
+    CONST CHAR *Msg1 = "SockBasicTcp-Request";
+    CONST INT Msg1Len = (CONST INT)strlen(Msg1);
+    TEST_EQUAL(Msg1Len, FnSockSend(ClientSocket.get(), Msg1, Msg1Len, FALSE, 0));
+
+    CHAR RecvBuffer[64];
+    TEST_EQUAL(Msg1Len, FnSockRecv(AcceptSocket.get(), RecvBuffer, sizeof(RecvBuffer), FALSE, 0));
+    TEST_TRUE(RtlEqualMemory(RecvBuffer, Msg1, Msg1Len));
+
+    CONST CHAR *Msg2 = "SockBasicTcp-Response";
+    CONST INT Msg2Len = (CONST INT)strlen(Msg2);
+    TEST_EQUAL(Msg2Len, FnSockSend(AcceptSocket.get(), Msg2, Msg2Len, FALSE, 0));
+
+    TEST_EQUAL(Msg2Len, FnSockRecv(ClientSocket.get(), RecvBuffer, sizeof(RecvBuffer), FALSE, 0));
+    TEST_TRUE(RtlEqualMemory(RecvBuffer, Msg2, Msg2Len));
+
+    DWORD Opt;
+    SIZE_T OptLen = sizeof(Opt);
+    TEST_CXPLAT(FnSockGetSockOpt(ClientSocket.get(), IPPROTO_TCP, TCP_KEEPCNT, &Opt, &OptLen));
+
+#ifndef KERNEL_MODE
+    LINGER lingerInfo;
+    lingerInfo.l_onoff = 1;
+    lingerInfo.l_linger = 0;
+    TEST_CXPLAT(
+        FnSockSetSockOpt(
+            AcceptSocket.get(), SOL_SOCKET, SO_LINGER, (CHAR *)&lingerInfo, sizeof(lingerInfo)));
+#endif
+}
+
+EXTERN_C
+VOID
+SockBasicRaw(
+    USHORT AddressFamily
+    )
+{
+    unique_fnsock_handle Socket;
+    TEST_CXPLAT(FnSockCreate(AddressFamily, SOCK_RAW, IPPROTO_IP, &Socket));
+    TEST_NOT_NULL(Socket.get());
+
+    SOCKADDR_INET Address = {0};
+    Address.si_family = AddressFamily;
+
+    if (AddressFamily == AF_INET) {
+        PCSTR Terminator;
+        TEST_NTSTATUS(
+            RtlIpv4StringToAddressA(FNMP_IPV4_ADDRESS, FALSE, &Terminator, &Address.Ipv4.sin_addr));
+    } else {
+        PCSTR Terminator;
+        TEST_NTSTATUS(
+            RtlIpv6StringToAddressA(FNMP_IPV6_ADDRESS, &Terminator, &Address.Ipv6.sin6_addr));
+    }
+
+    TEST_CXPLAT(FnSockBind(Socket.get(), (SOCKADDR *)&Address, sizeof(Address)));
+
+    DWORD Opt = RCVALL_ON;
+    DWORD BytesReturned;
+    TEST_CXPLAT(
+        FnSockIoctl(Socket.get(), SIO_RCVALL, &Opt, sizeof(Opt), NULL, 0, &BytesReturned));
+
+    //
+    // The TX datapath will form non-contiguous data indications, which FnSock
+    // discards on the RX path. Skipping datapath validation for now.
+    //
 }
