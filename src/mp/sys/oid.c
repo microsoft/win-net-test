@@ -970,9 +970,8 @@ MpIrpOidCompleteRequest(
         InformationBufferLength = Request->DATA.QUERY_INFORMATION.InformationBufferLength;
         BytesWritten = &Request->DATA.QUERY_INFORMATION.BytesWritten;
     } else if (Request->RequestType == NdisRequestSetInformation) {
-        //
-        // No output buffers.
-        //
+        InformationBuffer = Request->DATA.SET_INFORMATION.InformationBuffer;
+        InformationBufferLength = Request->DATA.SET_INFORMATION.InformationBufferLength;
         BytesRead = &Request->DATA.SET_INFORMATION.BytesRead;
     } else if (Request->RequestType == NdisRequestMethod) {
         InformationBuffer = Request->DATA.METHOD_INFORMATION.InformationBuffer;

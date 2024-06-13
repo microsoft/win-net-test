@@ -329,7 +329,7 @@ OidIrpSubmitRequest(
     Status =
         OidInternalRequest(
             Filter, In->Key.RequestType, In->Key.Oid, In->Key.RequestInterface, InfoBuffer.Buffer,
-            In->InformationBufferLength, 0, 0, &RequiredSize);
+            In->InformationBufferLength, OutputBufferLength, 0, &RequiredSize);
 
     if (Status == STATUS_BUFFER_TOO_SMALL &&
         (OutputBufferLength == 0) && (Irp->Flags & IRP_INPUT_OPERATION) == 0) {
