@@ -1555,12 +1555,12 @@ LwfBasicOid()
         TEST_NOT_NULL(MpInfoBuffer.get());
 
         TEST_TRUE(MpOidCompleteRequest(
-            ExclusiveMp, OidKeys[Index], STATUS_SUCCESS, &LwfInfoBuffer, LwfInfoBufferLength));
+            ExclusiveMp, OidKeys[Index], STATUS_SUCCESS, &LwfInfoBuffer, LwfInfoBufferLength / 2));
 
         TEST_TRUE(CxPlatThreadWait(AsyncThread.get(), TEST_TIMEOUT_ASYNC_MS));
         TEST_FNMPAPI(Req.Status);
 
-        TEST_EQUAL(LwfInfoBufferLength, sizeof(ULONG));
+        TEST_EQUAL(LwfInfoBufferLength / 2, sizeof(ULONG));
     }
 }
 

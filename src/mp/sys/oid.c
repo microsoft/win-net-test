@@ -921,6 +921,7 @@ MpIrpOidCompleteRequest(
     VOID *InformationBuffer = NULL;
     UINT32 InformationBufferLength = 0;
     UINT *BytesWritten = NULL;
+    UINT *BytesRead = NULL;
     KIRQL OldIrql = PASSIVE_LEVEL;
     BOOLEAN IsLockHeld = FALSE;
 
@@ -943,12 +944,14 @@ MpIrpOidCompleteRequest(
         goto Exit;
     }
 
-    Status =
-        BounceBuffer(
-            &InfoBuffer, Irp->RequestorMode, In->InformationBuffer, In->InformationBufferLength,
-            __alignof(UCHAR));
-    if (!NT_SUCCESS(Status)) {
-        goto Exit;
+    if (In->Key.RequestType != NdisRequestSetInformation) {
+        Status =
+            BounceBuffer(
+                &InfoBuffer, Irp->RequestorMode, In->InformationBuffer, In->InformationBufferLength,
+                __alignof(UCHAR));
+        if (!NT_SUCCESS(Status)) {
+            goto Exit;
+        }
     }
 
     KeAcquireSpinLock(&Adapter->Lock, &OldIrql);
@@ -960,6 +963,8 @@ MpIrpOidCompleteRequest(
         goto Exit;
     }
 
+    ASSERT(In->Key.RequestType == Request->RequestType);
+
     if (Request->RequestType == NdisRequestQueryInformation) {
         InformationBuffer = Request->DATA.QUERY_INFORMATION.InformationBuffer;
         InformationBufferLength = Request->DATA.QUERY_INFORMATION.InformationBufferLength;
@@ -968,6 +973,7 @@ MpIrpOidCompleteRequest(
         //
         // No output buffers.
         //
+        BytesRead = &Request->DATA.SET_INFORMATION.BytesRead;
     } else if (Request->RequestType == NdisRequestMethod) {
         InformationBuffer = Request->DATA.METHOD_INFORMATION.InformationBuffer;
         InformationBufferLength = Request->DATA.METHOD_INFORMATION.OutputBufferLength;
@@ -1001,8 +1007,14 @@ Exit:
         if (In->InformationBufferLength > 0) {
             ASSERT(In->Status != NDIS_STATUS_PENDING);
 
-            RtlCopyMemory(InformationBuffer, InfoBuffer.Buffer, In->InformationBufferLength);
-            *BytesWritten = In->InformationBufferLength;
+            if (BytesWritten != NULL) {
+                RtlCopyMemory(InformationBuffer, InfoBuffer.Buffer, In->InformationBufferLength);
+                *BytesWritten = In->InformationBufferLength;
+            }
+
+            if (BytesRead != NULL) {
+                *BytesRead = In->InformationBufferLength;
+            }
         }
 
         MpOidCompleteRequest(Adapter, In->Key.RequestInterface, In->Status, Request);

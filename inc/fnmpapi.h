@@ -364,6 +364,10 @@ FnMpOidCompleteRequest(
     // to NDIS_STATUS_PENDING, then the information buffer parameter is ignored
     // and the regular FNMP OID processing path is invoked.
     //
+    // If the Key.RequestType is NdisRequestSetInformation, the InformationBuffer
+    // parameter is ignored and the InformationBufferLength specifies the
+    // number of bytes read.
+    //
 
     In.Key = Key;
     In.Status = Status;
