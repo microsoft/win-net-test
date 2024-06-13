@@ -1531,6 +1531,7 @@ LwfBasicOid()
         OID_REQUEST_INTERFACE_DIRECT);
 
     for (UINT32 Index = 0; Index < RTL_NUMBER_OF(OidKeys); Index++) {
+        const UINT32 CompletionSize = sizeof(LwfInfoBuffer) / 2;
         auto ExclusiveMp = MpOpenExclusive(FnMpIf->GetIfIndex());
         TEST_NOT_NULL(ExclusiveMp.get());
 
@@ -1555,12 +1556,12 @@ LwfBasicOid()
         TEST_NOT_NULL(MpInfoBuffer.get());
 
         TEST_TRUE(MpOidCompleteRequest(
-            ExclusiveMp, OidKeys[Index], STATUS_SUCCESS, &LwfInfoBuffer, LwfInfoBufferLength / 2));
+            ExclusiveMp, OidKeys[Index], STATUS_SUCCESS, &LwfInfoBuffer, CompletionSize));
 
         TEST_TRUE(CxPlatThreadWait(AsyncThread.get(), TEST_TIMEOUT_ASYNC_MS));
         TEST_FNMPAPI(Req.Status);
 
-        TEST_EQUAL(LwfInfoBufferLength / 2, sizeof(ULONG));
+        TEST_EQUAL(LwfInfoBufferLength, CompletionSize);
     }
 }
 
