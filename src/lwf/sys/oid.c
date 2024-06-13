@@ -18,12 +18,166 @@ typedef struct _FNLWF_OID_REQUEST {
 } FNLWF_OID_REQUEST;
 
 static
+NDIS_STATUS
+InvokeNdisFOidRequest(
+    _In_ NDIS_HANDLE NdisFilterHandle,
+    _In_ NDIS_OID_REQUEST *NdisRequest,
+    _In_ OID_REQUEST_INTERFACE RequestInterface
+    )
+{
+    NDIS_STATUS Status;
+
+    switch (RequestInterface) {
+    case OID_REQUEST_INTERFACE_REGULAR:
+        Status = NdisFOidRequest(NdisFilterHandle, NdisRequest);
+        break;
+
+    case OID_REQUEST_INTERFACE_DIRECT:
+        Status = NdisFDirectOidRequest(NdisFilterHandle, NdisRequest);
+        break;
+
+    default:
+        ASSERT(FALSE);
+        Status = NDIS_STATUS_INVALID_PARAMETER;
+        break;
+    }
+
+    return Status;
+}
+
+static
+VOID
+InvokeNdisFOidRequestComplete(
+    _In_ NDIS_HANDLE NdisFilterHandle,
+    _In_ NDIS_OID_REQUEST *NdisRequest,
+    _In_ NDIS_STATUS Status,
+    _In_ OID_REQUEST_INTERFACE RequestInterface
+    )
+{
+    switch (RequestInterface) {
+    case OID_REQUEST_INTERFACE_REGULAR:
+        NdisFOidRequestComplete(NdisFilterHandle, NdisRequest, Status);
+        break;
+
+    case OID_REQUEST_INTERFACE_DIRECT:
+        NdisFDirectOidRequestComplete(NdisFilterHandle, NdisRequest, Status);
+        break;
+
+    default:
+        FRE_ASSERT(FALSE);
+        break;
+    }
+}
+
+static
+_IRQL_requires_max_(DISPATCH_LEVEL)
+VOID
+OidInternalRequestComplete(
+    _In_ LWF_FILTER *Filter,
+    _In_ NDIS_OID_REQUEST *Request,
+    _In_ NDIS_STATUS Status
+    )
+{
+    FNLWF_OID_REQUEST *FilterRequest;
+
+    UNREFERENCED_PARAMETER(Filter);
+
+    FilterRequest = CONTAINING_RECORD(Request, FNLWF_OID_REQUEST, Oid);
+    FilterRequest->Status = Status;
+    KeSetEvent(&FilterRequest->CompletionEvent, 0, FALSE);
+}
+
+VOID
+FilterOidRequestCompleteCommon(
+    _In_ LWF_FILTER *Filter,
+    _In_ NDIS_OID_REQUEST *Request,
+    _In_ NDIS_STATUS Status,
+    _In_ OID_REQUEST_INTERFACE RequestInterface
+    )
+{
+    NDIS_OID_REQUEST *OriginalRequest;
+    FNLWF_OID_CLONE *Context;
+
+    Context = (FNLWF_OID_CLONE *)(&Request->SourceReserved[0]);
+    OriginalRequest = Context->OriginalRequest;
+
+    if (OriginalRequest == NULL) {
+        OidInternalRequestComplete(Filter, Request, Status);
+        return;
+    }
+
+    //
+    // Copy the information from the returned request to the original request
+    //
+    switch(Request->RequestType)
+    {
+    case NdisRequestMethod:
+        OriginalRequest->DATA.METHOD_INFORMATION.OutputBufferLength =
+            Request->DATA.METHOD_INFORMATION.OutputBufferLength;
+        OriginalRequest->DATA.METHOD_INFORMATION.BytesRead =
+            Request->DATA.METHOD_INFORMATION.BytesRead;
+        OriginalRequest->DATA.METHOD_INFORMATION.BytesNeeded =
+            Request->DATA.METHOD_INFORMATION.BytesNeeded;
+        OriginalRequest->DATA.METHOD_INFORMATION.BytesWritten =
+            Request->DATA.METHOD_INFORMATION.BytesWritten;
+        break;
+
+    case NdisRequestSetInformation:
+        OriginalRequest->DATA.SET_INFORMATION.BytesRead =
+            Request->DATA.SET_INFORMATION.BytesRead;
+        OriginalRequest->DATA.SET_INFORMATION.BytesNeeded =
+            Request->DATA.SET_INFORMATION.BytesNeeded;
+        break;
+
+    case NdisRequestQueryInformation:
+    case NdisRequestQueryStatistics:
+    default:
+        OriginalRequest->DATA.QUERY_INFORMATION.BytesWritten =
+            Request->DATA.QUERY_INFORMATION.BytesWritten;
+        OriginalRequest->DATA.QUERY_INFORMATION.BytesNeeded =
+            Request->DATA.QUERY_INFORMATION.BytesNeeded;
+        break;
+    }
+
+    NdisFreeCloneOidRequest(Filter->NdisFilterHandle, Request);
+    InvokeNdisFOidRequestComplete(
+        Filter->NdisFilterHandle, OriginalRequest, Status, RequestInterface);
+}
+
+_Use_decl_annotations_
+VOID
+FilterOidRequestComplete(
+    NDIS_HANDLE FilterModuleContext,
+    NDIS_OID_REQUEST *Request,
+    NDIS_STATUS Status
+    )
+{
+    LWF_FILTER *Filter = (LWF_FILTER *)FilterModuleContext;
+
+    FilterOidRequestCompleteCommon(Filter, Request, Status, OID_REQUEST_INTERFACE_REGULAR);
+}
+
+_Use_decl_annotations_
+VOID
+FilterDirectOidRequestComplete(
+    NDIS_HANDLE FilterModuleContext,
+    NDIS_OID_REQUEST *Request,
+    NDIS_STATUS Status
+    )
+{
+    LWF_FILTER *Filter = (LWF_FILTER *)FilterModuleContext;
+
+    FilterOidRequestCompleteCommon(Filter, Request, Status, OID_REQUEST_INTERFACE_DIRECT);
+}
+
+static
 _IRQL_requires_max_(PASSIVE_LEVEL)
 NTSTATUS
 OidInternalRequest(
     _In_ LWF_FILTER *Filter,
     _In_ NDIS_REQUEST_TYPE RequestType,
     _In_ NDIS_OID Oid,
+    _In_ OID_REQUEST_INTERFACE RequestInterface,
     _Inout_updates_bytes_to_(InformationBufferLength, *BytesProcessed)
         VOID *InformationBuffer,
     _In_ ULONG InformationBufferLength,
@@ -82,7 +236,7 @@ OidInternalRequest(
     NdisRequest->RequestId = (VOID *)OidInternalRequest;
 
     if (ExAcquireRundownProtection(&Filter->OidRundown)) {
-        Status = NdisFOidRequest(Filter->NdisFilterHandle, NdisRequest);
+        Status = InvokeNdisFOidRequest(Filter->NdisFilterHandle, NdisRequest, RequestInterface);
 
         //
         // NDIS will not detach the filter until all outstanding OIDs are
@@ -134,24 +288,6 @@ OidInternalRequest(
     return FnConvertNdisStatusToNtStatus(Status);
 }
 
-static
-_IRQL_requires_max_(DISPATCH_LEVEL)
-VOID
-OidInternalRequestComplete(
-    _In_ LWF_FILTER *Filter,
-    _In_ NDIS_OID_REQUEST *Request,
-    _In_ NDIS_STATUS Status
-    )
-{
-    FNLWF_OID_REQUEST *FilterRequest;
-
-    UNREFERENCED_PARAMETER(Filter);
-
-    FilterRequest = CONTAINING_RECORD(Request, FNLWF_OID_REQUEST, Oid);
-    FilterRequest->Status = Status;
-    KeSetEvent(&FilterRequest->CompletionEvent, 0, FALSE);
-}
-
 _IRQL_requires_max_(PASSIVE_LEVEL)
 NTSTATUS
 OidIrpSubmitRequest(
@@ -177,6 +313,11 @@ OidIrpSubmitRequest(
         goto Exit;
     }
 
+    if ((UINT32)In->Key.RequestInterface >= (UINT32)OID_REQUEST_INTERFACE_MAX) {
+        Status = STATUS_INVALID_PARAMETER;
+        goto Exit;
+    }
+
     Status =
         BounceBuffer(
             &InfoBuffer, Irp->RequestorMode, In->InformationBuffer,
@@ -187,8 +328,8 @@ OidIrpSubmitRequest(
 
     Status =
         OidInternalRequest(
-            Filter, In->Key.RequestType, In->Key.Oid, InfoBuffer.Buffer,
-            In->InformationBufferLength, 0, 0, &RequiredSize);
+            Filter, In->Key.RequestType, In->Key.Oid, In->Key.RequestInterface, InfoBuffer.Buffer,
+            In->InformationBufferLength, OutputBufferLength, 0, &RequiredSize);
 
     if (Status == STATUS_BUFFER_TOO_SMALL &&
         (OutputBufferLength == 0) && (Irp->Flags & IRP_INPUT_OPERATION) == 0) {
@@ -217,14 +358,14 @@ Exit:
     return Status;
 }
 
-_Use_decl_annotations_
+static
 NDIS_STATUS
-FilterOidRequest(
-    NDIS_HANDLE FilterModuleContext,
-    NDIS_OID_REQUEST *Request
+FilterOidRequestCommon(
+    _In_ LWF_FILTER *Filter,
+    _In_ NDIS_OID_REQUEST *Request,
+    _In_ OID_REQUEST_INTERFACE RequestInterface
     )
 {
-    LWF_FILTER *Filter = (LWF_FILTER *)FilterModuleContext;
     NDIS_STATUS Status;
     NDIS_OID_REQUEST *ClonedRequest = NULL;
     FNLWF_OID_CLONE *Context;
@@ -240,9 +381,9 @@ FilterOidRequest(
     Context->OriginalRequest = Request;
     ClonedRequest->RequestId = Request->RequestId;
 
-    Status = NdisFOidRequest(Filter->NdisFilterHandle, ClonedRequest);
+    Status = InvokeNdisFOidRequest(Filter->NdisFilterHandle, ClonedRequest, RequestInterface);
     if (Status != NDIS_STATUS_PENDING) {
-        FilterOidRequestComplete(Filter, ClonedRequest, Status);
+        FilterOidRequestCompleteCommon(Filter, ClonedRequest, Status, RequestInterface);
         Status = NDIS_STATUS_PENDING;
     }
 
@@ -252,58 +393,25 @@ Exit:
 }
 
 _Use_decl_annotations_
-VOID
-FilterOidRequestComplete(
+NDIS_STATUS
+FilterOidRequest(
     NDIS_HANDLE FilterModuleContext,
-    NDIS_OID_REQUEST *Request,
-    NDIS_STATUS Status
+    NDIS_OID_REQUEST *Request
     )
 {
     LWF_FILTER *Filter = (LWF_FILTER *)FilterModuleContext;
-    NDIS_OID_REQUEST *OriginalRequest;
-    FNLWF_OID_CLONE *Context;
 
-    Context = (FNLWF_OID_CLONE *)(&Request->SourceReserved[0]);
-    OriginalRequest = Context->OriginalRequest;
+    return FilterOidRequestCommon(Filter, Request, OID_REQUEST_INTERFACE_REGULAR);
+}
 
-    if (OriginalRequest == NULL) {
-        OidInternalRequestComplete(Filter, Request, Status);
-        return;
-    }
+_Use_decl_annotations_
+NDIS_STATUS
+FilterDirectOidRequest(
+    NDIS_HANDLE FilterModuleContext,
+    NDIS_OID_REQUEST *Request
+    )
+{
+    LWF_FILTER *Filter = (LWF_FILTER *)FilterModuleContext;
 
-    //
-    // Copy the information from the returned request to the original request
-    //
-    switch(Request->RequestType)
-    {
-    case NdisRequestMethod:
-        OriginalRequest->DATA.METHOD_INFORMATION.OutputBufferLength =
-            Request->DATA.METHOD_INFORMATION.OutputBufferLength;
-        OriginalRequest->DATA.METHOD_INFORMATION.BytesRead =
-            Request->DATA.METHOD_INFORMATION.BytesRead;
-        OriginalRequest->DATA.METHOD_INFORMATION.BytesNeeded =
-            Request->DATA.METHOD_INFORMATION.BytesNeeded;
-        OriginalRequest->DATA.METHOD_INFORMATION.BytesWritten =
-            Request->DATA.METHOD_INFORMATION.BytesWritten;
-        break;
-
-    case NdisRequestSetInformation:
-        OriginalRequest->DATA.SET_INFORMATION.BytesRead =
-            Request->DATA.SET_INFORMATION.BytesRead;
-        OriginalRequest->DATA.SET_INFORMATION.BytesNeeded =
-            Request->DATA.SET_INFORMATION.BytesNeeded;
-        break;
-
-    case NdisRequestQueryInformation:
-    case NdisRequestQueryStatistics:
-    default:
-        OriginalRequest->DATA.QUERY_INFORMATION.BytesWritten =
-            Request->DATA.QUERY_INFORMATION.BytesWritten;
-        OriginalRequest->DATA.QUERY_INFORMATION.BytesNeeded =
-            Request->DATA.QUERY_INFORMATION.BytesNeeded;
-        break;
-    }
-
-    NdisFreeCloneOidRequest(Filter->NdisFilterHandle, Request);
-    NdisFOidRequestComplete(Filter->NdisFilterHandle, OriginalRequest, Status);
+    return FilterOidRequestCommon(Filter, Request, OID_REQUEST_INTERFACE_DIRECT);
 }

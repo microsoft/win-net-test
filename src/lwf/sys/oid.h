@@ -7,6 +7,8 @@
 
 FILTER_OID_REQUEST FilterOidRequest;
 FILTER_OID_REQUEST_COMPLETE FilterOidRequestComplete;
+FILTER_DIRECT_OID_REQUEST FilterDirectOidRequest;
+FILTER_DIRECT_OID_REQUEST_COMPLETE FilterDirectOidRequestComplete;
 
 _IRQL_requires_max_(PASSIVE_LEVEL)
 NTSTATUS

@@ -38,6 +38,7 @@
 #if defined(KERNEL_MODE)
 #include <invokesystemrelay.h>
 #endif
+#include <qeo_ndis.h>
 
 #include "fntrace.h"
 #include "fntest.h"
@@ -662,6 +663,23 @@ MpOidAllocateAndGetRequest(
 
     *InformationBufferLength = Length;
     return InformationBuffer;
+}
+
+static
+bool
+MpOidCompleteRequest(
+    _In_ const unique_fnmp_handle& Handle,
+    _In_ OID_KEY Key,
+    _In_ NDIS_STATUS CompletionStatus,
+    _In_opt_ VOID *InformationBuffer,
+    _In_ UINT32 InformationBufferLength
+    )
+{
+    TEST_FNMPAPI_RET(
+        FnMpOidCompleteRequest(
+            Handle.get(), Key, CompletionStatus, InformationBuffer, InformationBufferLength),
+        false);
+    return true;
 }
 
 static
@@ -1475,7 +1493,7 @@ EXTERN_C
 VOID
 LwfBasicOid()
 {
-    OID_KEY OidKeys[2];
+    OID_KEY OidKeys[3];
     UINT32 MpInfoBufferLength;
     unique_malloc_ptr<VOID> MpInfoBuffer;
     UINT32 LwfInfoBufferLength;
@@ -1505,7 +1523,15 @@ LwfBasicOid()
     //
     InitializeOidKey(&OidKeys[1], OID_GEN_CURRENT_PACKET_FILTER, NdisRequestSetInformation);
 
+    //
+    // Method. (Direct OID)
+    //
+    InitializeOidKey(
+        &OidKeys[2], OID_QUIC_CONNECTION_ENCRYPTION_PROTOTYPE, NdisRequestMethod,
+        OID_REQUEST_INTERFACE_DIRECT);
+
     for (UINT32 Index = 0; Index < RTL_NUMBER_OF(OidKeys); Index++) {
+        const UINT32 CompletionSize = sizeof(LwfInfoBuffer) / 2;
         auto ExclusiveMp = MpOpenExclusive(FnMpIf->GetIfIndex());
         TEST_NOT_NULL(ExclusiveMp.get());
 
@@ -1528,12 +1554,14 @@ LwfBasicOid()
 
         MpInfoBuffer = MpOidAllocateAndGetRequest(ExclusiveMp, OidKeys[Index], &MpInfoBufferLength);
         TEST_NOT_NULL(MpInfoBuffer.get());
-        ExclusiveMp.reset();
+
+        TEST_TRUE(MpOidCompleteRequest(
+            ExclusiveMp, OidKeys[Index], STATUS_SUCCESS, &LwfInfoBuffer, CompletionSize));
 
         TEST_TRUE(CxPlatThreadWait(AsyncThread.get(), TEST_TIMEOUT_ASYNC_MS));
         TEST_FNMPAPI(Req.Status);
 
-        TEST_EQUAL(LwfInfoBufferLength, sizeof(ULONG));
+        TEST_EQUAL(LwfInfoBufferLength, CompletionSize);
     }
 }
 
