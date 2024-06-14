@@ -3,7 +3,7 @@
   <PropertyGroup>
     <ProjectGuid>{ac661767-42c3-4525-8b90-d509a6048dc3}</ProjectGuid>
     <TargetName>fnsock_km</TargetName>
-    <UndockedType>drvlib</UndockedType>
+    <UndockedType>sys</UndockedType>
     <UndockedDir>$(SolutionDir)submodules\undocked\</UndockedDir>
     <UndockedOut>$(SolutionDir)artifacts\</UndockedOut>
     <UndockedSourceLink>true</UndockedSourceLink>
@@ -11,6 +11,11 @@
   <Import Project="$(UndockedDir)vs\windows.undocked.props" />
   <Import Project="$(SolutionDir)src\wnt.cpp.props" />
   <Import Project="$(SolutionDir)src\wnt.cpp.kernel.props" />
+  <ItemGroup>
+    <ProjectReference Include="$(SolutionDir)src\wskclient\wskclient.vcxproj">
+      <Project>{50f8f5ee-aa31-427f-9959-13de0d68bd06}</Project>
+    </ProjectReference>
+  </ItemGroup>
   <ItemGroup>
     <ClCompile Include="sock.c" />
   </ItemGroup>
@@ -27,6 +32,14 @@
       <WppRecorderEnabled>true</WppRecorderEnabled>
       <WppAdditionalOptions>-p:fnsock</WppAdditionalOptions>
     </ClCompile>
+    <Link>
+      <ModuleDefinitionFile>fnsock_km.def</ModuleDefinitionFile>
+      <AdditionalDependencies>
+        netio.lib;
+        uuid.lib;
+        %(AdditionalDependencies)
+      </AdditionalDependencies>
+    </Link>
   </ItemDefinitionGroup>
   <Import Project="$(UndockedDir)vs\windows.undocked.targets" />
 </Project>
