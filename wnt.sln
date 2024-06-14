@@ -39,6 +39,8 @@ Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "fnsock_km", "src\sock\km\fn
 EndProject
 Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "wskclient", "src\wskclient\wskclient.vcxproj", "{50F8F5EE-AA31-427F-9959-13DE0D68BD06}"
 EndProject
+Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "nuget", "src\nuget\nuget.vcxproj", "{ACD130FA-8DD1-461D-859E-22DFFD221921}"
+EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
 		Debug|ARM64 = Debug|ARM64
@@ -255,6 +257,18 @@ Global
 		{50F8F5EE-AA31-427F-9959-13DE0D68BD06}.Release|x64.ActiveCfg = Release|x64
 		{50F8F5EE-AA31-427F-9959-13DE0D68BD06}.Release|x64.Build.0 = Release|x64
 		{50F8F5EE-AA31-427F-9959-13DE0D68BD06}.Release|x64.Deploy.0 = Release|x64
+		{ACD130FA-8DD1-461D-859E-22DFFD221921}.Debug|ARM64.ActiveCfg = Debug|ARM64
+		{ACD130FA-8DD1-461D-859E-22DFFD221921}.Debug|ARM64.Build.0 = Debug|ARM64
+		{ACD130FA-8DD1-461D-859E-22DFFD221921}.Debug|ARM64.Deploy.0 = Debug|ARM64
+		{ACD130FA-8DD1-461D-859E-22DFFD221921}.Debug|x64.ActiveCfg = Debug|x64
+		{ACD130FA-8DD1-461D-859E-22DFFD221921}.Debug|x64.Build.0 = Debug|x64
+		{ACD130FA-8DD1-461D-859E-22DFFD221921}.Debug|x64.Deploy.0 = Debug|x64
+		{ACD130FA-8DD1-461D-859E-22DFFD221921}.Release|ARM64.ActiveCfg = Release|ARM64
+		{ACD130FA-8DD1-461D-859E-22DFFD221921}.Release|ARM64.Build.0 = Release|ARM64
+		{ACD130FA-8DD1-461D-859E-22DFFD221921}.Release|ARM64.Deploy.0 = Release|ARM64
+		{ACD130FA-8DD1-461D-859E-22DFFD221921}.Release|x64.ActiveCfg = Release|x64
+		{ACD130FA-8DD1-461D-859E-22DFFD221921}.Release|x64.Build.0 = Release|x64
+		{ACD130FA-8DD1-461D-859E-22DFFD221921}.Release|x64.Deploy.0 = Release|x64
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE

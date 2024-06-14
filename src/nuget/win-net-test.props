@@ -1,0 +1,30 @@
+<?xml version="1.0" encoding="utf-8"?>
+<Project xmlns="http://schemas.microsoft.com/developer/msbuild/2003"
+        ToolsVersion="15.0">
+  <ItemGroup>
+    <WntLibs Include="$(MSBuildThisFileDirectory)\lib\*.lib" />
+  </ItemGroup>
+  <PropertyGroup>
+    <WntLibraries>@(WntLibs)</WntLibraries>
+    <WntBinPath>$(MSBuildThisFileDirectory)bin</WntBinPath>
+    <WntIncludePath>$(MSBuildThisFileDirectory)include</WntIncludePath>
+  </PropertyGroup>
+  <ItemDefinitionGroup>
+    <ClCompile>
+      <AdditionalIncludeDirectories>
+        $(MSBuildThisFileDirectory)include;
+        %(AdditionalIncludeDirectories);
+      </AdditionalIncludeDirectories>
+    </ClCompile>
+    <Link>
+      <AdditionalLibraryDirectories>
+        $(MSBuildThisFileDirectory)lib
+        %(AdditionalLibraryDirectories);
+      </AdditionalLibraryDirectories>
+      <AdditionalDependencies>
+        $(WntLibraries);
+        %(AdditionalDependencies)
+      </AdditionalDependencies>
+    </Link>
+  </ItemDefinitionGroup>
+</Project>
