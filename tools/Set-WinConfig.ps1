@@ -17,7 +17,7 @@ $ErrorActionPreference = 'Stop'
 $RootDir = Split-Path $PSScriptRoot -Parent
 . $RootDir\tools\common.ps1
 
-$WinConfig = &"$PSScriptRoot\Get-WinConfig.ps1"
+$WinConfig = &"$PSScriptRoot\Get-WinConfig.ps1" -Config $Config -Arch $Arch
 $Content = Get-Content $InputFile
 $Content = $Content.Replace("{winconfig}", $WinConfig)
 Set-Content $OutputFile $Content

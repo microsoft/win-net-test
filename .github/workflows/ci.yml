@@ -58,6 +58,7 @@ jobs:
           !artifacts/bin/**/*.ilk
           !artifacts/bin/**/*.exp
           !artifacts/bin/**/*.lastcodeanalysissucceeded
+          ${{ matrix.platform }}/${{ matrix.configuration }}/win-net-test.*.nupkg
 
   functional_tests:
     name: Tests
@@ -141,6 +142,7 @@ jobs:
         name: release_artifacts_${{ matrix.configuration }}_${{ matrix.platform }}
         path: |
           artifacts/kit/**/*.zip
+          artifacts/bin/win-net-test.*.nupkg
 
   Complete:
     name: Complete
