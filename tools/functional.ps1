@@ -139,6 +139,10 @@ for ($i = 1; $i -le $Iterations; $i++) {
         & "$RootDir\tools\setup.ps1" -Install fnlwf -Config $Config -Arch $Arch
         Write-Verbose "installed fnlwf."
 
+        Write-Verbose "installing fnsock..."
+        & "$RootDir\tools\setup.ps1" -Install fnsock -Config $Config -Arch $Arch
+        Write-Verbose "installed fnsock."
+
         $TestArgs = @()
         if (![string]::IsNullOrEmpty($TestBinaryPath)) {
             $TestArgs += $TestBinaryPath
@@ -176,6 +180,7 @@ for ($i = 1; $i -le $Iterations; $i++) {
         if ($Watchdog -ne $null) {
             Remove-Job -Job $Watchdog -Force
         }
+        & "$RootDir\tools\setup.ps1" -Uninstall fnsock -Config $Config -Arch $Arch -ErrorAction 'Continue'
         & "$RootDir\tools\setup.ps1" -Uninstall fnlwf -Config $Config -Arch $Arch -ErrorAction 'Continue'
         & "$RootDir\tools\setup.ps1" -Uninstall fnmp -Config $Config -Arch $Arch -ErrorAction 'Continue'
         if ($KernelMode) {

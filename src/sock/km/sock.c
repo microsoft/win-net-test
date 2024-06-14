@@ -17,6 +17,8 @@
 #include <ntddk.h>
 #include <wsk.h>
 
+#define FNSOCKAPI __declspec(dllexport)
+
 #include "fnsock.h"
 #include "pooltag.h"
 #include "trace.h"
@@ -109,6 +111,38 @@ FnSockStreamSocketReceive(
     _Inout_ SIZE_T* BytesAccepted
     );
 
+_Function_class_(DRIVER_INITIALIZE)
+_IRQL_requires_same_
+_IRQL_requires_(PASSIVE_LEVEL)
+NTSTATUS
+DriverEntry(
+    _In_ struct _DRIVER_OBJECT *DriverObject,
+    _In_ UNICODE_STRING *RegistryPath
+    )
+{
+    UNREFERENCED_PARAMETER(DriverObject);
+    UNREFERENCED_PARAMETER(RegistryPath);
+    return STATUS_SUCCESS;
+}
+
+NTSTATUS
+DllInitialize(
+    _In_ PUNICODE_STRING RegistryPath
+    )
+{
+    UNREFERENCED_PARAMETER(RegistryPath);
+    return STATUS_SUCCESS;
+}
+
+NTSTATUS
+DllUnload(
+    VOID
+    )
+{
+    return STATUS_SUCCESS;
+}
+
+FNSOCKAPI
 PAGEDX
 _IRQL_requires_max_(PASSIVE_LEVEL)
 FNSOCK_STATUS
@@ -132,6 +166,7 @@ FnSockInitialize(
     return WskClientReg();
 }
 
+FNSOCKAPI
 PAGEDX
 _IRQL_requires_max_(PASSIVE_LEVEL)
 VOID
@@ -169,6 +204,7 @@ InitializeBinding(
     InitializeListHead(&Binding->SendContextList);
 }
 
+FNSOCKAPI
 _IRQL_requires_max_(PASSIVE_LEVEL)
 FNSOCK_STATUS
 FnSockCreate(
@@ -248,6 +284,7 @@ Exit:
     return Status;
 }
 
+FNSOCKAPI
 _IRQL_requires_max_(PASSIVE_LEVEL)
 VOID
 FnSockClose(
@@ -325,6 +362,7 @@ FnSockClose(
     ExFreePoolWithTag(Binding, POOLTAG_FNSOCK_SOCKET);
 }
 
+FNSOCKAPI
 _IRQL_requires_max_(PASSIVE_LEVEL)
 FNSOCK_STATUS
 FnSockBind(
@@ -380,6 +418,7 @@ Exit:
     return Status;
 }
 
+FNSOCKAPI
 _IRQL_requires_max_(PASSIVE_LEVEL)
 FNSOCK_STATUS
 FnSockGetSockName(
@@ -416,6 +455,7 @@ Exit:
     return Status;
 }
 
+FNSOCKAPI
 _IRQL_requires_max_(PASSIVE_LEVEL)
 FNSOCK_STATUS
 FnSockSetSockOpt(
@@ -474,6 +514,7 @@ Exit:
     return Status;
 }
 
+FNSOCKAPI
 _IRQL_requires_max_(PASSIVE_LEVEL)
 FNSOCK_STATUS
 FnSockGetSockOpt(
@@ -535,6 +576,7 @@ Exit:
     return Status;
 }
 
+FNSOCKAPI
 _IRQL_requires_max_(PASSIVE_LEVEL)
 FNSOCK_STATUS
 FnSockIoctl(
@@ -583,6 +625,7 @@ Exit:
     return Status;
 }
 
+FNSOCKAPI
 _IRQL_requires_max_(PASSIVE_LEVEL)
 FNSOCK_STATUS
 FnSockListen(
@@ -631,6 +674,7 @@ Exit:
     return Status;
 }
 
+FNSOCKAPI
 _IRQL_requires_max_(PASSIVE_LEVEL)
 FNSOCK_HANDLE
 FnSockAccept(
@@ -726,6 +770,7 @@ Exit:
     return (FNSOCK_HANDLE)NewBinding;
 }
 
+FNSOCKAPI
 FNSOCK_STATUS
 FnSockConnect(
     _In_ FNSOCK_HANDLE Socket,
@@ -794,6 +839,7 @@ Exit:
     return Status;
 }
 
+FNSOCKAPI
 _IRQL_requires_max_(PASSIVE_LEVEL)
 INT
 FnSockSend(
@@ -872,6 +918,7 @@ Exit:
     return BytesSent;
 }
 
+FNSOCKAPI
 _IRQL_requires_max_(PASSIVE_LEVEL)
 INT
 FnSockSendto(
@@ -954,6 +1001,7 @@ Exit:
     return BytesSent;
 }
 
+FNSOCKAPI
 _IRQL_requires_max_(PASSIVE_LEVEL)
 INT
 FnSockRecv(
@@ -1497,6 +1545,7 @@ NtStatusToSocketError(
     return err;
 }
 
+FNSOCKAPI
 _IRQL_requires_max_(PASSIVE_LEVEL)
 INT
 FnSockGetLastError(

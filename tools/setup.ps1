@@ -41,11 +41,11 @@ param (
     [string]$Arch = "x64",
 
     [Parameter(Mandatory = $false)]
-    [ValidateSet("", "fnmp", "fnlwf", "invokesystemrelay")]
+    [ValidateSet("", "fnmp", "fnlwf", "invokesystemrelay", "fnsock")]
     [string]$Install = "",
 
     [Parameter(Mandatory = $false)]
-    [ValidateSet("", "fnmp", "fnlwf", "invokesystemrelay")]
+    [ValidateSet("", "fnmp", "fnlwf", "invokesystemrelay", "fnsock")]
     [string]$Uninstall = "",
 
     [Parameter(Mandatory = $false)]
@@ -96,6 +96,10 @@ $FnLwfInf = "$ArtifactsDir\fnlwf\fnlwf.inf"
 $FnLwfComponentId = "ms_fnlwf"
 $IsrDrvSys = "$ArtifactsDir\isrdrv.sys"
 $IsrSvcExe = "$ArtifactsDir\isrsvc.exe"
+$FnSockSys = "$ArtifactsDir\fnsock_km.sys"
+$FnSockDll = "$ArtifactsDir\fnsock_um.dll"
+$SystemPath = Join-Path $([Environment]::GetEnvironmentVariable("SystemRoot")) "System32"
+$SystemDriversPath = Join-Path $([Environment]::GetEnvironmentVariable("SystemRoot")) "System32\drivers"
 
 # Ensure the output path exists.
 New-Item -ItemType Directory -Force -Path $LogsDir | Out-Null
@@ -393,6 +397,31 @@ function Uninstall-InvokeSystemRelay {
     Write-Verbose "isrdrv.sys uninstall complete!"
 }
 
+# Installs the fnsock driver and dll.
+function Install-FnSock {
+    if (!(Test-Path $FnSockDll)) {
+        Write-Error "$FnSockDll does not exist!"
+    }
+    if (!(Test-Path $FnSockSys)) {
+        Write-Error "$FnSockSys does not exist!"
+    }
+
+    Copy-Item $FnSockDll $SystemPath
+    Write-Verbose "fnsock_um.dll install complete!"
+
+    Copy-Item $FnSockSys $SystemDriversPath
+    Write-Verbose "fnsock_km.sys install complete!"
+}
+
+# Uninstalls the fnsock driver and dll.
+function Uninstall-FnSock {
+    Remove-Item $SystemPath\fnsock_um.dll -Force -ErrorAction Ignore
+    Write-Verbose "fnsock_um.dll uninstall complete!"
+
+    Remove-Item $SystemDriversPath\fnsock_km.sys -Force -ErrorAction Ignore
+    Write-Verbose "fnsock_km.sys uninstall complete!"
+}
+
 try {
     if ($Install -eq "fnmp") {
         Install-FnMp
@@ -403,6 +432,9 @@ try {
     if ($Install -eq "invokesystemrelay") {
         Install-InvokeSystemRelay
     }
+    if ($Install -eq "fnsock") {
+        Install-FnSock
+    }
 
     if ($Uninstall -eq "fnmp") {
         Uninstall-FnMp
@@ -412,6 +444,9 @@ try {
     }
     if ($Uninstall -eq "invokesystemrelay") {
         Uninstall-InvokeSystemRelay
+    }
+    if ($Uninstall -eq "fnsock") {
+        Uninstall-FnSock
     }
 } catch {
     Write-Error $_ -ErrorAction $OriginalErrorActionPreference

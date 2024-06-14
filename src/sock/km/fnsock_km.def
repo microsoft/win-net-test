@@ -1,0 +1,5 @@
+LIBRARY fnsock_km.sys
+
+EXPORTS
+    DllInitialize PRIVATE
+    DllUnload PRIVATE

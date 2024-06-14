@@ -3,7 +3,7 @@
   <PropertyGroup>
     <ProjectGuid>{dca385fb-b4b1-44cc-ba3f-9da4f619d86a}</ProjectGuid>
     <TargetName>fnsock_um</TargetName>
-    <UndockedType>lib</UndockedType>
+    <UndockedType>dll</UndockedType>
     <UndockedDir>$(SolutionDir)submodules\undocked\</UndockedDir>
     <UndockedOut>$(SolutionDir)artifacts\</UndockedOut>
     <UndockedSourceLink>true</UndockedSourceLink>
@@ -26,6 +26,12 @@
         %(AdditionalIncludeDirectories)
       </AdditionalIncludeDirectories>
     </ClCompile>
+    <Link>
+      <AdditionalDependencies>
+        ws2_32.lib;
+        %(AdditionalDependencies)
+      </AdditionalDependencies>
+    </Link>
   </ItemDefinitionGroup>
   <Import Project="$(UndockedDir)vs\windows.undocked.targets" />
 </Project>

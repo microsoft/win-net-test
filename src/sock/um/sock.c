@@ -8,11 +8,14 @@
 #include <winternl.h>
 #include <stdlib.h>
 
+#define FNSOCKAPI __declspec(dllexport)
+
 #include "fnsock.h"
 #include "trace.h"
 
 #include "sock.tmh"
 
+FNSOCKAPI
 PAGEDX
 _IRQL_requires_max_(PASSIVE_LEVEL)
 FNSOCK_STATUS
@@ -39,6 +42,7 @@ FnSockInitialize(
     return Status;
 }
 
+FNSOCKAPI
 PAGEDX
 _IRQL_requires_max_(PASSIVE_LEVEL)
 VOID
@@ -49,6 +53,7 @@ FnSockUninitialize(
     WSACleanup();
 }
 
+FNSOCKAPI
 _IRQL_requires_max_(PASSIVE_LEVEL)
 FNSOCK_STATUS
 FnSockCreate(
@@ -76,6 +81,7 @@ FnSockCreate(
     return Status;
 }
 
+FNSOCKAPI
 _IRQL_requires_max_(PASSIVE_LEVEL)
 VOID
 FnSockClose(
@@ -85,6 +91,7 @@ FnSockClose(
     closesocket((SOCKET)Socket);
 }
 
+FNSOCKAPI
 _IRQL_requires_max_(PASSIVE_LEVEL)
 FNSOCK_STATUS
 FnSockBind(
@@ -110,6 +117,7 @@ FnSockBind(
     return Status;
 }
 
+FNSOCKAPI
 _IRQL_requires_max_(PASSIVE_LEVEL)
 FNSOCK_STATUS
 FnSockGetSockName(
@@ -135,6 +143,7 @@ FnSockGetSockName(
     return Status;
 }
 
+FNSOCKAPI
 _IRQL_requires_max_(PASSIVE_LEVEL)
 FNSOCK_STATUS
 FnSockSetSockOpt(
@@ -162,6 +171,7 @@ FnSockSetSockOpt(
     return Status;
 }
 
+FNSOCKAPI
 _IRQL_requires_max_(PASSIVE_LEVEL)
 FNSOCK_STATUS
 FnSockGetSockOpt(
@@ -189,6 +199,7 @@ FnSockGetSockOpt(
     return Status;
 }
 
+FNSOCKAPI
 _IRQL_requires_max_(PASSIVE_LEVEL)
 FNSOCK_STATUS
 FnSockIoctl(
@@ -221,6 +232,7 @@ FnSockIoctl(
     return Status;
 }
 
+FNSOCKAPI
 _IRQL_requires_max_(PASSIVE_LEVEL)
 FNSOCK_STATUS
 FnSockListen(
@@ -245,6 +257,7 @@ FnSockListen(
     return Status;
 }
 
+FNSOCKAPI
 _IRQL_requires_max_(PASSIVE_LEVEL)
 FNSOCK_HANDLE
 FnSockAccept(
@@ -271,6 +284,7 @@ FnSockAccept(
     return (FNSOCK_HANDLE)AcceptedSocket;
 }
 
+FNSOCKAPI
 FNSOCK_STATUS
 FnSockConnect(
     _In_ FNSOCK_HANDLE Socket,
@@ -295,6 +309,7 @@ FnSockConnect(
     return Status;
 }
 
+FNSOCKAPI
 _IRQL_requires_max_(PASSIVE_LEVEL)
 INT
 FnSockSend(
@@ -310,6 +325,7 @@ FnSockSend(
     return send((SOCKET)Socket, Buffer, BufferLength, Flags);
 }
 
+FNSOCKAPI
 _IRQL_requires_max_(PASSIVE_LEVEL)
 INT
 FnSockSendto(
@@ -327,6 +343,7 @@ FnSockSendto(
     return sendto((SOCKET)Socket, Buffer, BufferLength, Flags, Address, AddressLength);
 }
 
+FNSOCKAPI
 _IRQL_requires_max_(PASSIVE_LEVEL)
 INT
 FnSockRecv(
@@ -342,6 +359,7 @@ FnSockRecv(
     return recv((SOCKET)Socket, Buffer, BufferLength, Flags);
 }
 
+FNSOCKAPI
 _IRQL_requires_max_(PASSIVE_LEVEL)
 INT
 FnSockGetLastError(
