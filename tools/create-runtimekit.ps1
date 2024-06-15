@@ -31,16 +31,21 @@ New-Item -Path $DstPath -ItemType Directory > $null
 
 New-Item -Path $DstPath\bin -ItemType Directory > $null
 New-Item -Path $DstPath\bin\isr -ItemType Directory > $null
+New-Item -Path $DstPath\bin\fnsock -ItemType Directory > $null
 copy -Recurse "artifacts\bin\$($WinArch)$($WinConfig)\fnmp\" $DstPath\bin
 copy -Recurse "artifacts\bin\$($WinArch)$($WinConfig)\fnlwf\" $DstPath\bin
 copy "artifacts\bin\$($WinArch)$($WinConfig)\isrdrv.sys" $DstPath\bin\isr
 copy "artifacts\bin\$($WinArch)$($WinConfig)\isrsvc.exe" $DstPath\bin\isr
+copy "artifacts\bin\$($WinArch)$($WinConfig)\fnsock_um.dll" $DstPath\bin\fnsock
+copy "artifacts\bin\$($WinArch)$($WinConfig)\fnsock_km.sys" $DstPath\bin\fnsock
 
 New-Item -Path $DstPath\symbols -ItemType Directory > $null
 copy "artifacts\bin\$($WinArch)$($WinConfig)\fnmp.pdb" $DstPath\symbols
 copy "artifacts\bin\$($WinArch)$($WinConfig)\fnlwf.pdb" $DstPath\symbols
 copy "artifacts\bin\$($WinArch)$($WinConfig)\isrdrv.pdb" $DstPath\symbols
 copy "artifacts\bin\$($WinArch)$($WinConfig)\isrsvc.pdb" $DstPath\symbols
+copy "artifacts\bin\$($WinArch)$($WinConfig)\fnsock_um.pdb" $DstPath\symbols
+copy "artifacts\bin\$($WinArch)$($WinConfig)\fnsock_km.pdb" $DstPath\symbols
 
 New-Item -Path $DstPath\tools -ItemType Directory > $null
 copy ".\tools\common.ps1" $DstPath\tools
