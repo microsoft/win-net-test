@@ -10,15 +10,15 @@
 		<license type="expression">MIT</license>
 		<projectUrl>https://github.com/Microsoft/win-net-test</projectUrl>
 		<repository type="git" url="https://github.com/microsoft/win-net-test.git"/>
-		<tags>networking testing test</tags>
+		<tags>native networking testing test</tags>
 		<description>win-net-test SDK</description>
 		<readme>README.md</readme>
 	</metadata>
 	<files>
 		<file src="..\..\src\nuget\README.md" target="."/>
-		<file src="..\..\src\nuget\win-net-test.props" target="build"/>
-		<file src="..\..\artifacts\bin\{winconfig}\fnsock_um.lib" target="build\lib"/>
-		<file src="..\..\artifacts\bin\{winconfig}\fnsock_km.lib" target="build\lib"/>
-		<file src="..\..\inc\*" target="build\include" />
+		<file src="..\..\src\nuget\win-net-test.props" target="build\native"/>
+		<file src="..\..\artifacts\bin\{winconfig}\fnsock_um.lib" target="build\native\lib"/>
+		<file src="..\..\artifacts\bin\{winconfig}\fnsock_km.lib" target="build\native\lib"/>
+		<file src="..\..\inc\*" target="build\native\include" />
 	</files>
 </package>
