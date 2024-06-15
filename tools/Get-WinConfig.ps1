@@ -12,11 +12,15 @@ param(
 )
 
 Set-StrictMode -Version 'Latest'
+$OriginalErrorActionPreference = $ErrorActionPreference
 $ErrorActionPreference = 'Stop'
 
 $RootDir = Split-Path $PSScriptRoot -Parent
 . $RootDir\tools\common.ps1
 
-Generate-WinConfig -Arch $Arch -Config $Config
-
-Write-Output "$($WinArch)$($WinConfig)"
+try {
+    Generate-WinConfig -Arch $Arch -Config $Config
+    Write-Output "$($WinArch)$($WinConfig)"
+} catch {
+    Write-Error $_ -ErrorAction $OriginalErrorActionPreference
+}

@@ -141,7 +141,7 @@ jobs:
     - name: Create Runtime Kit
       shell: PowerShell
       run: tools/create-runtimekit.ps1 -Config ${{ matrix.configuration }} -Platform ${{ matrix.platform }}
-    - name: Download Package
+    - name: Download Nuget Package
       uses: actions/download-artifact@65a9edc5881444af0b9093a5e628f2fe47ea3b2e
       with:
         name: pkg_${{ matrix.configuration }}_${{ matrix.platform }}
