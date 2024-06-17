@@ -131,6 +131,8 @@ DllInitialize(
     )
 {
     UNREFERENCED_PARAMETER(RegistryPath);
+#pragma warning( suppress : 6387 )
+    WPP_INIT_TRACING(NULL, NULL);
     return STATUS_SUCCESS;
 }
 
@@ -139,6 +141,8 @@ DllUnload(
     VOID
     )
 {
+#pragma warning( suppress : 6387 )
+    WPP_CLEANUP(NULL);
     return STATUS_SUCCESS;
 }
 
@@ -175,6 +179,8 @@ FnSockUninitialize(
     )
 {
     PAGED_CODE();
+
+    TraceInfo("FnSockUninitialize");
 
     WskClientDereg();
 }

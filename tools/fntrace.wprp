@@ -79,7 +79,7 @@
                 <Keyword Value="0x7FFFFFFFFFFFFFFF" />
             </Keywords>
         </EventProvider>
-        <EventProvider Id="EP_FnSockWpp" Name="9A90334B-68EE-43E5-8FFA-AEF115CE44A1" Level="5">
+        <EventProvider Id="EP_FnSockWpp" Name="9A90334B-68EE-43E5-8FFA-AEF115CE44A1" Level="5" NonPagedMemory="true">
             <Keywords>
                 <Keyword Value="0x7FFFFFFFFFFFFFFF" />
             </Keywords>
