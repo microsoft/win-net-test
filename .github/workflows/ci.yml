@@ -58,12 +58,6 @@ jobs:
           !artifacts/bin/**/*.ilk
           !artifacts/bin/**/*.exp
           !artifacts/bin/**/*.lastcodeanalysissucceeded
-    - name: Upload Nuget Package
-      if: matrix.os == 2022
-      uses: actions/upload-artifact@65462800fd760344b1a7b4382951275a0abb4808
-      with:
-        name: pkg_${{ matrix.configuration }}_${{ matrix.platform }}
-        path: ${{ matrix.platform }}/${{ matrix.configuration }}/win-net-test.*.nupkg
 
   functional_tests:
     name: Tests
@@ -135,24 +129,22 @@ jobs:
       with:
         name: bin_${{ matrix.configuration }}_${{ matrix.platform }}
         path: artifacts/bin
+    - name: Create Nuget Package
+      shell: PowerShell
+      run: tools/create-nuget-package.ps1 -Config ${{ matrix.configuration }} -Platform ${{ matrix.platform }}
     - name: Create Dev Kit
       shell: PowerShell
       run: tools/create-devkit.ps1 -Config ${{ matrix.configuration }} -Platform ${{ matrix.platform }}
     - name: Create Runtime Kit
       shell: PowerShell
       run: tools/create-runtimekit.ps1 -Config ${{ matrix.configuration }} -Platform ${{ matrix.platform }}
-    - name: Download Nuget Package
-      uses: actions/download-artifact@65a9edc5881444af0b9093a5e628f2fe47ea3b2e
-      with:
-        name: pkg_${{ matrix.configuration }}_${{ matrix.platform }}
-        path: artifacts/pkg
     - name: Upload Release Artifacts
       uses: actions/upload-artifact@65462800fd760344b1a7b4382951275a0abb4808
       with:
         name: release_artifacts_${{ matrix.configuration }}_${{ matrix.platform }}
         path: |
           artifacts/kit/**/*.zip
-          artifacts/pkg/win-net-test.*.nupkg
+          artifacts/pkg/**/*.nupkg
 
   Complete:
     name: Complete
