@@ -15,6 +15,31 @@
 
 #include "sock.tmh"
 
+BOOL
+WINAPI
+DllMain(
+    HINSTANCE Module,
+    DWORD Reason,
+    LPVOID Reserved
+    )
+{
+    UNREFERENCED_PARAMETER(Module);
+    UNREFERENCED_PARAMETER(Reserved);
+
+    switch (Reason)
+    {
+    case DLL_PROCESS_ATTACH:
+        WPP_INIT_TRACING(NULL);
+        break;
+    case DLL_PROCESS_DETACH:
+        WPP_CLEANUP();
+        break;
+    default:
+        break;
+    }
+    return TRUE;
+}
+
 FNSOCKAPI
 PAGEDX
 _IRQL_requires_max_(PASSIVE_LEVEL)
@@ -50,7 +75,9 @@ FnSockUninitialize(
     VOID
     )
 {
+    TraceInfo("FnSockUninitialize");
     WSACleanup();
+    WPP_CLEANUP();
 }
 
 FNSOCKAPI
