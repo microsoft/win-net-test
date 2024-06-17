@@ -129,6 +129,9 @@ jobs:
       with:
         name: bin_${{ matrix.configuration }}_${{ matrix.platform }}
         path: artifacts/bin
+    - name: Create Nuget Package
+      shell: PowerShell
+      run: tools/create-nuget-package.ps1 -Config ${{ matrix.configuration }} -Platform ${{ matrix.platform }}
     - name: Create Dev Kit
       shell: PowerShell
       run: tools/create-devkit.ps1 -Config ${{ matrix.configuration }} -Platform ${{ matrix.platform }}
@@ -141,6 +144,7 @@ jobs:
         name: release_artifacts_${{ matrix.configuration }}_${{ matrix.platform }}
         path: |
           artifacts/kit/**/*.zip
+          artifacts/pkg/**/*.nupkg
 
   Complete:
     name: Complete

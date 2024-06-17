@@ -1,0 +1,24 @@
+<?xml version="1.0"?>
+<package>
+	<metadata>
+		<title>win-net-test SDK</title>
+		<id>win-net-test</id>
+		<version>{version}</version>
+		<authors>win-net-test Contributors</authors>
+		<owners>win-net-test Contributors</owners>
+		<requireLicenseAcceptance>false</requireLicenseAcceptance>
+		<license type="expression">MIT</license>
+		<projectUrl>https://github.com/Microsoft/win-net-test</projectUrl>
+		<repository type="git" url="https://github.com/microsoft/win-net-test.git"/>
+		<tags>native networking testing test</tags>
+		<description>win-net-test SDK</description>
+		<readme>README.md</readme>
+	</metadata>
+	<files>
+		<file src="..\..\..\tools\nuget\README.md" target="."/>
+		<file src="..\..\..\tools\nuget\win-net-test.props" target="build\native"/>
+		<file src="..\..\..\artifacts\bin\{winarchconfig}\fnsock_um.lib" target="build\native\lib"/>
+		<file src="..\..\..\artifacts\bin\{winarchconfig}\fnsock_km.lib" target="build\native\lib"/>
+		<file src="..\..\..\inc\*" target="build\native\include" />
+	</files>
+</package>
