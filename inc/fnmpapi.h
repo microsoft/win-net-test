@@ -378,12 +378,22 @@ FnMpOidCompleteRequest(
 }
 
 FNMPAPI
+VOID
+FnMpInitializeOffloadOptions(
+    _Out_ FN_OFFLOAD_OPTIONS *OffloadOptions
+    )
+{
+    RtlZeroMemory(OffloadOptions, sizeof(*OffloadOptions));
+}
+
+FNMPAPI
 FNMPAPI_STATUS
-FnMpUpdateTaskOffload(
+FnMpUpdateTaskOffload2(
     _In_ FNMP_HANDLE Handle,
     _In_ FN_OFFLOAD_TYPE OffloadType,
     _In_opt_ const NDIS_OFFLOAD_PARAMETERS *OffloadParameters,
-    _In_ UINT32 OffloadParametersLength
+    _In_ UINT32 OffloadParametersLength,
+    _In_opt_ FN_OFFLOAD_OPTIONS *OffloadOptions
     )
 {
     MINIPORT_UPDATE_TASK_OFFLOAD_IN In = {0};
@@ -396,13 +406,30 @@ FnMpUpdateTaskOffload(
     // configuration from the registry. If the offload parameters are specfied,
     // the miniport handles this as if it were set via OID.
     //
+    // The offload options optionally override the NIC's default capabilities.
+    //
 
     In.OffloadType = OffloadType;
     In.OffloadParameters = OffloadParameters;
     In.OffloadParametersLength = OffloadParametersLength;
+    In.OffloadOptions = OffloadOptions;
 
     return
         FnIoctl(Handle, FNMP_IOCTL_MINIPORT_UPDATE_TASK_OFFLOAD, &In, sizeof(In), NULL, 0, NULL, NULL);
+}
+
+FNMPAPI
+FNMPAPI_STATUS
+FnMpUpdateTaskOffload(
+    _In_ FNMP_HANDLE Handle,
+    _In_ FN_OFFLOAD_TYPE OffloadType,
+    _In_opt_ const NDIS_OFFLOAD_PARAMETERS *OffloadParameters,
+    _In_ UINT32 OffloadParametersLength
+    )
+{
+    return
+        FnMpUpdateTaskOffload2(
+            Handle, OffloadType, OffloadParameters, OffloadParametersLength, NULL);
 }
 
 EXTERN_C_END

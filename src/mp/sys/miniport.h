@@ -56,6 +56,7 @@ typedef struct _ADAPTER_OFFLOAD {
     UINT32 RscIPv4;
     UINT32 RscIPv6;
     UINT32 UdpRsc;
+    UINT32 GsoMaxOffloadSize;
 } ADAPTER_OFFLOAD;
 
 typedef struct _ADAPTER_CONTEXT {
