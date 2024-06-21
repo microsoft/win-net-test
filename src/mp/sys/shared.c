@@ -150,11 +150,13 @@ SharedIrpUpdateTaskOffload(
     ADAPTER_CONTEXT *Adapter = Shared->Adapter;
     NDIS_HANDLE ConfigHandle = NULL;
     BOUNCE_BUFFER OffloadParameters;
+    BOUNCE_BUFFER OffloadOptions;
     NTSTATUS Status;
     NDIS_OFFLOAD Offload;
     UINT32 IndicationStatus;
 
     BounceInitialize(&OffloadParameters);
+    BounceInitialize(&OffloadOptions);
 
     if (IrpSp->Parameters.DeviceIoControl.InputBufferLength < sizeof(*In)) {
         Status = STATUS_BUFFER_TOO_SMALL;
@@ -171,6 +173,28 @@ SharedIrpUpdateTaskOffload(
         In->OffloadType == FnOffloadCurrentConfig ?
             NDIS_STATUS_TASK_OFFLOAD_CURRENT_CONFIG :
             NDIS_STATUS_TASK_OFFLOAD_HARDWARE_CAPABILITIES;
+
+    if (In->OffloadOptions != NULL) {
+        FN_OFFLOAD_OPTIONS *Options;
+
+        Status =
+            BounceBuffer(
+                &OffloadOptions, Irp->RequestorMode, In->OffloadOptions, sizeof(*Options),
+                __alignof(FN_OFFLOAD_OPTIONS));
+        if (!NT_SUCCESS(Status)) {
+            goto Exit;
+        }
+
+        Options = OffloadOptions.Buffer;
+
+        RtlAcquirePushLockExclusive(&Adapter->PushLock);
+
+        if (Options->GsoMaxOffloadSize != 0) {
+            MpGetOffload(Adapter, In->OffloadType)->GsoMaxOffloadSize = Options->GsoMaxOffloadSize;
+        }
+
+        RtlReleasePushLockExclusive(&Adapter->PushLock);
+    }
 
     if (In->OffloadParametersLength > 0) {
         Status =
@@ -211,6 +235,7 @@ Exit:
         NdisCloseConfiguration(ConfigHandle);
     }
 
+    BounceCleanup(&OffloadOptions);
     BounceCleanup(&OffloadParameters);
 
     return Status;

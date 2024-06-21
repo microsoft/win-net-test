@@ -152,4 +152,8 @@ typedef enum _FN_OFFLOAD_TYPE {
     FnOffloadHardwareCapabilities,
 } FN_OFFLOAD_TYPE;
 
+typedef struct _FN_OFFLOAD_OPTIONS {
+    UINT32 GsoMaxOffloadSize;
+} FN_OFFLOAD_OPTIONS;
+
 EXTERN_C_END
