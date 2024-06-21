@@ -5,4 +5,9 @@
     <WntBinPath>$(MSBuildThisFileDirectory)bin</WntBinPath>
     <WntIncPath>$(MSBuildThisFileDirectory)include</WntIncPath>
   </PropertyGroup>
+  <ItemDefinitionGroup>
+    <ClCompile>
+      <AdditionalIncludeDirectories>%(AdditionalIncludeDirectories);$(WntIncPath)</AdditionalIncludeDirectories>
+    </ClCompile>
+  </ItemDefinitionGroup>
 </Project>
