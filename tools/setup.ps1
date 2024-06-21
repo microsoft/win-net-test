@@ -213,6 +213,18 @@ function Wait-For-Adapters($IfDesc, $Count=1, $WaitForUp=$true) {
     }
 }
 
+# Installs the certificates for a given file.
+function Install-SigningCertificate($DriverPath) {
+    $Signature = Get-AuthenticodeSignature $DriverPath
+    if ($Signature.Status -ne 'Valid') {
+        Write-Verbose "Installing certificates for $DriverPath"
+        $CertFileName = [System.IO.Path]::GetTempFileName()
+        $Signature | Select-Object -ExpandProperty SignerCertificate | Export-Certificate -Type CERT -FilePath $CertFileName
+        Import-Certificate -FilePath $CertFileName -CertStoreLocation 'cert:\localmachine\root' | Write-Verbose
+        Import-Certificate -FilePath $CertFileName -CertStoreLocation 'cert:\localmachine\trustedpublisher' | Write-Verbose
+    }
+}
+
 # Helper to uninstall a driver from its inf file.
 function Uninstall-Driver($Inf) {
     # Expected pnputil enum output is:
@@ -252,6 +264,8 @@ function Install-FnMp {
     if (!(Test-Path $FnMpSys)) {
         Write-Error "$FnMpSys does not exist!"
     }
+
+    Install-SigningCertificate $FnMpSys
 
     Write-Verbose "pnputil.exe /install /add-driver $FnMpInf"
     pnputil.exe /install /add-driver $FnMpInf | Write-Verbose
@@ -329,6 +343,8 @@ function Install-FnLwf {
     if (!(Test-Path $FnLwfSys)) {
         Write-Error "$FnLwfSys does not exist!"
     }
+
+    Install-SigningCertificate $FnLwfSys
 
     Write-Verbose "netcfg.exe -v -l $FnLwfInf -c s -i $FnLwfComponentId"
     netcfg.exe -v -l $FnLwfInf -c s -i $FnLwfComponentId | Write-Verbose

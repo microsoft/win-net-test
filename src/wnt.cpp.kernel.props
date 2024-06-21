@@ -14,5 +14,11 @@
         %(PreprocessorDefinitions)
       </PreprocessorDefinitions>
     </ClCompile>
+    <DriverSign>
+      <FileDigestAlgorithm>SHA256</FileDigestAlgorithm>
+    </DriverSign>
   </ItemDefinitionGroup>
+  <PropertyGroup>
+    <EnableInf2cat>true</EnableInf2cat>
+  </PropertyGroup>
 </Project>

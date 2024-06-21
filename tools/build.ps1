@@ -18,9 +18,6 @@ param (
     [switch]$NoClean = $false,
 
     [Parameter(Mandatory = $false)]
-    [switch]$NoSign = $false,
-
-    [Parameter(Mandatory = $false)]
     [switch]$UpdateDeps = $false
 )
 
@@ -42,7 +39,6 @@ if ([string]::IsNullOrEmpty($Project)) {
         $Clean = ":Rebuild"
     }
     $Tasks += "$Project$Clean"
-    $NoSign = $true
 }
 
 & $RootDir\tools\prepare-machine.ps1 -ForBuild -Force:$UpdateDeps
@@ -59,12 +55,9 @@ if (!$?) {
 msbuild.exe $RootDir\wnt.sln `
     /p:Configuration=$Config `
     /p:Platform=$Platform `
+    /p:SignMode=TestSign `
     /t:$($Tasks -join ",") `
     /maxCpuCount
 if (!$?) {
     Write-Error "Build failed: $LastExitCode"
-}
-
-if (!$NoSign) {
-    & $RootDir\tools\sign.ps1 -Config $Config -Arch $Platform
 }

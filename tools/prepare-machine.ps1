@@ -92,22 +92,6 @@ function Setup-TestSigning {
     }
 }
 
-# Installs the FNMP/FNLWF certificates.
-function Install-Certs {
-    $CodeSignCertPath = Get-CoreNetCiArtifactPath -Name "CoreNetSignRoot.cer"
-    if (!(Test-Path $CodeSignCertPath)) {
-        Write-Error "$CodeSignCertPath does not exist!"
-    }
-    CertUtil.exe -f -addstore Root $CodeSignCertPath | Write-Verbose
-    CertUtil.exe -f -addstore trustedpublisher $CodeSignCertPath | Write-Verbose
-}
-
-# Uninstalls the FNMP/FNLWF certificates.
-function Uninstall-Certs {
-    try { CertUtil.exe -delstore Root "CoreNetTestSigning" } catch { }
-    try { CertUtil.exe -delstore trustedpublisher "CoreNetTestSigning" } catch { }
-}
-
 function Setup-VcRuntime {
     $Installed = $false
     try { $Installed = Get-ChildItem -Path Registry::HKEY_CLASSES_ROOT\Installer\Dependencies | Where-Object { $_.Name -like "*VC,redist*" } } catch {}
@@ -146,12 +130,10 @@ function Setup-VsTest {
 }
 
 if ($Cleanup) {
-    if ($ForTest) {
-        Uninstall-Certs
-    }
+    # Cleanup is not implemented.
 } else {
     if ($ForBuild) {
-        Download-CoreNet-Deps
+        Write-Verbose "Machine is already prepared for build."
     }
 
     if ($ForFunctionalTest) {
@@ -178,7 +160,6 @@ if ($Cleanup) {
     if ($ForTest) {
         Download-CoreNet-Deps
         Setup-TestSigning
-        Install-Certs
     }
 
     if ($ForLogging) {
