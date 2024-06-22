@@ -44,10 +44,7 @@ jobs:
     - name: Nuget Restore
       run: nuget.exe restore wnt.sln
     - name: Build
-      run: msbuild wnt.sln /m /p:configuration=${{ matrix.configuration }} /p:platform=${{ matrix.platform }}
-    - name: Sign Binaries
-      shell: PowerShell
-      run: tools/sign.ps1 -Config ${{ matrix.configuration }} -Arch ${{ matrix.platform }}
+      run: msbuild wnt.sln /m /p:configuration=${{ matrix.configuration }} /p:platform=${{ matrix.platform }} /p:SignMode=TestSign
     - name: Upload Artifacts
       if: matrix.os == 2022
       uses: actions/upload-artifact@65462800fd760344b1a7b4382951275a0abb4808
