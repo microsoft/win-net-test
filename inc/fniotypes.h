@@ -10,7 +10,7 @@
 // functional test miniport/lwf (fnmp/fnlwf).
 //
 
-#ifndef KERNEL_MODE
+#ifndef _KERNEL_MODE
 //
 // This header depends on the following headers included in the following order.
 // However, it is most likely too late to include these headers by the time this

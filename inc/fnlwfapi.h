@@ -6,7 +6,7 @@
 #pragma once
 
 #include <fniotypes.h>
-#if defined(KERNEL_MODE)
+#if defined(_KERNEL_MODE)
 #include <fnioctl_km.h>
 #include <fnlwfapistatus_km.h>
 #else

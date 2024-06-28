@@ -7,7 +7,7 @@
 
 EXTERN_C_START
 
-#if defined(KERNEL_MODE)
+#if defined(_KERNEL_MODE)
 #define FNSOCK_STATUS NTSTATUS
 #define FNSOCK_FAILED(X) !NT_SUCCESS(X)
 #define FNSOCK_SUCCEEDED(X) NT_SUCCESS(X)
@@ -16,7 +16,7 @@ EXTERN_C_START
 #ifndef PAGEDX
 #define PAGEDX __declspec(code_seg("PAGE"))
 #endif
-#else // defined(KERNEL_MODE)
+#else // defined(_KERNEL_MODE)
 #define FNSOCK_STATUS HRESULT
 #define FNSOCK_FAILED(X) FAILED(X)
 #define FNSOCK_SUCCEEDED(X) SUCCEEDED(X)
@@ -25,7 +25,7 @@ EXTERN_C_START
 #ifndef PAGEDX
 #define PAGEDX
 #endif
-#endif // defined(KERNEL_MODE)
+#endif // defined(_KERNEL_MODE)
 
 /*
  * WinSock error codes are also defined in winerror.h
