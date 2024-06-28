@@ -13,7 +13,7 @@
 
 EXTERN_C_START
 
-#if defined(KERNEL_MODE)
+#if defined(_KERNEL_MODE)
 
 #define CXPLAT_STATUS NTSTATUS
 #define CXPLAT_FAILED(X) !NT_SUCCESS(X)
@@ -34,7 +34,7 @@ EXTERN_C_START
 // Use on pageable functions.
 #define PAGEDX __declspec(code_seg(KRTL_PAGE_SEGMENT))
 
-#else // defined(KERNEL_MODE)
+#else // defined(_KERNEL_MODE)
 
 #define CXPLAT_STATUS HRESULT
 #define CXPLAT_FAILED(X) FAILED(X)
@@ -43,7 +43,7 @@ EXTERN_C_START
 #define CXPLAT_STATUS_FAIL E_FAIL
 #define PAGEDX
 
-#endif // defined(KERNEL_MODE)
+#endif // defined(_KERNEL_MODE)
 
 PAGEDX
 _IRQL_requires_max_(PASSIVE_LEVEL)
@@ -136,7 +136,7 @@ CxPlatFreeNoTag(
 
 DECLARE_HANDLE(CXPLAT_THREAD);
 
-#if defined(KERNEL_MODE)
+#if defined(_KERNEL_MODE)
 typedef VOID CXPLAT_THREAD_RETURN_TYPE;
 #define CXPLAT_THREAD_RETURN(Status) PsTerminateSystemThread(Status)
 #else

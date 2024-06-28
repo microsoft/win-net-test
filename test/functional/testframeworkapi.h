@@ -10,7 +10,7 @@
 // use different test frameworks without changing test logic.
 //
 
-#if !defined(KERNEL_MODE)
+#if !defined(_KERNEL_MODE)
 #include <windows.h>
 #endif
 

@@ -3,7 +3,7 @@
 // Licensed under the MIT License.
 //
 
-#if defined(KERNEL_MODE)
+#if defined(_KERNEL_MODE)
 #include <ntddk.h>
 #include <ntintsafe.h>
 #include <ntstrsafe.h>
@@ -35,7 +35,7 @@
 #include <pkthlp.h>
 #include <fnmpapi.h>
 #include <fnlwfapi.h>
-#if defined(KERNEL_MODE)
+#if defined(_KERNEL_MODE)
 #include <invokesystemrelay.h>
 #endif
 #include <qeo_ndis.h>
@@ -84,7 +84,7 @@ using unique_fnlwf_handle = wil::unique_any<FNLWF_HANDLE, decltype(::FnLwfClose)
 using unique_fnsock_handle = wil::unique_any<FNSOCK_HANDLE, decltype(::FnSockClose), ::FnSockClose>;
 using unique_cxplat_thread = wil::unique_any<CXPLAT_THREAD, decltype(::CxPlatThreadDelete), ::CxPlatThreadDelete>;
 
-#if defined(KERNEL_MODE)
+#if defined(_KERNEL_MODE)
 #define TEST_FNMPAPI TEST_NTSTATUS
 #define TEST_FNLWFAPI TEST_NTSTATUS
 #define TEST_FNMPAPI_GOTO TEST_NTSTATUS_GOTO
@@ -107,7 +107,7 @@ using unique_cxplat_thread = wil::unique_any<CXPLAT_THREAD, decltype(::CxPlatThr
 #define TEST_FNLWFAPI_RET TEST_HRESULT_RET
 #define RtlStringCbPrintfA(Dst, DstSize, Format, ...) \
     sprintf_s(Dst, Format, __VA_ARGS__)
-#endif // defined(KERNEL_MODE)
+#endif // defined(_KERNEL_MODE)
 
 static CONST CHAR *PowershellPrefix = "powershell -noprofile -ExecutionPolicy Bypass";
 static CONST CHAR *FirewallAddRuleString = "netsh advfirewall firewall add rule name=fnmptest dir=in action=allow protocol=any remoteip=any localip=any";
@@ -1646,7 +1646,7 @@ SockBasicTcp(
     SIZE_T OptLen = sizeof(Opt);
     TEST_CXPLAT(FnSockGetSockOpt(ClientSocket.get(), IPPROTO_TCP, TCP_KEEPCNT, &Opt, &OptLen));
 
-#ifndef KERNEL_MODE
+#ifndef _KERNEL_MODE
     LINGER lingerInfo;
     lingerInfo.l_onoff = 1;
     lingerInfo.l_linger = 0;

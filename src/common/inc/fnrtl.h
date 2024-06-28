@@ -123,7 +123,7 @@ WriteUInt32NoFence(
 
 #endif
 
-#ifdef KERNEL_MODE
+#ifdef _KERNEL_MODE
 
 FORCEINLINE
 _IRQL_requires_max_(APC_LEVEL)
