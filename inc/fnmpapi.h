@@ -393,7 +393,7 @@ FnMpUpdateTaskOffload2(
     _In_ FN_OFFLOAD_TYPE OffloadType,
     _In_opt_ const NDIS_OFFLOAD_PARAMETERS *OffloadParameters,
     _In_ UINT32 OffloadParametersLength,
-    _In_opt_ FN_OFFLOAD_OPTIONS *OffloadOptions
+    _In_opt_ const FN_OFFLOAD_OPTIONS *OffloadOptions
     )
 {
     MINIPORT_UPDATE_TASK_OFFLOAD_IN In = {0};
