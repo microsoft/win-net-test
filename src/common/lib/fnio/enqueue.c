@@ -110,6 +110,12 @@ FnIoEnqueueFrameBegin(
 
 Exit:
 
+    if (!NT_SUCCESS(Status)) {
+        if (Nbl != NULL) {
+            FnIoEnqueueFrameReturn(Nbl);
+        }
+    }
+
     return Status;
 }
 
