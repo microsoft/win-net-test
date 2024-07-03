@@ -246,6 +246,8 @@ SharedIrpRxFlush(
         KeLowerIrql(OldIrql);
     }
 
+    Status = STATUS_SUCCESS;
+
     if (In->Options.Flags.LowResources) {
         NET_BUFFER_LIST *Nbl = NdisGetNblChainFromNblCountedQueue(&Nbls);
         UINT32 Count = 0;
@@ -258,7 +260,6 @@ SharedIrpRxFlush(
         while (Nbl != NULL) {
             if (NET_BUFFER_LIST_MINIPORT_RESERVED(Nbl)[0] != Nbl->Next) {
                 Status = STATUS_IO_DEVICE_ERROR;
-                goto Exit;
             }
 
             Nbl = Nbl->Next;
@@ -267,11 +268,10 @@ SharedIrpRxFlush(
 
         if (Count != (UINT32)Nbls.NblCount) {
             Status = STATUS_IO_DEVICE_ERROR;
-            goto Exit;
         }
-    }
 
-    Status = STATUS_SUCCESS;
+        SharedRxCleanupNblChain(NdisGetNblChainFromNblCountedQueue(&Nbls));
+    }
 
 Exit:
 
