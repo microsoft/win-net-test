@@ -216,7 +216,7 @@ PktBuildTcpFrame(
     _Inout_ UINT32 *BufferSize,
     _In_opt_ CONST UCHAR *Payload,
     _In_ UINT16 PayloadLength,
-    _In_opt_ UINT8 *TcpOptions,
+    _In_opt_ CONST UINT8 *TcpOptions,
     _In_ UINT16 TcpOptionsLength,
     _In_ UINT32 ThSeq, // host order
     _In_ UINT32 ThAck, // host order
@@ -312,7 +312,7 @@ inline
 _Success_(return != FALSE)
 BOOLEAN
 PktParseTcpFrame(
-    _In_ UCHAR *Frame,
+    _In_ CONST UCHAR *Frame,
     _In_ UINT32 FrameSize,
     _Out_ TCP_HDR **TcpHdr,
     _Outptr_opt_result_maybenull_ VOID **Payload,
