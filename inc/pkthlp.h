@@ -216,7 +216,7 @@ PktBuildTcpFrame(
     _Inout_ UINT32 *BufferSize,
     _In_opt_ CONST UCHAR *Payload,
     _In_ UINT16 PayloadLength,
-    _In_opt_ UINT8 *TcpOptions,
+    _In_opt_ CONST UINT8 *TcpOptions,
     _In_ UINT16 TcpOptionsLength,
     _In_ UINT32 ThSeq, // host order
     _In_ UINT32 ThAck, // host order
