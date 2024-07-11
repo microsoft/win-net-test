@@ -413,7 +413,7 @@ FnMpUpdateTaskOffload2(
     In.OffloadParameters = OffloadParameters;
     In.OffloadParametersLength = OffloadParametersLength;
     In.OffloadOptions = OffloadOptions;
-    In.OffloadOptionsLength = sizeof(*OffloadOptions);
+    In.OffloadOptionsLength = OffloadOptions != NULL ? sizeof(*OffloadOptions) : 0;
 
     return
         FnIoctl(Handle, FNMP_IOCTL_MINIPORT_UPDATE_TASK_OFFLOAD, &In, sizeof(In), NULL, 0, NULL, NULL);
