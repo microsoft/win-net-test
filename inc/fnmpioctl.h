@@ -102,6 +102,7 @@ typedef struct _MINIPORT_UPDATE_TASK_OFFLOAD_IN {
     const NDIS_OFFLOAD_PARAMETERS *OffloadParameters;
     UINT32 OffloadParametersLength;
     const FN_OFFLOAD_OPTIONS *OffloadOptions;
+    UINT32 OffloadOptionsLength;
 } MINIPORT_UPDATE_TASK_OFFLOAD_IN;
 
 EXTERN_C_END
