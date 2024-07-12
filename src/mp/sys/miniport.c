@@ -334,7 +334,7 @@ MpInitializeOffload(
     _Inout_ ADAPTER_OFFLOAD *Offload
     )
 {
-    Offload->GsoMaxOffloadSize = MAX_GSO_SIZE;
+    Offload->GsoMaxOffloadSize = FNMP_DEFAULT_MAX_GSO_SIZE;
 }
 
 static
@@ -464,13 +464,13 @@ MpFillOffload(
     if (AdapterOffload->LsoV2IPv4) {
         Offload->LsoV2.IPv4.Encapsulation = Encapsulation;
         Offload->LsoV2.IPv4.MaxOffLoadSize = AdapterOffload->GsoMaxOffloadSize;
-        Offload->LsoV2.IPv4.MinSegmentCount = MIN_GSO_SEG_COUNT;
+        Offload->LsoV2.IPv4.MinSegmentCount = FNMP_DEFAULT_MIN_GSO_SEG_COUNT;
     }
 
     if (AdapterOffload->LsoV2IPv6) {
         Offload->LsoV2.IPv6.Encapsulation = Encapsulation;
         Offload->LsoV2.IPv6.MaxOffLoadSize = AdapterOffload->GsoMaxOffloadSize;
-        Offload->LsoV2.IPv6.MinSegmentCount = MIN_GSO_SEG_COUNT;
+        Offload->LsoV2.IPv6.MinSegmentCount = FNMP_DEFAULT_MIN_GSO_SEG_COUNT;
         Offload->LsoV2.IPv6.IpExtensionHeadersSupported = NDIS_OFFLOAD_SUPPORTED;
         Offload->LsoV2.IPv6.TcpOptionsSupported = NDIS_OFFLOAD_SUPPORTED;
     }
@@ -478,14 +478,14 @@ MpFillOffload(
     if (AdapterOffload->UsoIPv4) {
         Offload->UdpSegmentation.IPv4.Encapsulation = Encapsulation;
         Offload->UdpSegmentation.IPv4.MaxOffLoadSize = AdapterOffload->GsoMaxOffloadSize;
-        Offload->UdpSegmentation.IPv4.MinSegmentCount = MIN_GSO_SEG_COUNT;
+        Offload->UdpSegmentation.IPv4.MinSegmentCount = FNMP_DEFAULT_MIN_GSO_SEG_COUNT;
         Offload->UdpSegmentation.IPv4.SubMssFinalSegmentSupported = NDIS_OFFLOAD_SUPPORTED;
     }
 
     if (AdapterOffload->UsoIPv6) {
         Offload->UdpSegmentation.IPv6.Encapsulation = Encapsulation;
         Offload->UdpSegmentation.IPv6.MaxOffLoadSize = AdapterOffload->GsoMaxOffloadSize;
-        Offload->UdpSegmentation.IPv6.MinSegmentCount = MIN_GSO_SEG_COUNT;
+        Offload->UdpSegmentation.IPv6.MinSegmentCount = FNMP_DEFAULT_MIN_GSO_SEG_COUNT;
         Offload->UdpSegmentation.IPv6.IpExtensionHeadersSupported = NDIS_OFFLOAD_SUPPORTED;
         Offload->UdpSegmentation.IPv6.SubMssFinalSegmentSupported = NDIS_OFFLOAD_SUPPORTED;
     }
