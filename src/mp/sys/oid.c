@@ -4,6 +4,7 @@
 //
 
 #include "precomp.h"
+#include "oid.tmh"
 
 CONST NDIS_OID MpSupportedOidArray[] =
 {
@@ -561,24 +562,35 @@ MiniportRequestHandler(
    )
 {
     ADAPTER_CONTEXT *Adapter = (ADAPTER_CONTEXT *)MiniportAdapterContext;
+    NDIS_STATUS Status;
+
+    TraceEnter(
+        TRACE_CONTROL, "Adapter=%p Oid=%u RequestType=%u",
+        Adapter, NdisRequest->DATA.Oid, NdisRequest->RequestType);
 
     switch (NdisRequest->RequestType)
     {
         case NdisRequestQueryInformation:
         case NdisRequestQueryStatistics:
-            return
+            Status =
                 MpProcessQueryOid(Adapter, OID_REQUEST_INTERFACE_REGULAR, NdisRequest, TRUE);
-
+            break;
         case NdisRequestSetInformation:
-            return
+            Status =
                 MpProcessSetOid(Adapter, OID_REQUEST_INTERFACE_REGULAR, NdisRequest, TRUE);
-
+            break;
         case NdisRequestMethod:
-            return
+            Status =
                 MpProcessMethodOid(Adapter, OID_REQUEST_INTERFACE_REGULAR, NdisRequest, TRUE);
+            break;
+        default:
+            Status = NDIS_STATUS_NOT_SUPPORTED;
+            break;
     }
 
-    return NDIS_STATUS_NOT_SUPPORTED;
+    TraceExitStatus(TRACE_CONTROL);
+
+    return Status;
 }
 
 _IRQL_requires_max_(DISPATCH_LEVEL)
@@ -602,24 +614,35 @@ MiniportDirectRequestHandler(
    )
 {
     ADAPTER_CONTEXT *Adapter = (ADAPTER_CONTEXT *)MiniportAdapterContext;
+    NDIS_STATUS Status;
+
+    TraceEnter(
+        TRACE_CONTROL, "Adapter=%p Oid=%u RequestType=%u",
+        Adapter, NdisRequest->DATA.Oid, NdisRequest->RequestType);
 
     switch (NdisRequest->RequestType)
     {
         case NdisRequestQueryInformation:
         case NdisRequestQueryStatistics:
-            return
+            Status =
                 MpProcessQueryOid(Adapter, OID_REQUEST_INTERFACE_DIRECT, NdisRequest, TRUE);
-
+            break;
         case NdisRequestSetInformation:
-            return
+            Status =
                 MpProcessSetOid(Adapter, OID_REQUEST_INTERFACE_DIRECT, NdisRequest, TRUE);
-
+            break;
         case NdisRequestMethod:
-            return
+            Status =
                 MpProcessMethodOid(Adapter, OID_REQUEST_INTERFACE_DIRECT, NdisRequest, TRUE);
+            break;
+        default:
+            Status = NDIS_STATUS_NOT_SUPPORTED;
+            break;
     }
 
-    return NDIS_STATUS_NOT_SUPPORTED;
+    TraceExitStatus(TRACE_CONTROL);
+
+    return Status;
 }
 
 static
@@ -632,6 +655,10 @@ MpOidCompleteRequest(
     _In_ NDIS_OID_REQUEST *Request
     )
 {
+    TraceEnter(
+        TRACE_CONTROL, "Adapter=%p Oid=%u RequestType=%u Status=%!STATUS!",
+        Adapter, Request->DATA.Oid, Request->RequestType, Status);
+
     //
     // The caller can specify either a valid NDIS OID completion status or
     // NDIS_STATUS_PENDING. All valid completion statuses bypass the miniport
@@ -674,6 +701,8 @@ Exit:
         FRE_ASSERT(FALSE);
         break;
     }
+
+    TraceExitStatus(TRACE_CONTROL);
 }
 
 static
