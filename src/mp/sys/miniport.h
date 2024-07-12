@@ -10,8 +10,6 @@
 #define MAX_MULTICAST_ADDRESSES 16
 
 #define MAX_RSS_QUEUES 64
-#define MAX_GSO_SIZE 0x20000
-#define MIN_GSO_SEG_COUNT 2
 
 #define TRY_READ_INT_CONFIGURATION(hConfig, Keyword, pValue) \
     { \
