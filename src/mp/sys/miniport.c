@@ -37,6 +37,8 @@ DEFINE_OFFLOAD_REGISTRY_REGKEY(RscIPv4);
 DEFINE_OFFLOAD_REGISTRY_REGKEY(RscIPv6);
 DEFINE_OFFLOAD_REGISTRY_REGKEY(UdpRsc);
 
+static FN_WATCHDOG_CALLBACK MpWatchdog;
+
 static
 const NDIS_STRING *
 GetOffloadRegKeyName(
@@ -60,6 +62,11 @@ MpCleanupAdapter(
    _Inout_ ADAPTER_CONTEXT *Adapter
    )
 {
+    if (Adapter->Watchdog != NULL) {
+        FnWatchdogClose(Adapter->Watchdog);
+        Adapter->Watchdog = NULL;
+    }
+
     MpCleanupRssQueues(Adapter);
 
     if (Adapter->Shared != NULL) {
@@ -106,6 +113,11 @@ MpCreateAdapter(
     Adapter->Shared = SharedAdapterCreate(Adapter);
     if (Adapter->Shared == NULL) {
         Status = STATUS_NO_MEMORY;
+        goto Exit;
+    }
+
+    Status = FnWatchdogCreate(&Adapter->Watchdog, MpWatchdog, Adapter, RTL_SEC_TO_MILLISEC(1));
+    if (!NT_SUCCESS(Status)) {
         goto Exit;
     }
 
@@ -889,6 +901,24 @@ MiniportUnloadHandler(
     TraceExitSuccess(TRACE_CONTROL);
 
     WPP_CLEANUP(DriverObject);
+}
+
+static
+VOID
+MpWatchdog(
+    _In_ VOID *CallbackContext
+    )
+{
+    ADAPTER_CONTEXT *Adapter = CallbackContext;
+
+    if (MpOidWatchdogIsExpired(Adapter)) {
+        TraceError(TRACE_CONTROL, "OID watchdog expired");
+        MpOidClearFilterAndFlush(Adapter);
+    }
+
+    //
+    // TODO: NBL watchdog
+    //
 }
 
 _Function_class_(DRIVER_INITIALIZE)

@@ -86,6 +86,7 @@ typedef struct _ADAPTER_CONTEXT {
     OID_KEY *OidFilterKeys;
     UINT32 OidFilterKeyCount;
     LIST_ENTRY FilteredOidRequestLists[OID_REQUEST_INTERFACE_MAX];
+    FN_WATCHDOG_HANDLE Watchdog;
 
     //
     // Context for an exclusive user mode handle for configuring the adapter.

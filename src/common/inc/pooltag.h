@@ -34,3 +34,5 @@
 #define POOLTAG_FNSOCK_SEND                'sSsF' // FsSs
 #define POOLTAG_FNSOCK_RECV                'rSsF' // FsSr
 #define POOLTAG_FNSOCK_ACCEPT              'aSsF' // FsSa
+
+#define POOLTAG_WATCHDOG                   'godW' // Wdog
