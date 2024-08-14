@@ -10,6 +10,7 @@
 DECLARE_HANDLE(FN_WATCHDOG_HANDLE);
 
 typedef
+_IRQL_requires_max_(PASSIVE_LEVEL)
 VOID
 FN_WATCHDOG_CALLBACK(
     _In_ VOID *CallbackContext

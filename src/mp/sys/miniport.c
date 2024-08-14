@@ -904,6 +904,7 @@ MiniportUnloadHandler(
 }
 
 static
+_IRQL_requires_max_(PASSIVE_LEVEL)
 VOID
 MpWatchdog(
     _In_ VOID *CallbackContext
@@ -912,7 +913,8 @@ MpWatchdog(
     ADAPTER_CONTEXT *Adapter = CallbackContext;
 
     if (MpOidWatchdogIsExpired(Adapter)) {
-        TraceError(TRACE_CONTROL, "OID watchdog expired");
+        TraceError(
+            TRACE_CONTROL, "Adapter=%p IfIndex=%u OID watchdog expired", Adapter, Adapter->IfIndex);
         MpOidClearFilterAndFlush(Adapter);
     }
 
