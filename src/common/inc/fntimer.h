@@ -120,7 +120,7 @@ FnTimerClose(
     FN_TIMER *Timer = (FN_TIMER *)Handle;
 
     NT_VERIFY(KeSetEvent(&Timer->CloseEvent, IO_NO_INCREMENT, FALSE) == FALSE);
-    NT_VERIFY(FnWaitObject(&Timer->ThreadHandle, NULL) == STATUS_SUCCESS);
+    NT_VERIFY(FnWaitObject(Timer->ThreadHandle, NULL) == STATUS_SUCCESS);
 
     FnTimerDestroy(Timer);
 }
