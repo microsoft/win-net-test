@@ -17,7 +17,7 @@
 #include <fnoid.h>
 #include <fnmpioctl.h>
 #include <fnmpapiconfig.h>
-#include <fnwatchdog.h>
+#include <fntimer.h>
 
 #include "dispatch.h"
 #include "miniport.h"

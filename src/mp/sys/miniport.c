@@ -37,7 +37,7 @@ DEFINE_OFFLOAD_REGISTRY_REGKEY(RscIPv4);
 DEFINE_OFFLOAD_REGISTRY_REGKEY(RscIPv6);
 DEFINE_OFFLOAD_REGISTRY_REGKEY(UdpRsc);
 
-static FN_WATCHDOG_CALLBACK MpWatchdog;
+static FN_TIMER_CALLBACK MpWatchdogTimeout;
 
 static
 const NDIS_STRING *
@@ -62,9 +62,9 @@ MpCleanupAdapter(
    _Inout_ ADAPTER_CONTEXT *Adapter
    )
 {
-    if (Adapter->Watchdog != NULL) {
-        FnWatchdogClose(Adapter->Watchdog);
-        Adapter->Watchdog = NULL;
+    if (Adapter->WatchdogTimer != NULL) {
+        FnTimerClose(Adapter->WatchdogTimer);
+        Adapter->WatchdogTimer = NULL;
     }
 
     MpCleanupRssQueues(Adapter);
@@ -116,7 +116,7 @@ MpCreateAdapter(
         goto Exit;
     }
 
-    Status = FnWatchdogCreate(&Adapter->Watchdog, MpWatchdog, Adapter, RTL_SEC_TO_MILLISEC(1));
+    Status = FnTimerCreate(&Adapter->WatchdogTimer, MpWatchdogTimeout, Adapter, RTL_SEC_TO_MILLISEC(1));
     if (!NT_SUCCESS(Status)) {
         goto Exit;
     }
@@ -906,7 +906,7 @@ MiniportUnloadHandler(
 static
 _IRQL_requires_max_(PASSIVE_LEVEL)
 VOID
-MpWatchdog(
+MpWatchdogTimeout(
     _In_ VOID *CallbackContext
     )
 {

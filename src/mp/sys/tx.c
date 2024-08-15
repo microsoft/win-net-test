@@ -8,12 +8,6 @@
 
 typedef struct _SHARED_TX {
     SHARED_CONTEXT *Shared;
-    //
-    // This driver allows NBLs to be held indefinitely by user mode, which is a
-    // bad practice. Unfortunately, it is necessary to hold NBLs for some
-    // configurable interval for test purposes so the only question is whether a
-    // watchdog is also necessary. For now, don't bother.
-    //
     LIST_ENTRY DataFilterLink;
     DATA_FILTER *DataFilter;
 } SHARED_TX;
