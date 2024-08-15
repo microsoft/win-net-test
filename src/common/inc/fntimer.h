@@ -80,7 +80,6 @@ FnTimerCreate(
     Timer->CallbackContext = CallbackContext;
     Timer->Timeout.QuadPart = -1i64 * RTL_MILLISEC_TO_100NANOSEC(IntervalMs);
     KeInitializeEvent(&Timer->CloseEvent, NotificationEvent, FALSE);
-    KeQuerySystemTimePrecise(&Timer->Timeout);
 
     Status =
         PsCreateSystemThread(
