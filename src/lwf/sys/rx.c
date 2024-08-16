@@ -76,7 +76,9 @@ RxFilterNbl(
         Status = FnIoFilterNbl(Rx->DataFilter, Nbl);
 
         if (!NT_SUCCESS(Status)) {
-            TraceError(TRACE_DATAPATH, "FnIoFilterNbl failed Status=%!STATUS!", Status);
+            TraceError(
+                TRACE_DATAPATH, "FnIoFilterNbl failed Filter=%p Status=%!STATUS!",
+                Filter, Status);
         }
 
         if (Status == STATUS_PENDING) {

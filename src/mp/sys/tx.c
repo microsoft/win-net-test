@@ -120,7 +120,9 @@ SharedTxFilterNbl(
         Status = FnIoFilterNbl(Tx->DataFilter, Nbl);
 
         if (!NT_SUCCESS(Status)) {
-            TraceError(TRACE_DATAPATH, "FnIoFilterNbl failed Status=%!STATUS!", Status);
+            TraceError(
+                TRACE_DATAPATH, "FnIoFilterNbl failed Adapter=%p Status=%!STATUS!",
+                Shared->Adapter, Status);
         }
 
         if (Status == STATUS_PENDING) {
