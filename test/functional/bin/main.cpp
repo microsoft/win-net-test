@@ -468,6 +468,14 @@ public:
             ::MpBasicTxOffload();
         }
     }
+
+    TEST_METHOD(MpBasicWatchdog) {
+        if (TestingKernelMode) {
+            TEST_TRUE(TestDriverClient.Run(IOCTL_MP_BASIC_WATCHDOG));
+        } else {
+            ::MpBasicWatchdog();
+        }
+    }
 };
 
 TEST_CLASS(fnlwffunctionaltests)

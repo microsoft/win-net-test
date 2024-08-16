@@ -851,6 +851,27 @@ LwfOidSubmitRequest(
             Handle.get(), Key, InformationBufferLength, InformationBuffer);
 }
 
+
+typedef struct LWF_OID_SUBMIT_REQUEST {
+    FNLWF_HANDLE Handle;
+    OID_KEY OidKey;
+    UINT32 *InfoBufferLength;
+    VOID *InfoBuffer;
+    FNLWFAPI_STATUS Status;
+} LWF_OID_SUBMIT_REQUEST;
+
+CXPLAT_THREAD_RETURN_TYPE
+LwfOidSubmitRequestFn(
+    _In_ VOID* Context
+    )
+{
+    LWF_OID_SUBMIT_REQUEST *Req = (LWF_OID_SUBMIT_REQUEST *)Context;
+    Req->Status =
+        FnLwfOidSubmitRequest(
+            Req->Handle, Req->OidKey, Req->InfoBufferLength, Req->InfoBuffer);
+    CXPLAT_THREAD_RETURN(0);
+}
+
 static
 bool
 WaitForWfpQuarantine(
@@ -1370,6 +1391,90 @@ MpBasicTxOffload()
 
 EXTERN_C
 VOID
+MpBasicWatchdog()
+{
+    UINT16 LocalPort;
+    OID_KEY OidKey;
+    auto UdpSocket = CreateUdpSocket(AF_INET, NULL, &LocalPort);
+    auto SharedMp = MpOpenShared(FnMpIf->GetIfIndex());
+    auto ExclusiveMp = MpOpenExclusive(FnMpIf->GetIfIndex());
+    auto DefaultLwf = LwfOpenDefault(FnMpIf->GetIfIndex());
+
+    TEST_NOT_NULL(UdpSocket.get());
+    TEST_NOT_NULL(SharedMp.get());
+    TEST_NOT_NULL(ExclusiveMp.get());
+    TEST_NOT_NULL(DefaultLwf.get());
+
+    InitializeOidKey(
+        &OidKey, OID_QUIC_CONNECTION_ENCRYPTION_PROTOTYPE, NdisRequestMethod,
+        OID_REQUEST_INTERFACE_DIRECT);
+    TEST_TRUE(MpOidFilter(ExclusiveMp, &OidKey, 1));
+
+    UCHAR UdpPayload[] = "MpBasicWatchdog";
+    UCHAR Pattern[UDP_HEADER_BACKFILL(AF_INET) + sizeof(UdpPayload)];
+    UCHAR Mask[sizeof(Pattern)];
+    UINT32 SendSize = sizeof(UdpPayload);
+
+    RtlZeroMemory(Pattern, sizeof(Pattern));
+    RtlCopyMemory(Pattern + UDP_HEADER_BACKFILL(AF_INET), UdpPayload, sizeof(UdpPayload));
+
+    RtlZeroMemory(Mask, sizeof(Mask));
+    for (int i = UDP_HEADER_BACKFILL(AF_INET); i < sizeof(Mask); i++) {
+        Mask[i] = 0xff;
+    }
+
+    TEST_TRUE(MpTxFilter(SharedMp, Pattern, Mask, sizeof(Pattern)));
+
+    SOCKADDR_STORAGE RemoteAddr;
+    TEST_TRUE(SetSockAddr(FNMP_NEIGHBOR_IPV4_ADDRESS, 1234, AF_INET, &RemoteAddr));
+
+    TEST_EQUAL(
+        (int)SendSize,
+        FnSockSendto(
+            UdpSocket.get(), (PCHAR)UdpPayload, SendSize, FALSE, 0,
+            (PSOCKADDR)&RemoteAddr, sizeof(RemoteAddr)));
+
+    //
+    // Verify frame can be retrieved, and is idempotent.
+    //
+    MpTxAllocateAndGetFrame(SharedMp, 0);
+    MpTxAllocateAndGetFrame(SharedMp, 0);
+
+    UINT32 LwfInfoBuffer = 0xBADF00D;
+    UINT32 LwfInfoBufferLength = sizeof(LwfInfoBuffer);
+
+    LWF_OID_SUBMIT_REQUEST Req;
+    Req.Handle = DefaultLwf.get();
+    Req.OidKey = OidKey;
+    Req.InfoBufferLength = &LwfInfoBufferLength;
+    Req.InfoBuffer = &LwfInfoBuffer;
+
+    CXPLAT_THREAD_CONFIG ThreadConfig {
+        0, 0, NULL, LwfOidSubmitRequestFn, &Req
+    };
+    unique_cxplat_thread AsyncThread;
+    TEST_CXPLAT(CxPlatThreadCreate(&ThreadConfig, &AsyncThread));
+
+    TEST_FALSE(CxPlatThreadWait(AsyncThread.get(), TEST_TIMEOUT_ASYNC_MS));
+
+    //
+    // Wait 10 seconds for the watchdog.
+    //
+    CxPlatSleep(10000);
+
+    //
+    // The NBLs and OIDs should be released by the watchdog.
+    //
+    UINT32 FrameLength = 0;
+    TEST_EQUAL(
+        FNMPAPI_STATUS_NOT_FOUND,
+        MpTxGetFrame(SharedMp, 0, &FrameLength, NULL, 0));
+
+    TEST_TRUE(CxPlatThreadWait(AsyncThread.get(), TEST_TIMEOUT_ASYNC_MS));
+}
+
+EXTERN_C
+VOID
 LwfBasicRx()
 {
     auto GenericMp = MpOpenShared(FnMpIf->GetIfIndex());
@@ -1467,26 +1572,6 @@ LwfBasicTx()
 
     TEST_TRUE(MpTxDequeueFrame(GenericMp, 0));
     TEST_TRUE(MpTxFlush(GenericMp));
-}
-
-typedef struct LWF_OID_SUBMIT_REQUEST {
-    FNLWF_HANDLE Handle;
-    OID_KEY OidKey;
-    UINT32 *InfoBufferLength;
-    VOID *InfoBuffer;
-    FNLWFAPI_STATUS Status;
-} LWF_OID_SUBMIT_REQUEST;
-
-CXPLAT_THREAD_RETURN_TYPE
-LwfOidSubmitRequestFn(
-    _In_ VOID* Context
-    )
-{
-    LWF_OID_SUBMIT_REQUEST *Req = (LWF_OID_SUBMIT_REQUEST *)Context;
-    Req->Status =
-        FnLwfOidSubmitRequest(
-            Req->Handle, Req->OidKey, Req->InfoBufferLength, Req->InfoBuffer);
-    CXPLAT_THREAD_RETURN(0);
 }
 
 EXTERN_C
