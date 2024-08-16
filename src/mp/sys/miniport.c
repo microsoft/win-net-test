@@ -931,7 +931,7 @@ MpWatchdogTimeout(
 {
     ADAPTER_CONTEXT *Adapter = CallbackContext;
 
-    ExclusiveWatchdogTimeout(Adapter->UserContext);
+    ExclusiveWatchdogTimeout(Adapter);
     SharedWatchdogTimeout(Adapter->Shared);
 }
 

@@ -8,11 +8,9 @@
 _IRQL_requires_max_(PASSIVE_LEVEL)
 VOID
 ExclusiveWatchdogTimeout(
-    _In_ EXCLUSIVE_USER_CONTEXT *Exclusive
+    _In_ ADAPTER_CONTEXT *Adapter
     )
 {
-    ADAPTER_CONTEXT *Adapter = Exclusive->Adapter;
-
     if (MpOidWatchdogIsExpired(Adapter)) {
         MpWatchdogFailure(Adapter, "OID");
         MpOidClearFilterAndFlush(Adapter);
