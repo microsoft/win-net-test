@@ -25,6 +25,7 @@ typedef struct _LWF_FILTER {
     NDIS_HANDLE NblPool;
     LIST_ENTRY RxFilterList;
     LIST_ENTRY StatusFilterList;
+    FN_TIMER_HANDLE WatchdogTimer;
 } LWF_FILTER;
 
 typedef struct _GLOBAL_CONTEXT {
@@ -62,4 +63,11 @@ FilterIrpGetDatapathState(
     _In_ LWF_FILTER *Filter,
     _In_ IRP *Irp,
     _In_ IO_STACK_LOCATION *IrpSp
+    );
+
+_IRQL_requires_max_(DISPATCH_LEVEL)
+VOID
+FilterWatchdogFailure(
+    _In_ LWF_FILTER *Filter,
+    _In_z_ CONST CHAR *WatchdogType
     );

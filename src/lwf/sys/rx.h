@@ -51,3 +51,9 @@ RxIrpFlush(
     _In_ IRP *Irp,
     _In_ IO_STACK_LOCATION *IrpSp
     );
+
+_IRQL_requires_max_(PASSIVE_LEVEL)
+VOID
+RxWatchdogTimeout(
+    _In_ LWF_FILTER *Filter
+    );

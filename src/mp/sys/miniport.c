@@ -135,7 +135,8 @@ MpCreateAdapter(
         goto Exit;
     }
 
-    Status = FnTimerCreate(&Adapter->WatchdogTimer, MpWatchdogTimeout, Adapter, RTL_SEC_TO_MILLISEC(1));
+    Status =
+        FnTimerCreate(&Adapter->WatchdogTimer, MpWatchdogTimeout, Adapter, RTL_SEC_TO_MILLISEC(1));
     if (!NT_SUCCESS(Status)) {
         goto Exit;
     }

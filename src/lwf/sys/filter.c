@@ -15,6 +15,7 @@ FILTER_DETACH FilterDetach;
 FILTER_RESTART FilterRestart;
 FILTER_PAUSE FilterPause;
 FILTER_SET_MODULE_OPTIONS FilterSetOptions;
+static FN_TIMER_CALLBACK FilterWatchdogTimeout;
 
 GLOBAL_CONTEXT LwfGlobalContext;
 
@@ -33,11 +34,33 @@ FilterDereferenceFilter(
     )
 {
     if (FnDecrementReferenceCount(&Filter->ReferenceCount)) {
+        if (Filter->WatchdogTimer != NULL) {
+            FnTimerClose(Filter->WatchdogTimer);
+        }
         if (Filter->NblPool != NULL) {
             NdisFreeNetBufferListPool(Filter->NblPool);
         }
         ExFreePoolWithTag(Filter, POOLTAG_LWF_FILTER);
     }
+}
+
+_IRQL_requires_max_(DISPATCH_LEVEL)
+VOID
+FilterWatchdogFailure(
+    _In_ LWF_FILTER *Filter,
+    _In_z_ CONST CHAR *WatchdogType
+    )
+{
+    //
+    // Handle a watchdog failure. In the future we may extend this to
+    // conditionally break into a debugger, take a live kernel dump, etc.
+    //
+    // For now, just log the error.
+    //
+
+    TraceError(
+        TRACE_CONTROL, "Filter=%p IfIndex=%u %s watchdog expired",
+        Filter, Filter->MiniportIfIndex, WatchdogType);
 }
 
 LWF_FILTER *
@@ -223,6 +246,14 @@ FilterAttach(
         goto Exit;
     }
 
+    Status =
+        FnTimerCreate(
+            &Filter->WatchdogTimer, FilterWatchdogTimeout, Filter, RTL_SEC_TO_MILLISEC(1));
+    if (!NT_SUCCESS(Status)) {
+        Status = FnConvertNtStatusToNdisStatus(Status);
+        goto Exit;
+    }
+
     RtlZeroMemory(&FilterAttributes, sizeof(NDIS_FILTER_ATTRIBUTES));
     FilterAttributes.Header.Revision = NDIS_FILTER_ATTRIBUTES_REVISION_1;
     FilterAttributes.Header.Size = sizeof(NDIS_FILTER_ATTRIBUTES);
@@ -334,6 +365,18 @@ FilterSetOptions(
     TraceInfo(TRACE_CONTROL, "IfIndex=%u", Filter->MiniportIfIndex);
 
     return NDIS_STATUS_SUCCESS;
+}
+
+static
+_IRQL_requires_max_(PASSIVE_LEVEL)
+VOID
+FilterWatchdogTimeout(
+    _In_ VOID *CallbackContext
+    )
+{
+    LWF_FILTER *Filter = CallbackContext;
+
+    RxWatchdogTimeout(Filter);
 }
 
 _IRQL_requires_max_(PASSIVE_LEVEL)
