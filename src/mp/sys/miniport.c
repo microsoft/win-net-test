@@ -39,6 +39,25 @@ DEFINE_OFFLOAD_REGISTRY_REGKEY(UdpRsc);
 
 static FN_TIMER_CALLBACK MpWatchdogTimeout;
 
+_IRQL_requires_max_(DISPATCH_LEVEL)
+VOID
+MpWatchdogFailure(
+    _In_ ADAPTER_CONTEXT *Adapter,
+    _In_z_ CONST CHAR *WatchdogType
+    )
+{
+    //
+    // Handle a watchdog failure. In the future we may extend this to
+    // conditionally break into a debugger, take a live kernel dump, etc.
+    //
+    // For now, just log the error.
+    //
+
+    TraceError(
+        TRACE_CONTROL, "Adapter=%p IfIndex=%u %s watchdog expired",
+        Adapter, Adapter->IfIndex, WatchdogType);
+}
+
 static
 const NDIS_STRING *
 GetOffloadRegKeyName(
@@ -913,8 +932,7 @@ MpWatchdogTimeout(
     ADAPTER_CONTEXT *Adapter = CallbackContext;
 
     if (MpOidWatchdogIsExpired(Adapter)) {
-        TraceError(
-            TRACE_CONTROL, "Adapter=%p IfIndex=%u OID watchdog expired", Adapter, Adapter->IfIndex);
+        MpWatchdogFailure(Adapter, "OID");
         MpOidClearFilterAndFlush(Adapter);
     }
 
