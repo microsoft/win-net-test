@@ -194,6 +194,17 @@ ReadHandleNoFence(
     return (HANDLE)ReadPointerNoFence((PVOID *)Address);
 }
 
+inline
+_IRQL_requires_max_(APC_LEVEL)
+NTSTATUS
+FnWaitObject(
+    _In_ VOID *Object,
+    _In_opt_ LARGE_INTEGER *Timeout
+    )
+{
+    return KeWaitForSingleObject(Object, Executive, KernelMode, FALSE, Timeout);
+}
+
 #endif
 
 #ifdef __cplusplus

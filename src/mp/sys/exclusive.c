@@ -5,6 +5,18 @@
 
 #include "precomp.h"
 
+_IRQL_requires_max_(PASSIVE_LEVEL)
+VOID
+ExclusiveWatchdogTimeout(
+    _In_ ADAPTER_CONTEXT *Adapter
+    )
+{
+    if (MpOidWatchdogIsExpired(Adapter)) {
+        MpWatchdogFailure(Adapter, "OID");
+        MpOidClearFilterAndFlush(Adapter);
+    }
+}
+
 static
 _IRQL_requires_max_(PASSIVE_LEVEL)
 NTSTATUS

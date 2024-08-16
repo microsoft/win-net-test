@@ -8,55 +8,42 @@
 
 typedef struct _DEFAULT_RX {
     DEFAULT_CONTEXT *Default;
-    //
-    // This driver allows NBLs to be held indefinitely by user mode, which is a
-    // bad practice. Unfortunately, it is necessary to hold NBLs for some
-    // configurable interval for testing purposes so the only question is
-    // whether a watchdog is also necessary. For now, don't bother.
-    //
     LIST_ENTRY DataFilterLink;
     DATA_FILTER *DataFilter;
 } DEFAULT_RX;
 
 static
-SIZE_T
+VOID
 _Requires_lock_held_(&Rx->Default->Filter->Lock)
 RxClearFilter(
     _Inout_ DEFAULT_RX *Rx,
-    _Out_ NET_BUFFER_LIST **NblChain
+    _Inout_ NBL_COUNTED_QUEUE *NblQueue
     )
 {
-    SIZE_T NblCount = 0;
-
-    *NblChain = NULL;
-
     if (!IsListEmpty(&Rx->DataFilterLink)) {
         RemoveEntryList(&Rx->DataFilterLink);
         InitializeListHead(&Rx->DataFilterLink);
     }
 
     if (Rx->DataFilter != NULL) {
-        NblCount = FnIoFlushAllFrames(Rx->DataFilter, NblChain);
+        FnIoFlushAllFrames(Rx->DataFilter, NblQueue);
         FnIoDeleteFilter(Rx->DataFilter);
         Rx->DataFilter = NULL;
     }
-
-    return NblCount;
 }
 
 static
 VOID
 RxCompleteNbls(
     _In_ LWF_FILTER *Filter,
-    _In_ NET_BUFFER_LIST *NblChain,
-    _In_ SIZE_T NblCount
+    _In_ NBL_COUNTED_QUEUE *NblQueue
     )
 {
-    ASSERT(NblCount <= MAXULONG);
+    ASSERT(NblQueue->NblCount <= MAXULONG);
     NdisFIndicateReceiveNetBufferLists(
-        Filter->NdisFilterHandle, NblChain, NDIS_DEFAULT_PORT_NUMBER,
-        (ULONG)NblCount, 0);
-    ExReleaseRundownProtectionEx(&Filter->NblRundown, (ULONG)NblCount);
+        Filter->NdisFilterHandle, NdisGetNblChainFromNblCountedQueue(NblQueue),
+        NDIS_DEFAULT_PORT_NUMBER, (ULONG)NblQueue->NblCount, 0);
+    ExReleaseRundownProtectionEx(&Filter->NblRundown, (ULONG)NblQueue->NblCount);
 }
 
 static
@@ -68,11 +55,20 @@ RxFilterNbl(
     )
 {
     LIST_ENTRY *Entry = Filter->RxFilterList.Flink;
+    NTSTATUS Status;
 
     while (Entry != &Filter->RxFilterList) {
         DEFAULT_RX *Rx = CONTAINING_RECORD(Entry, DEFAULT_RX, DataFilterLink);
         Entry = Entry->Flink;
-        if (FnIoFilterNbl(Rx->DataFilter, Nbl)) {
+        Status = FnIoFilterNbl(Rx->DataFilter, Nbl);
+
+        if (!NT_SUCCESS(Status)) {
+            TraceError(
+                TRACE_DATAPATH, "FnIoFilterNbl failed Filter=%p Status=%!STATUS!",
+                Filter, Status);
+        }
+
+        if (Status == STATUS_PENDING) {
             return TRUE;
         }
     }
@@ -86,20 +82,21 @@ RxCleanup(
     )
 {
     LWF_FILTER *Filter = Rx->Default->Filter;
-    NET_BUFFER_LIST *NblChain = NULL;
-    SIZE_T NblCount = 0;
+    NBL_COUNTED_QUEUE NblQueue;
     KIRQL OldIrql;
+
+    NdisInitializeNblCountedQueue(&NblQueue);
 
     KeAcquireSpinLock(&Filter->Lock, &OldIrql);
 
-    NblCount = RxClearFilter(Rx, &NblChain);
+    RxClearFilter(Rx, &NblQueue);
 
     KeReleaseSpinLock(&Filter->Lock, OldIrql);
 
     ExFreePoolWithTag(Rx, POOLTAG_LWF_DEFAULT_RX);
 
-    if (NblCount > 0) {
-        RxCompleteNbls(Filter, NblChain, NblCount);
+    if (!NdisIsNblCountedQueueEmpty(&NblQueue)) {
+        RxCompleteNbls(Filter, &NblQueue);
     }
 }
 
@@ -146,9 +143,10 @@ RxIrpFilter(
     const DATA_FILTER_IN *In = Irp->AssociatedIrp.SystemBuffer;
     DATA_FILTER *DataFilter = NULL;
     KIRQL OldIrql;
-    SIZE_T NblCount = 0;
-    NET_BUFFER_LIST *NblChain = NULL;
+    NBL_COUNTED_QUEUE NblQueue;
     BOOLEAN ClearOnly = FALSE;
+
+    NdisInitializeNblCountedQueue(&NblQueue);
 
     if (IrpSp->Parameters.DeviceIoControl.InputBufferLength < sizeof(*In)) {
         Status = STATUS_BUFFER_TOO_SMALL;
@@ -170,7 +168,7 @@ RxIrpFilter(
 
     KeAcquireSpinLock(&Filter->Lock, &OldIrql);
 
-    NblCount = RxClearFilter(Rx, &NblChain);
+    RxClearFilter(Rx, &NblQueue);
 
     if (!ClearOnly) {
         Rx->DataFilter = DataFilter;
@@ -188,8 +186,8 @@ Exit:
         FnIoDeleteFilter(DataFilter);
     }
 
-    if (NblCount > 0) {
-        RxCompleteNbls(Filter, NblChain, NblCount);
+    if (!NdisIsNblCountedQueueEmpty(&NblQueue)) {
+        RxCompleteNbls(Filter, &NblQueue);
     }
 
     return Status;
@@ -273,12 +271,13 @@ RxIrpFlush(
 {
     NTSTATUS Status;
     LWF_FILTER *Filter = Rx->Default->Filter;
-    NET_BUFFER_LIST *NblChain;
-    SIZE_T NblCount;
+    NBL_COUNTED_QUEUE NblQueue;
     KIRQL OldIrql;
 
     UNREFERENCED_PARAMETER(Irp);
     UNREFERENCED_PARAMETER(IrpSp);
+
+    NdisInitializeNblCountedQueue(&NblQueue);
 
     KeAcquireSpinLock(&Filter->Lock, &OldIrql);
 
@@ -288,16 +287,16 @@ RxIrpFlush(
         goto Exit;
     }
 
-    NblCount = FnIoFlushDequeuedFrames(Rx->DataFilter, &NblChain);
+    FnIoFlushDequeuedFrames(Rx->DataFilter, &NblQueue);
 
     KeReleaseSpinLock(&Filter->Lock, OldIrql);
 
-    if (NblCount > 0) {
-        ASSERT(NblCount <= MAXULONG);
+    if (!NdisIsNblCountedQueueEmpty(&NblQueue)) {
+        ASSERT(NblQueue.NblCount <= MAXULONG);
         NdisFIndicateReceiveNetBufferLists(
-            Filter->NdisFilterHandle, NblChain, NDIS_DEFAULT_PORT_NUMBER,
-            (ULONG)NblCount, 0);
-        ExReleaseRundownProtectionEx(&Filter->NblRundown, (ULONG)NblCount);
+            Filter->NdisFilterHandle, NdisGetNblChainFromNblCountedQueue(&NblQueue),
+            NDIS_DEFAULT_PORT_NUMBER, (ULONG)NblQueue.NblCount, 0);
+        ExReleaseRundownProtectionEx(&Filter->NblRundown, (ULONG)NblQueue.NblCount);
         Status = STATUS_SUCCESS;
     } else {
         Status = STATUS_NOT_FOUND;
@@ -377,4 +376,37 @@ FilterReceiveNetBufferLists(
     }
 
     TraceExitSuccess(TRACE_DATAPATH);
+}
+
+_IRQL_requires_max_(PASSIVE_LEVEL)
+VOID
+RxWatchdogTimeout(
+    _In_ LWF_FILTER *Filter
+    )
+{
+    LIST_ENTRY *Entry;
+    KIRQL OldIrql;
+    NBL_COUNTED_QUEUE NblQueue;
+
+    NdisInitializeNblCountedQueue(&NblQueue);
+
+    KeAcquireSpinLock(&Filter->Lock, &OldIrql);
+
+    Entry = Filter->RxFilterList.Flink;
+
+    while (Entry != &Filter->RxFilterList) {
+        DEFAULT_RX *Rx = CONTAINING_RECORD(Entry, DEFAULT_RX, DataFilterLink);
+        Entry = Entry->Flink;
+
+        if (FnIoIsFilterWatchdogExpired(Rx->DataFilter)) {
+            FilterWatchdogFailure(Filter, "NBL");
+            RxClearFilter(Rx, &NblQueue);
+        }
+    }
+
+    KeReleaseSpinLock(&Filter->Lock, OldIrql);
+
+    if (!NdisIsNblCountedQueueEmpty(&NblQueue)) {
+        RxCompleteNbls(Filter, &NblQueue);
+    }
 }

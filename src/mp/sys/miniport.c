@@ -37,6 +37,27 @@ DEFINE_OFFLOAD_REGISTRY_REGKEY(RscIPv4);
 DEFINE_OFFLOAD_REGISTRY_REGKEY(RscIPv6);
 DEFINE_OFFLOAD_REGISTRY_REGKEY(UdpRsc);
 
+static FN_TIMER_CALLBACK MpWatchdogTimeout;
+
+_IRQL_requires_max_(DISPATCH_LEVEL)
+VOID
+MpWatchdogFailure(
+    _In_ ADAPTER_CONTEXT *Adapter,
+    _In_z_ CONST CHAR *WatchdogType
+    )
+{
+    //
+    // Handle a watchdog failure. In the future we may extend this to
+    // conditionally break into a debugger, take a live kernel dump, etc.
+    //
+    // For now, just log the error.
+    //
+
+    TraceError(
+        TRACE_CONTROL, "Adapter=%p IfIndex=%u %s watchdog expired",
+        Adapter, Adapter->IfIndex, WatchdogType);
+}
+
 static
 const NDIS_STRING *
 GetOffloadRegKeyName(
@@ -60,6 +81,11 @@ MpCleanupAdapter(
    _Inout_ ADAPTER_CONTEXT *Adapter
    )
 {
+    if (Adapter->WatchdogTimer != NULL) {
+        FnTimerClose(Adapter->WatchdogTimer);
+        Adapter->WatchdogTimer = NULL;
+    }
+
     MpCleanupRssQueues(Adapter);
 
     if (Adapter->Shared != NULL) {
@@ -106,6 +132,12 @@ MpCreateAdapter(
     Adapter->Shared = SharedAdapterCreate(Adapter);
     if (Adapter->Shared == NULL) {
         Status = STATUS_NO_MEMORY;
+        goto Exit;
+    }
+
+    Status =
+        FnTimerCreate(&Adapter->WatchdogTimer, MpWatchdogTimeout, Adapter, RTL_SEC_TO_MILLISEC(1));
+    if (!NT_SUCCESS(Status)) {
         goto Exit;
     }
 
@@ -889,6 +921,19 @@ MiniportUnloadHandler(
     TraceExitSuccess(TRACE_CONTROL);
 
     WPP_CLEANUP(DriverObject);
+}
+
+static
+_IRQL_requires_max_(PASSIVE_LEVEL)
+VOID
+MpWatchdogTimeout(
+    _In_ VOID *CallbackContext
+    )
+{
+    ADAPTER_CONTEXT *Adapter = CallbackContext;
+
+    ExclusiveWatchdogTimeout(Adapter);
+    SharedWatchdogTimeout(Adapter->Shared);
 }
 
 _Function_class_(DRIVER_INITIALIZE)

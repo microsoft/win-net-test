@@ -50,23 +50,46 @@ CONST UINT32 MpSupportedOidArraySize = sizeof(MpSupportedOidArray);
 
 static PCSTR MpDriverFriendlyName = "FNMP";
 
+typedef struct _FN_OID_REQUEST_ENTRY {
+    NDIS_OID_REQUEST *NdisRequest;
+    LIST_ENTRY Entry;
+    ULONGLONG Timestamp;
+} FN_OID_REQUEST_ENTRY;
+
 static
-LIST_ENTRY *
-MpOidRequestToListEntry(
-    _In_ NDIS_OID_REQUEST *NdisRequest
+VOID
+MpFreeOidRequestEntry(
+    _In_ FN_OID_REQUEST_ENTRY *Entry
     )
 {
-    C_ASSERT(RTL_FIELD_SIZE(NDIS_OID_REQUEST, MiniportReserved) >= sizeof(LIST_ENTRY));
-    return (LIST_ENTRY *)NdisRequest->MiniportReserved;
+    ExFreePoolWithTag(Entry, POOLTAG_MP_OID);
 }
 
 static
-NDIS_OID_REQUEST *
-MpListEntryToOidRequest(
+FN_OID_REQUEST_ENTRY *
+MpCreateOidRequestEntry(
+    _In_ NDIS_OID_REQUEST *NdisRequest
+    )
+{
+    FN_OID_REQUEST_ENTRY *Entry =
+        ExAllocatePoolZero(NonPagedPoolNx, sizeof(*Entry), POOLTAG_MP_OID);
+
+    if (Entry != NULL) {
+        InitializeListHead(&Entry->Entry);
+        Entry->NdisRequest = NdisRequest;
+        Entry->Timestamp = KeQueryUnbiasedInterruptTime();
+    }
+
+    return Entry;
+}
+
+static
+FN_OID_REQUEST_ENTRY *
+MpListEntryToOidRequestEntry(
     _In_ LIST_ENTRY *ListEntry
     )
 {
-    return CONTAINING_RECORD(ListEntry, NDIS_OID_REQUEST, MiniportReserved);
+    return CONTAINING_RECORD(ListEntry, FN_OID_REQUEST_ENTRY, Entry);
 }
 
 static
@@ -91,9 +114,17 @@ MpFilterOid(
         if (NdisRequest->DATA.Oid == Filter->Oid &&
             NdisRequest->RequestType == Filter->RequestType &&
             RequestInterface == Filter->RequestInterface) {
+            FN_OID_REQUEST_ENTRY *OidEntry;
+
+            OidEntry = MpCreateOidRequestEntry(NdisRequest);
+            if (OidEntry == NULL) {
+                Status = NDIS_STATUS_RESOURCES;
+                break;
+            }
+
             InsertTailList(
                 &Adapter->FilteredOidRequestLists[RequestInterface],
-                MpOidRequestToListEntry(NdisRequest));
+                &OidEntry->Entry);
             Status = NDIS_STATUS_PENDING;
             break;
         }
@@ -748,10 +779,44 @@ MpOidClearFilterAndFlush(
     for (OID_REQUEST_INTERFACE Interface = 0; Interface < OID_REQUEST_INTERFACE_MAX; Interface++) {
         while (!IsListEmpty(&RequestLists[Interface])) {
             LIST_ENTRY *ListEntry = RemoveHeadList(&RequestLists[Interface]);
+            FN_OID_REQUEST_ENTRY *RequestEntry = MpListEntryToOidRequestEntry(ListEntry);
+
             MpOidCompleteRequest(
-                Adapter, Interface, NDIS_STATUS_PENDING, MpListEntryToOidRequest(ListEntry));
+                Adapter, Interface, NDIS_STATUS_PENDING, RequestEntry->NdisRequest);
+            MpFreeOidRequestEntry(RequestEntry);
         }
     }
+}
+
+_IRQL_requires_max_(DISPATCH_LEVEL)
+BOOLEAN
+MpOidWatchdogIsExpired(
+    _In_ ADAPTER_CONTEXT *Adapter
+    )
+{
+    static const ULONGLONG WatchdogGracePeriod = RTL_SEC_TO_100NANOSEC(5);
+    BOOLEAN Expired = FALSE;
+    KIRQL OldIrql;
+    ULONGLONG CurrentTime = KeQueryUnbiasedInterruptTime();
+
+    KeAcquireSpinLock(&Adapter->Lock, &OldIrql);
+
+    for (OID_REQUEST_INTERFACE Interface = 0; Interface < OID_REQUEST_INTERFACE_MAX; Interface++) {
+        for (LIST_ENTRY *Entry = Adapter->FilteredOidRequestLists[Interface].Flink;
+            Entry != &Adapter->FilteredOidRequestLists[Interface];
+            Entry = Entry->Flink) {
+            FN_OID_REQUEST_ENTRY *RequestEntry = MpListEntryToOidRequestEntry(Entry);
+
+            if (CurrentTime > RequestEntry->Timestamp + WatchdogGracePeriod) {
+                Expired = TRUE;
+                break;
+            }
+        }
+    }
+
+    KeReleaseSpinLock(&Adapter->Lock, OldIrql);
+
+    return Expired;
 }
 
 _IRQL_requires_max_(PASSIVE_LEVEL)
@@ -829,26 +894,28 @@ Exit:
 }
 
 static
-NDIS_OID_REQUEST *
+FN_OID_REQUEST_ENTRY *
 MpOidFindFilteredOidByKey(
     _In_ ADAPTER_CONTEXT *Adapter,
     _In_ const OID_KEY *Key
     )
 {
+    FN_OID_REQUEST_ENTRY *RequestEntry;
     NDIS_OID_REQUEST *Request;
 
     if (IsListEmpty(&Adapter->FilteredOidRequestLists[Key->RequestInterface])) {
         return NULL;
     }
 
-    Request =
-        MpListEntryToOidRequest(Adapter->FilteredOidRequestLists[Key->RequestInterface].Flink);
+    RequestEntry =
+        MpListEntryToOidRequestEntry(Adapter->FilteredOidRequestLists[Key->RequestInterface].Flink);
+    Request = RequestEntry->NdisRequest;
 
     if (Request->DATA.Oid != Key->Oid || Request->RequestType != Key->RequestType) {
         return NULL;
     }
 
-    return Request;
+    return RequestEntry;
 }
 
 _IRQL_requires_max_(PASSIVE_LEVEL)
@@ -860,6 +927,7 @@ MpIrpOidGetRequest(
     )
 {
     NTSTATUS Status;
+    FN_OID_REQUEST_ENTRY *RequestEntry;
     NDIS_OID_REQUEST *Request;
     OID_GET_REQUEST_IN *In;
     VOID *InformationBuffer;
@@ -887,11 +955,13 @@ MpIrpOidGetRequest(
     KeAcquireSpinLock(&Adapter->Lock, &OldIrql);
     IsLockHeld = TRUE;
 
-    Request = MpOidFindFilteredOidByKey(Adapter, &In->Key);
-    if (Request == NULL) {
+    RequestEntry = MpOidFindFilteredOidByKey(Adapter, &In->Key);
+    if (RequestEntry == NULL) {
         Status = STATUS_NOT_FOUND;
         goto Exit;
     }
+
+    Request = RequestEntry->NdisRequest;
 
     if (Request->RequestType == NdisRequestQueryInformation) {
         InformationBuffer = Request->DATA.QUERY_INFORMATION.InformationBuffer;
@@ -944,6 +1014,7 @@ MpIrpOidCompleteRequest(
     )
 {
     NTSTATUS Status;
+    FN_OID_REQUEST_ENTRY *RequestEntry = NULL;
     NDIS_OID_REQUEST *Request = NULL;
     const OID_COMPLETE_REQUEST_IN *In = NULL;
     BOUNCE_BUFFER InfoBuffer;
@@ -986,11 +1057,13 @@ MpIrpOidCompleteRequest(
     KeAcquireSpinLock(&Adapter->Lock, &OldIrql);
     IsLockHeld = TRUE;
 
-    Request = MpOidFindFilteredOidByKey(Adapter, &In->Key);
-    if (Request == NULL) {
+    RequestEntry = MpOidFindFilteredOidByKey(Adapter, &In->Key);
+    if (RequestEntry == NULL) {
         Status = STATUS_NOT_FOUND;
         goto Exit;
     }
+
+    Request = RequestEntry->NdisRequest;
 
     ASSERT(In->Key.RequestType == Request->RequestType);
 
@@ -1020,7 +1093,8 @@ MpIrpOidCompleteRequest(
         goto Exit;
     }
 
-    RemoveEntryList(MpOidRequestToListEntry(Request));
+    RemoveEntryList(&RequestEntry->Entry);
+
     Status = STATUS_SUCCESS;
 
 Exit:
@@ -1030,6 +1104,7 @@ Exit:
     }
 
     if (NT_SUCCESS(Status)) {
+        ASSERT(RequestEntry != NULL);
         ASSERT(Request != NULL);
 
         if (In->InformationBufferLength > 0) {
@@ -1046,6 +1121,7 @@ Exit:
         }
 
         MpOidCompleteRequest(Adapter, In->Key.RequestInterface, In->Status, Request);
+        MpFreeOidRequestEntry(RequestEntry);
     }
 
     BounceCleanup(&InfoBuffer);

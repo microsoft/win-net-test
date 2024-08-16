@@ -19,3 +19,9 @@ ExclusiveIrpCreate(
     _In_ VOID *InputBuffer,
     _In_ SIZE_T InputBufferLength
     );
+
+_IRQL_requires_max_(PASSIVE_LEVEL)
+VOID
+ExclusiveWatchdogTimeout(
+    _In_ ADAPTER_CONTEXT *Adapter
+    );

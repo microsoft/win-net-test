@@ -86,6 +86,7 @@ typedef struct _ADAPTER_CONTEXT {
     OID_KEY *OidFilterKeys;
     UINT32 OidFilterKeyCount;
     LIST_ENTRY FilteredOidRequestLists[OID_REQUEST_INTERFACE_MAX];
+    FN_TIMER_HANDLE WatchdogTimer;
 
     //
     // Context for an exclusive user mode handle for configuring the adapter.
@@ -163,4 +164,11 @@ MpFillOffload(
     _Out_ NDIS_OFFLOAD *Offload,
     _In_ ADAPTER_CONTEXT *Adapter,
     _In_ ADAPTER_OFFLOAD *AdapterOffload
+    );
+
+_IRQL_requires_max_(DISPATCH_LEVEL)
+VOID
+MpWatchdogFailure(
+    _In_ ADAPTER_CONTEXT *Adapter,
+    _In_z_ CONST CHAR *WatchdogType
     );

@@ -26,6 +26,9 @@ VOID
 MpBasicTxOffload();
 
 VOID
+MpBasicWatchdog();
+
+VOID
 LwfBasicRx();
 
 VOID

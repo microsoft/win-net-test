@@ -8,40 +8,28 @@
 
 typedef struct _SHARED_TX {
     SHARED_CONTEXT *Shared;
-    //
-    // This driver allows NBLs to be held indefinitely by user mode, which is a
-    // bad practice. Unfortunately, it is necessary to hold NBLs for some
-    // configurable interval for test purposes so the only question is whether a
-    // watchdog is also necessary. For now, don't bother.
-    //
     LIST_ENTRY DataFilterLink;
     DATA_FILTER *DataFilter;
 } SHARED_TX;
 
 static
-SIZE_T
+VOID
 _Requires_lock_held_(&Tx->Shared->Adapter->Shared->Lock)
 SharedTxClearFilter(
     _Inout_ SHARED_TX *Tx,
-    _Out_ NET_BUFFER_LIST **NblChain
+    _Inout_ NBL_COUNTED_QUEUE *NblQueue
     )
 {
-    SIZE_T NblCount = 0;
-
-    *NblChain = NULL;
-
     if (!IsListEmpty(&Tx->DataFilterLink)) {
         RemoveEntryList(&Tx->DataFilterLink);
         InitializeListHead(&Tx->DataFilterLink);
     }
 
     if (Tx->DataFilter != NULL) {
-        NblCount = FnIoFlushAllFrames(Tx->DataFilter, NblChain);
+        FnIoFlushAllFrames(Tx->DataFilter, NblQueue);
         FnIoDeleteFilter(Tx->DataFilter);
         Tx->DataFilter = NULL;
     }
-
-    return NblCount;
 }
 
 VOID
@@ -62,20 +50,22 @@ SharedTxCleanup(
     )
 {
     ADAPTER_SHARED *AdapterShared = Tx->Shared->Adapter->Shared;
-    NET_BUFFER_LIST *NblChain = NULL;
-    SIZE_T NblCount = 0;
+    NBL_COUNTED_QUEUE NblQueue;
     KIRQL OldIrql;
+
+    NdisInitializeNblCountedQueue(&NblQueue);
 
     KeAcquireSpinLock(&AdapterShared->Lock, &OldIrql);
 
-    NblCount = SharedTxClearFilter(Tx, &NblChain);
+    SharedTxClearFilter(Tx, &NblQueue);
 
     KeReleaseSpinLock(&AdapterShared->Lock, OldIrql);
 
     ExFreePoolWithTag(Tx, POOLTAG_MP_SHARED_TX);
 
-    if (NblCount > 0) {
-        SharedTxCompleteNbls(AdapterShared, NblChain, NblCount);
+    if (!NdisIsNblCountedQueueEmpty(&NblQueue)) {
+        SharedTxCompleteNbls(
+            AdapterShared, NdisGetNblChainFromNblCountedQueue(&NblQueue), NblQueue.NblCount);
     }
 }
 
@@ -117,11 +107,21 @@ SharedTxFilterNbl(
     )
 {
     LIST_ENTRY *Entry = Shared->TxFilterList.Flink;
+    NTSTATUS Status;
 
     while (Entry != &Shared->TxFilterList) {
         SHARED_TX *Tx = CONTAINING_RECORD(Entry, SHARED_TX, DataFilterLink);
         Entry = Entry->Flink;
-        if (FnIoFilterNbl(Tx->DataFilter, Nbl)) {
+
+        Status = FnIoFilterNbl(Tx->DataFilter, Nbl);
+
+        if (!NT_SUCCESS(Status)) {
+            TraceError(
+                TRACE_DATAPATH, "FnIoFilterNbl failed Adapter=%p Status=%!STATUS!",
+                Shared->Adapter, Status);
+        }
+
+        if (Status == STATUS_PENDING) {
             return TRUE;
         }
     }
@@ -180,6 +180,41 @@ MpSendNetBufferLists(
 }
 
 _IRQL_requires_max_(PASSIVE_LEVEL)
+VOID
+SharedTxWatchdogTimeout(
+    _In_ ADAPTER_SHARED *AdapterShared
+    )
+{
+    ADAPTER_CONTEXT *Adapter = AdapterShared->Adapter;
+    LIST_ENTRY *Entry;
+    KIRQL OldIrql;
+    NBL_COUNTED_QUEUE NblQueue;
+
+    NdisInitializeNblCountedQueue(&NblQueue);
+
+    KeAcquireSpinLock(&AdapterShared->Lock, &OldIrql);
+
+    Entry = AdapterShared->TxFilterList.Flink;
+
+    while (Entry != &AdapterShared->TxFilterList) {
+        SHARED_TX *Tx = CONTAINING_RECORD(Entry, SHARED_TX, DataFilterLink);
+        Entry = Entry->Flink;
+
+        if (FnIoIsFilterWatchdogExpired(Tx->DataFilter)) {
+            MpWatchdogFailure(Adapter, "NBL");
+            SharedTxClearFilter(Tx, &NblQueue);
+        }
+    }
+
+    KeReleaseSpinLock(&AdapterShared->Lock, OldIrql);
+
+    if (!NdisIsNblCountedQueueEmpty(&NblQueue)) {
+        SharedTxCompleteNbls(
+            AdapterShared, NdisGetNblChainFromNblCountedQueue(&NblQueue), NblQueue.NblCount);
+    }
+}
+
+_IRQL_requires_max_(PASSIVE_LEVEL)
 NTSTATUS
 SharedIrpTxFilter(
     _In_ SHARED_TX *Tx,
@@ -192,9 +227,10 @@ SharedIrpTxFilter(
     CONST DATA_FILTER_IN *In = Irp->AssociatedIrp.SystemBuffer;
     DATA_FILTER *DataFilter = NULL;
     KIRQL OldIrql;
-    SIZE_T NblCount = 0;
-    NET_BUFFER_LIST *NblChain = NULL;
+    NBL_COUNTED_QUEUE NblQueue;
     BOOLEAN ClearOnly = FALSE;
+
+    NdisInitializeNblCountedQueue(&NblQueue);
 
     if (IrpSp->Parameters.DeviceIoControl.InputBufferLength < sizeof(*In)) {
         Status = STATUS_BUFFER_TOO_SMALL;
@@ -216,7 +252,7 @@ SharedIrpTxFilter(
 
     KeAcquireSpinLock(&AdapterShared->Lock, &OldIrql);
 
-    NblCount = SharedTxClearFilter(Tx, &NblChain);
+    SharedTxClearFilter(Tx, &NblQueue);
 
     if (!ClearOnly) {
         Tx->DataFilter = DataFilter;
@@ -234,8 +270,10 @@ Exit:
         FnIoDeleteFilter(DataFilter);
     }
 
-    if (NblCount > 0) {
-        SharedTxCompleteNbls(AdapterShared, NblChain, NblCount);
+    if (!NdisIsNblCountedQueueEmpty(&NblQueue)) {
+        Status = STATUS_SUCCESS;
+        SharedTxCompleteNbls(
+            AdapterShared, NdisGetNblChainFromNblCountedQueue(&NblQueue), NblQueue.NblCount);
     }
 
     return Status;
@@ -319,12 +357,13 @@ SharedIrpTxFlush(
 {
     NTSTATUS Status;
     ADAPTER_SHARED *AdapterShared = Tx->Shared->Adapter->Shared;
-    NET_BUFFER_LIST *NblChain;
-    SIZE_T NblCount;
+    NBL_COUNTED_QUEUE NblQueue;
     KIRQL OldIrql;
 
     UNREFERENCED_PARAMETER(Irp);
     UNREFERENCED_PARAMETER(IrpSp);
+
+    NdisInitializeNblCountedQueue(&NblQueue);
 
     KeAcquireSpinLock(&AdapterShared->Lock, &OldIrql);
 
@@ -334,13 +373,14 @@ SharedIrpTxFlush(
         goto Exit;
     }
 
-    NblCount = FnIoFlushDequeuedFrames(Tx->DataFilter, &NblChain);
+    FnIoFlushDequeuedFrames(Tx->DataFilter, &NblQueue);
 
     KeReleaseSpinLock(&AdapterShared->Lock, OldIrql);
 
-    if (NblCount > 0) {
+    if (!NdisIsNblCountedQueueEmpty(&NblQueue)) {
         Status = STATUS_SUCCESS;
-        SharedTxCompleteNbls(AdapterShared, NblChain, NblCount);
+        SharedTxCompleteNbls(
+            AdapterShared, NdisGetNblChainFromNblCountedQueue(&NblQueue), NblQueue.NblCount);
     } else {
         Status = STATUS_NOT_FOUND;
     }

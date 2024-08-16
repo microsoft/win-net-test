@@ -327,6 +327,7 @@ size_t IOCTL_BUFFER_SIZES[] =
     0,
     sizeof(USHORT),
     sizeof(USHORT),
+    0,
 };
 
 static_assert(
@@ -441,6 +442,8 @@ TestDrvCtlEvtIoDeviceControl(
     case IOCTL_MP_BASIC_TX_OFFLOAD:
         TestDrvCtlRun(MpBasicTxOffload());
         break;
+    case IOCTL_MP_BASIC_WATCHDOG:
+        TestDrvCtlRun(MpBasicWatchdog());
     case IOCTL_LWF_BASIC_RX:
         TestDrvCtlRun(LwfBasicRx());
         break;

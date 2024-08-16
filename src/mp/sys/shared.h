@@ -42,3 +42,9 @@ VOID
 SharedAdapterCleanup(
     _In_ ADAPTER_SHARED *AdapterShared
     );
+
+_IRQL_requires_max_(PASSIVE_LEVEL)
+VOID
+SharedWatchdogTimeout(
+    _In_ ADAPTER_SHARED *AdapterShared
+    );

@@ -16,6 +16,7 @@
 
 #include <bounce.h>
 #include <fnio.h>
+#include <fntimer.h>
 
 #include "default.h"
 #include "dispatch.h"

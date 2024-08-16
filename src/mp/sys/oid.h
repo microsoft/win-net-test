@@ -42,3 +42,9 @@ VOID
 MpOidClearFilterAndFlush(
     _In_ ADAPTER_CONTEXT *Adapter
     );
+
+_IRQL_requires_max_(DISPATCH_LEVEL)
+BOOLEAN
+MpOidWatchdogIsExpired(
+    _In_ ADAPTER_CONTEXT *Adapter
+    );
