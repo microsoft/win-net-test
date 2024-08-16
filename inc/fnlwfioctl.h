@@ -7,6 +7,8 @@
 
 EXTERN_C_START
 
+#define FNLWF_IOCTL_CURRENT_VERSION 1
+
 #define FNLWF_DEVICE_NAME L"\\Device\\fnlwf"
 
 #define FNLWF_OPEN_PACKET_NAME "FnLwfOpenPacket0"
@@ -22,6 +24,7 @@ typedef enum _FNLWF_FILE_TYPE {
 // Open packet, the common header for NtCreateFile extended attributes.
 //
 typedef struct _FNLWF_OPEN_PACKET {
+    UINT32 ApiVersion;
     FNLWF_FILE_TYPE ObjectType;
 } FNLWF_OPEN_PACKET;
 

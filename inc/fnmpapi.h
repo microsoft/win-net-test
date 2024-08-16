@@ -74,6 +74,7 @@ FnMpInitializeEa(
     EaHeader->EaValueLength = (USHORT)(EaLength - sizeof(*EaHeader) - sizeof(FNMP_OPEN_PACKET_NAME));
 
     OpenPacket = (FNMP_OPEN_PACKET *)(EaHeader->EaName + sizeof(FNMP_OPEN_PACKET_NAME));
+    OpenPacket->ApiVersion = FNMP_IOCTL_CURRENT_VERSION;
     OpenPacket->ObjectType = FileType;
 
     return OpenPacket + 1;
@@ -413,7 +414,6 @@ FnMpUpdateTaskOffload2(
     In.OffloadParameters = OffloadParameters;
     In.OffloadParametersLength = OffloadParametersLength;
     In.OffloadOptions = OffloadOptions;
-    In.OffloadOptionsLength = OffloadOptions != NULL ? sizeof(*OffloadOptions) : 0;
 
     return
         FnIoctl(Handle, FNMP_IOCTL_MINIPORT_UPDATE_TASK_OFFLOAD, &In, sizeof(In), NULL, 0, NULL, NULL);

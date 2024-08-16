@@ -74,6 +74,11 @@ MpIrpCreate(
     }
     OpenPacket = (FNMP_OPEN_PACKET *)(EaBuffer->EaName + EaBuffer->EaNameLength + 1);
 
+    if (OpenPacket->ApiVersion > FNMP_IOCTL_CURRENT_VERSION) {
+        Status = STATUS_NOT_SUPPORTED;
+        goto Exit;
+    }
+
     switch (OpenPacket->ObjectType) {
     case FNMP_FILE_TYPE_SHARED:
         CreateRoutine = SharedIrpCreate;

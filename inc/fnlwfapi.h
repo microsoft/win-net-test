@@ -73,6 +73,7 @@ FnLwfInitializeEa(
     EaHeader->EaValueLength = (USHORT)(EaLength - sizeof(*EaHeader) - sizeof(FNLWF_OPEN_PACKET_NAME));
 
     OpenPacket = (FNLWF_OPEN_PACKET *)(EaHeader->EaName + sizeof(FNLWF_OPEN_PACKET_NAME));
+    OpenPacket->ApiVersion = FNLWF_IOCTL_CURRENT_VERSION;
     OpenPacket->ObjectType = FileType;
 
     return OpenPacket + 1;

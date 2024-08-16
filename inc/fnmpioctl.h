@@ -7,6 +7,8 @@
 
 EXTERN_C_START
 
+#define FNMP_IOCTL_CURRENT_VERSION 1
+
 #define FNMP_DEVICE_NAME L"\\Device\\FNMP"
 
 #define FNMP_OPEN_PACKET_NAME "FnMpOpenPacket0"
@@ -23,6 +25,7 @@ typedef enum _FNMP_FILE_TYPE {
 // Open packet, the common header for NtCreateFile extended attributes.
 //
 typedef struct _FNMP_OPEN_PACKET {
+    UINT32 ApiVersion;
     FNMP_FILE_TYPE ObjectType;
 } FNMP_OPEN_PACKET;
 
@@ -102,7 +105,6 @@ typedef struct _MINIPORT_UPDATE_TASK_OFFLOAD_IN {
     const NDIS_OFFLOAD_PARAMETERS *OffloadParameters;
     UINT32 OffloadParametersLength;
     const FN_OFFLOAD_OPTIONS *OffloadOptions;
-    UINT32 OffloadOptionsLength;
 } MINIPORT_UPDATE_TASK_OFFLOAD_IN;
 
 EXTERN_C_END
