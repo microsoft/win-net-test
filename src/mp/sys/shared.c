@@ -174,13 +174,13 @@ SharedIrpUpdateTaskOffload(
             NDIS_STATUS_TASK_OFFLOAD_CURRENT_CONFIG :
             NDIS_STATUS_TASK_OFFLOAD_HARDWARE_CAPABILITIES;
 
-    if (In->OffloadOptionsLength > 0) {
+    if (In->OffloadOptions != NULL) {
         FN_OFFLOAD_OPTIONS *Options;
 
         Status =
             BounceBuffer(
-                &OffloadOptions, Irp->RequestorMode, In->OffloadOptions, In->OffloadOptionsLength,
-                __alignof(FN_OFFLOAD_OPTIONS));
+                &OffloadOptions, Irp->RequestorMode, In->OffloadOptions,
+                sizeof(*In->OffloadOptions), __alignof(FN_OFFLOAD_OPTIONS));
         if (!NT_SUCCESS(Status)) {
             goto Exit;
         }
@@ -189,8 +189,7 @@ SharedIrpUpdateTaskOffload(
 
         RtlAcquirePushLockExclusive(&Adapter->PushLock);
 
-        if (In->OffloadOptionsLength >= RTL_SIZEOF_THROUGH_FIELD(FN_OFFLOAD_OPTIONS, GsoMaxOffloadSize) &&
-            Options->GsoMaxOffloadSize != 0) {
+        if (Options->GsoMaxOffloadSize != 0) {
             MpGetOffload(Adapter, In->OffloadType)->GsoMaxOffloadSize = Options->GsoMaxOffloadSize;
         }
 
