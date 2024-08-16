@@ -7,6 +7,8 @@
 
 EXTERN_C_START
 
+#define FNMP_IOCTL_CURRENT_VERSION 1
+
 #define FNMP_DEVICE_NAME L"\\Device\\FNMP"
 
 #define FNMP_OPEN_PACKET_NAME "FnMpOpenPacket0"

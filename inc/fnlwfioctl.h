@@ -7,6 +7,8 @@
 
 EXTERN_C_START
 
+#define FNLWF_IOCTL_CURRENT_VERSION 1
+
 #define FNLWF_DEVICE_NAME L"\\Device\\fnlwf"
 
 #define FNLWF_OPEN_PACKET_NAME "FnLwfOpenPacket0"

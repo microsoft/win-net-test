@@ -71,6 +71,11 @@ LwfIrpCreate(
     }
     OpenPacket = (FNLWF_OPEN_PACKET *)(EaBuffer->EaName + EaBuffer->EaNameLength + 1);
 
+    if (OpenPacket->ApiVersion > FNLWF_IOCTL_CURRENT_VERSION) {
+        Status = STATUS_NOT_SUPPORTED;
+        goto Exit;
+    }
+
     switch (OpenPacket->ObjectType) {
     case FNLWF_FILE_TYPE_DEFAULT:
         CreateRoutine = DefaultIrpCreate;

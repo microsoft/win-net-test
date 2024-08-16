@@ -61,7 +61,6 @@ FnMpInitializeEa(
     _In_ UINT32 EaLength
     )
 {
-    static const UINT32 FNMP_API_CURRENT_VERSION = 1;
     FILE_FULL_EA_INFORMATION *EaHeader = (FILE_FULL_EA_INFORMATION *)EaBuffer;
     FNMP_OPEN_PACKET *OpenPacket;
 
@@ -75,7 +74,7 @@ FnMpInitializeEa(
     EaHeader->EaValueLength = (USHORT)(EaLength - sizeof(*EaHeader) - sizeof(FNMP_OPEN_PACKET_NAME));
 
     OpenPacket = (FNMP_OPEN_PACKET *)(EaHeader->EaName + sizeof(FNMP_OPEN_PACKET_NAME));
-    OpenPacket->ApiVersion = FNMP_API_CURRENT_VERSION;
+    OpenPacket->ApiVersion = FNMP_IOCTL_CURRENT_VERSION;
     OpenPacket->ObjectType = FileType;
 
     return OpenPacket + 1;
