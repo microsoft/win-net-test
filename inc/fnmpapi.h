@@ -5,6 +5,7 @@
 
 #pragma once
 
+#include <fnapiver.h>
 #include <fniotypes.h>
 #if defined(_KERNEL_MODE)
 #include <fnioctl_km.h>
@@ -17,6 +18,11 @@
 #include <fnmpapiconfig.h>
 
 EXTERN_C_START
+
+extern const DECLSPEC_SELECTANY FN_API_VER FnMpApiCurrentVersion = {
+    1, // Major
+    0, // Minor
+};
 
 #define FNMPAPI inline
 
@@ -74,6 +80,7 @@ FnMpInitializeEa(
     EaHeader->EaValueLength = (USHORT)(EaLength - sizeof(*EaHeader) - sizeof(FNMP_OPEN_PACKET_NAME));
 
     OpenPacket = (FNMP_OPEN_PACKET *)(EaHeader->EaName + sizeof(FNMP_OPEN_PACKET_NAME));
+    OpenPacket->ApiVersion = FnMpApiCurrentVersion;
     OpenPacket->ObjectType = FileType;
 
     return OpenPacket + 1;

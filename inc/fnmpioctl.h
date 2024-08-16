@@ -5,6 +5,8 @@
 
 #pragma once
 
+#include <fnapiver.h>
+
 EXTERN_C_START
 
 #define FNMP_DEVICE_NAME L"\\Device\\FNMP"
@@ -23,6 +25,7 @@ typedef enum _FNMP_FILE_TYPE {
 // Open packet, the common header for NtCreateFile extended attributes.
 //
 typedef struct _FNMP_OPEN_PACKET {
+    FN_API_VER ApiVersion;
     FNMP_FILE_TYPE ObjectType;
 } FNMP_OPEN_PACKET;
 
