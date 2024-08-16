@@ -68,11 +68,18 @@ RxFilterNbl(
     )
 {
     LIST_ENTRY *Entry = Filter->RxFilterList.Flink;
+    NTSTATUS Status;
 
     while (Entry != &Filter->RxFilterList) {
         DEFAULT_RX *Rx = CONTAINING_RECORD(Entry, DEFAULT_RX, DataFilterLink);
         Entry = Entry->Flink;
-        if (FnIoFilterNbl(Rx->DataFilter, Nbl)) {
+        Status = FnIoFilterNbl(Rx->DataFilter, Nbl);
+
+        if (!NT_SUCCESS(Status)) {
+            TraceError(TRACE_DATAPATH, "FnIoFilterNbl failed Status=%!STATUS!", Status);
+        }
+
+        if (Status == STATUS_PENDING) {
             return TRUE;
         }
     }

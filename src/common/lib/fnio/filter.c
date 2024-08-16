@@ -12,7 +12,41 @@ typedef struct _DATA_FILTER {
     NBL_COUNTED_QUEUE NblReturn;
 } DATA_FILTER;
 
-#define NBL_PROCESSOR_NUMBER(Nbl) (*(PROCESSOR_NUMBER *)(&(Nbl)->Scratch))
+typedef struct _DATA_FILTER_NBL_CONTEXT {
+    UINT32 Signature;
+    PROCESSOR_NUMBER ProcessorNumber;
+    ULONGLONG Timestamp;
+} DATA_FILTER_NBL_CONTEXT;
+
+#define DATA_FILTER_NBL_CONTEXT_SIGNATURE 'cnfD' // Dfnc
+
+static
+DATA_FILTER_NBL_CONTEXT *
+FnIoFilterNblContext(
+    _In_ NET_BUFFER_LIST *Nbl
+    )
+{
+    DATA_FILTER_NBL_CONTEXT *Context = Nbl->Scratch;
+
+    ASSERT(Context != NULL);
+    ASSERT(Context->Signature == DATA_FILTER_NBL_CONTEXT_SIGNATURE);
+
+    return Context;
+}
+
+static
+VOID
+FnIoFilterNblSetContext(
+    _In_ NET_BUFFER_LIST *Nbl,
+    _In_opt_ DATA_FILTER_NBL_CONTEXT *Context
+    )
+{
+    if (Context != NULL) {
+        Context->Signature = DATA_FILTER_NBL_CONTEXT_SIGNATURE;
+    }
+
+    Nbl->Scratch = Context;
+}
 
 _IRQL_requires_max_(DISPATCH_LEVEL)
 DATA_FILTER *
@@ -106,15 +140,15 @@ FnIoFilterNb(
 }
 
 _IRQL_requires_max_(DISPATCH_LEVEL)
-BOOLEAN
+NTSTATUS
 FnIoFilterNbl(
     _In_ DATA_FILTER *Filter,
     _In_ NET_BUFFER_LIST *Nbl
     )
 {
     NET_BUFFER *NetBuffer = NET_BUFFER_LIST_FIRST_NB(Nbl);
-    PROCESSOR_NUMBER ProcessorNumber;
     BOOLEAN MatchAnyNbs = FALSE;
+    NTSTATUS Status = STATUS_SUCCESS;
 
     ASSERT(NetBuffer != NULL);
 
@@ -126,12 +160,25 @@ FnIoFilterNbl(
     } while ((NetBuffer = NetBuffer->Next) != NULL);
 
     if (MatchAnyNbs) {
-        KeGetCurrentProcessorNumberEx(&ProcessorNumber);
-        NBL_PROCESSOR_NUMBER(Nbl) = ProcessorNumber;
+        DATA_FILTER_NBL_CONTEXT *Context;
+
+        Context = ExAllocatePoolZero(NonPagedPoolNx, sizeof(*Context), POOLTAG_FNIO_FILTER);
+        if (Context == NULL) {
+            Status = STATUS_NO_MEMORY;
+            goto Exit;
+        }
+
+        Context->Timestamp = KeQueryUnbiasedInterruptTime();
+        KeGetCurrentProcessorNumberEx(&Context->ProcessorNumber);
+        FnIoFilterNblSetContext(Nbl, Context);
         NdisAppendSingleNblToNblCountedQueue(&Filter->NblQueue, Nbl);
+
+        Status = STATUS_PENDING;
     }
 
-    return MatchAnyNbs;
+Exit:
+
+    return Status;
 }
 
 _IRQL_requires_max_(DISPATCH_LEVEL)
@@ -226,7 +273,7 @@ FnIoGetFilteredFrame(
     Buffer = (DATA_BUFFER *)(Frame + 1);
     Data = (UCHAR *)(Buffer + BufferCount);
 
-    Frame->Output.ProcessorNumber = NBL_PROCESSOR_NUMBER(Nbl);
+    Frame->Output.ProcessorNumber = FnIoFilterNblContext(Nbl)->ProcessorNumber;
     Frame->Output.RssHash = NET_BUFFER_LIST_GET_HASH_VALUE(Nbl);
     Frame->Output.Checksum.Value = NET_BUFFER_LIST_INFO(Nbl, TcpIpChecksumNetBufferListInfo);
     Frame->Output.Lso.Value = NET_BUFFER_LIST_INFO(Nbl, TcpLargeSendNetBufferListInfo);
@@ -314,6 +361,20 @@ FnIoDequeueFilteredFrame(
 }
 
 _IRQL_requires_max_(DISPATCH_LEVEL)
+VOID
+FnIoFreeFlushedFrameContexts(
+    _Inout_ NET_BUFFER_LIST *NblChain
+    )
+{
+    while (NblChain != NULL) {
+        ExFreePoolWithTag(FnIoFilterNblContext(NblChain), POOLTAG_FNIO_FILTER);
+        FnIoFilterNblSetContext(NblChain, NULL);
+
+        NblChain = NblChain->Next;
+    }
+}
+
+_IRQL_requires_max_(DISPATCH_LEVEL)
 SIZE_T
 FnIoFlushDequeuedFrames(
     _In_ DATA_FILTER *Filter,
@@ -326,6 +387,8 @@ FnIoFlushDequeuedFrames(
 
     NdisAppendNblCountedQueueToNblCountedQueueFast(&FlushChain, &Filter->NblReturn);
     *NblChain = NdisGetNblChainFromNblCountedQueue(&FlushChain);
+
+    FnIoFreeFlushedFrameContexts(*NblChain);
 
     return FlushChain.NblCount;
 }
@@ -344,6 +407,8 @@ FnIoFlushAllFrames(
     NdisAppendNblCountedQueueToNblCountedQueueFast(&FlushChain, &Filter->NblQueue);
     NdisAppendNblCountedQueueToNblCountedQueueFast(&FlushChain, &Filter->NblReturn);
     *NblChain = NdisGetNblChainFromNblCountedQueue(&FlushChain);
+
+    FnIoFreeFlushedFrameContexts(*NblChain);
 
     return FlushChain.NblCount;
 }

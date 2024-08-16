@@ -111,11 +111,19 @@ SharedTxFilterNbl(
     )
 {
     LIST_ENTRY *Entry = Shared->TxFilterList.Flink;
+    NTSTATUS Status;
 
     while (Entry != &Shared->TxFilterList) {
         SHARED_TX *Tx = CONTAINING_RECORD(Entry, SHARED_TX, DataFilterLink);
         Entry = Entry->Flink;
-        if (FnIoFilterNbl(Tx->DataFilter, Nbl)) {
+
+        Status = FnIoFilterNbl(Tx->DataFilter, Nbl);
+
+        if (!NT_SUCCESS(Status)) {
+            TraceError(TRACE_DATAPATH, "FnIoFilterNbl failed Status=%!STATUS!", Status);
+        }
+
+        if (Status == STATUS_PENDING) {
             return TRUE;
         }
     }

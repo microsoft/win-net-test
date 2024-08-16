@@ -28,7 +28,7 @@ FnIoDeleteFilter(
     );
 
 _IRQL_requires_max_(DISPATCH_LEVEL)
-BOOLEAN
+NTSTATUS
 FnIoFilterNbl(
     _In_ DATA_FILTER *Filter,
     _In_ NET_BUFFER_LIST *Nbl
