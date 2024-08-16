@@ -375,40 +375,58 @@ FnIoFreeFlushedFrameContexts(
 }
 
 _IRQL_requires_max_(DISPATCH_LEVEL)
-SIZE_T
+VOID
 FnIoFlushDequeuedFrames(
     _In_ DATA_FILTER *Filter,
-    _Out_ NET_BUFFER_LIST **NblChain
+    _Inout_ NBL_COUNTED_QUEUE *FlushQueue
     )
 {
-    NBL_COUNTED_QUEUE FlushChain;
+    NdisAppendNblCountedQueueToNblCountedQueueFast(FlushQueue, &Filter->NblReturn);
 
-    NdisInitializeNblCountedQueue(&FlushChain);
-
-    NdisAppendNblCountedQueueToNblCountedQueueFast(&FlushChain, &Filter->NblReturn);
-    *NblChain = NdisGetNblChainFromNblCountedQueue(&FlushChain);
-
-    FnIoFreeFlushedFrameContexts(*NblChain);
-
-    return FlushChain.NblCount;
+    FnIoFreeFlushedFrameContexts(NdisGetNblChainFromNblCountedQueue(FlushQueue));
 }
 
 _IRQL_requires_max_(DISPATCH_LEVEL)
-SIZE_T
+VOID
 FnIoFlushAllFrames(
     _In_ DATA_FILTER *Filter,
-    _Out_ NET_BUFFER_LIST **NblChain
+    _Inout_ NBL_COUNTED_QUEUE *FlushQueue
     )
 {
-    NBL_COUNTED_QUEUE FlushChain;
+    NdisAppendNblCountedQueueToNblCountedQueueFast(FlushQueue, &Filter->NblQueue);
+    NdisAppendNblCountedQueueToNblCountedQueueFast(FlushQueue, &Filter->NblReturn);
 
-    NdisInitializeNblCountedQueue(&FlushChain);
+    FnIoFreeFlushedFrameContexts(NdisGetNblChainFromNblCountedQueue(FlushQueue));
+}
 
-    NdisAppendNblCountedQueueToNblCountedQueueFast(&FlushChain, &Filter->NblQueue);
-    NdisAppendNblCountedQueueToNblCountedQueueFast(&FlushChain, &Filter->NblReturn);
-    *NblChain = NdisGetNblChainFromNblCountedQueue(&FlushChain);
+static
+BOOLEAN
+FnIoIsNblQueueWatchdogExpired(
+    _In_ const NBL_COUNTED_QUEUE *NblQueue
+    )
+{
+    static const ULONGLONG WatchdogGracePeriod = RTL_SEC_TO_100NANOSEC(5);
+    ULONGLONG CurrentTime = KeQueryUnbiasedInterruptTime();
 
-    FnIoFreeFlushedFrameContexts(*NblChain);
+    for (NET_BUFFER_LIST *Nbl = NdisGetNblChainFromNblCountedQueue(NblQueue);
+        Nbl != NULL;
+        Nbl = Nbl->Next) {
 
-    return FlushChain.NblCount;
+        if (CurrentTime > FnIoFilterNblContext(Nbl)->Timestamp + WatchdogGracePeriod) {
+            return TRUE;
+        }
+    }
+
+    return FALSE;
+}
+
+_IRQL_requires_max_(DISPATCH_LEVEL)
+BOOLEAN
+FnIoIsFilterWatchdogExpired(
+    _In_ const DATA_FILTER *Filter
+    )
+{
+    return
+        FnIoIsNblQueueWatchdogExpired(&Filter->NblQueue) ||
+        FnIoIsNblQueueWatchdogExpired(&Filter->NblReturn);
 }

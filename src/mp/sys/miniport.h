@@ -165,3 +165,10 @@ MpFillOffload(
     _In_ ADAPTER_CONTEXT *Adapter,
     _In_ ADAPTER_OFFLOAD *AdapterOffload
     );
+
+_IRQL_requires_max_(DISPATCH_LEVEL)
+VOID
+MpWatchdogFailure(
+    _In_ ADAPTER_CONTEXT *Adapter,
+    _In_z_ CONST CHAR *WatchdogType
+    );

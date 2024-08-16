@@ -26,9 +26,9 @@ RxClearFilter(
     _Out_ NET_BUFFER_LIST **NblChain
     )
 {
-    SIZE_T NblCount = 0;
+    NBL_COUNTED_QUEUE NblQueue;
 
-    *NblChain = NULL;
+    NdisInitializeNblCountedQueue(&NblQueue);
 
     if (!IsListEmpty(&Rx->DataFilterLink)) {
         RemoveEntryList(&Rx->DataFilterLink);
@@ -36,12 +36,14 @@ RxClearFilter(
     }
 
     if (Rx->DataFilter != NULL) {
-        NblCount = FnIoFlushAllFrames(Rx->DataFilter, NblChain);
+        FnIoFlushAllFrames(Rx->DataFilter, &NblQueue);
         FnIoDeleteFilter(Rx->DataFilter);
         Rx->DataFilter = NULL;
     }
 
-    return NblCount;
+    *NblChain = NdisGetNblChainFromNblCountedQueue(&NblQueue);
+
+    return NblQueue.NblCount;
 }
 
 static
@@ -282,12 +284,13 @@ RxIrpFlush(
 {
     NTSTATUS Status;
     LWF_FILTER *Filter = Rx->Default->Filter;
-    NET_BUFFER_LIST *NblChain;
-    SIZE_T NblCount;
+    NBL_COUNTED_QUEUE NblQueue;
     KIRQL OldIrql;
 
     UNREFERENCED_PARAMETER(Irp);
     UNREFERENCED_PARAMETER(IrpSp);
+
+    NdisInitializeNblCountedQueue(&NblQueue);
 
     KeAcquireSpinLock(&Filter->Lock, &OldIrql);
 
@@ -297,16 +300,16 @@ RxIrpFlush(
         goto Exit;
     }
 
-    NblCount = FnIoFlushDequeuedFrames(Rx->DataFilter, &NblChain);
+    FnIoFlushDequeuedFrames(Rx->DataFilter, &NblQueue);
 
     KeReleaseSpinLock(&Filter->Lock, OldIrql);
 
-    if (NblCount > 0) {
-        ASSERT(NblCount <= MAXULONG);
+    if (!NdisIsNblCountedQueueEmpty(&NblQueue)) {
+        ASSERT(NblQueue.NblCount <= MAXULONG);
         NdisFIndicateReceiveNetBufferLists(
-            Filter->NdisFilterHandle, NblChain, NDIS_DEFAULT_PORT_NUMBER,
-            (ULONG)NblCount, 0);
-        ExReleaseRundownProtectionEx(&Filter->NblRundown, (ULONG)NblCount);
+            Filter->NdisFilterHandle, NdisGetNblChainFromNblCountedQueue(&NblQueue),
+            NDIS_DEFAULT_PORT_NUMBER, (ULONG)NblQueue.NblCount, 0);
+        ExReleaseRundownProtectionEx(&Filter->NblRundown, (ULONG)NblQueue.NblCount);
         Status = STATUS_SUCCESS;
     } else {
         Status = STATUS_NOT_FOUND;

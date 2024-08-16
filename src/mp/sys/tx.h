@@ -48,3 +48,9 @@ SharedIrpTxFlush(
     _In_ IRP *Irp,
     _In_ IO_STACK_LOCATION *IrpSp
     );
+
+_IRQL_requires_max_(PASSIVE_LEVEL)
+VOID
+SharedTxWatchdogTimeout(
+    _In_ ADAPTER_SHARED *AdapterShared
+    );

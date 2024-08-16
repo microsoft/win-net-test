@@ -6,6 +6,15 @@
 #include "precomp.h"
 #include "shared.tmh"
 
+_IRQL_requires_max_(PASSIVE_LEVEL)
+VOID
+SharedWatchdogTimeout(
+    _In_ ADAPTER_SHARED *AdapterShared
+    )
+{
+    SharedTxWatchdogTimeout(AdapterShared);
+}
+
 NDIS_STATUS
 MiniportRestartHandler(
    _In_ NDIS_HANDLE MiniportAdapterContext,

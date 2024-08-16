@@ -5,6 +5,7 @@
 
 #pragma once
 
+#include <ndis/ndl/nblqueue.h>
 #include "fniotypes.h"
 
 typedef struct _DATA_FILTER DATA_FILTER;
@@ -52,17 +53,23 @@ FnIoDequeueFilteredFrame(
     );
 
 _IRQL_requires_max_(DISPATCH_LEVEL)
-SIZE_T
+VOID
 FnIoFlushDequeuedFrames(
     _In_ DATA_FILTER *Filter,
-    _Out_ NET_BUFFER_LIST **NblChain
+    _Inout_ NBL_COUNTED_QUEUE *FlushQueue
     );
 
 _IRQL_requires_max_(DISPATCH_LEVEL)
-SIZE_T
+VOID
 FnIoFlushAllFrames(
     _In_ DATA_FILTER *Filter,
-    _Out_ NET_BUFFER_LIST **NblChain
+    _Inout_ NBL_COUNTED_QUEUE *FlushQueue
+    );
+
+_IRQL_requires_max_(DISPATCH_LEVEL)
+BOOLEAN
+FnIoIsFilterWatchdogExpired(
+    _In_ const DATA_FILTER *Filter
     );
 
 //

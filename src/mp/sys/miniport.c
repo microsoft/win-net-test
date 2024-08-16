@@ -931,14 +931,8 @@ MpWatchdogTimeout(
 {
     ADAPTER_CONTEXT *Adapter = CallbackContext;
 
-    if (MpOidWatchdogIsExpired(Adapter)) {
-        MpWatchdogFailure(Adapter, "OID");
-        MpOidClearFilterAndFlush(Adapter);
-    }
-
-    //
-    // TODO: NBL watchdog
-    //
+    ExclusiveWatchdogTimeout(Adapter->UserContext);
+    SharedWatchdogTimeout(Adapter->Shared);
 }
 
 _Function_class_(DRIVER_INITIALIZE)
