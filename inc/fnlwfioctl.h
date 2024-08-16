@@ -5,8 +5,6 @@
 
 #pragma once
 
-#include <fnapiver.h>
-
 EXTERN_C_START
 
 #define FNLWF_DEVICE_NAME L"\\Device\\fnlwf"
@@ -24,7 +22,7 @@ typedef enum _FNLWF_FILE_TYPE {
 // Open packet, the common header for NtCreateFile extended attributes.
 //
 typedef struct _FNLWF_OPEN_PACKET {
-    FN_API_VER ApiVersion;
+    UINT32 ApiVersion;
     FNLWF_FILE_TYPE ObjectType;
 } FNLWF_OPEN_PACKET;
 

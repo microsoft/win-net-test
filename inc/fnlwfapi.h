@@ -5,7 +5,6 @@
 
 #pragma once
 
-#include <fnapiver.h>
 #include <fniotypes.h>
 #if defined(_KERNEL_MODE)
 #include <fnioctl_km.h>
@@ -17,11 +16,6 @@
 #include <fnlwfioctl.h>
 
 EXTERN_C_START
-
-extern const DECLSPEC_SELECTANY FN_API_VER FnLwfApiCurrentVersion = {
-    1, // Major
-    0, // Minor
-};
 
 #define FNLWFAPI inline
 
@@ -66,6 +60,7 @@ FnLwfInitializeEa(
     _In_ UINT32 EaLength
     )
 {
+    static const UINT32 FNLWF_API_CURRENT_VERSION = 1;
     FILE_FULL_EA_INFORMATION *EaHeader = (FILE_FULL_EA_INFORMATION *)EaBuffer;
     FNLWF_OPEN_PACKET *OpenPacket;
 
@@ -79,7 +74,7 @@ FnLwfInitializeEa(
     EaHeader->EaValueLength = (USHORT)(EaLength - sizeof(*EaHeader) - sizeof(FNLWF_OPEN_PACKET_NAME));
 
     OpenPacket = (FNLWF_OPEN_PACKET *)(EaHeader->EaName + sizeof(FNLWF_OPEN_PACKET_NAME));
-    OpenPacket->ApiVersion = FnLwfApiCurrentVersion;
+    OpenPacket->ApiVersion = FNLWF_API_CURRENT_VERSION;
     OpenPacket->ObjectType = FileType;
 
     return OpenPacket + 1;
