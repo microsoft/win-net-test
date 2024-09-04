@@ -1616,37 +1616,56 @@ LwfBasicOid()
         OID_REQUEST_INTERFACE_DIRECT);
 
     for (UINT32 Index = 0; Index < RTL_NUMBER_OF(OidKeys); Index++) {
-        const UINT32 CompletionSize = sizeof(LwfInfoBuffer) / 2;
-        auto ExclusiveMp = MpOpenExclusive(FnMpIf->GetIfIndex());
-        TEST_NOT_NULL(ExclusiveMp.get());
+        for (UINT32 Port = 0; Port <= 1; Port++) {
+            const UINT32 CompletionSize = sizeof(LwfInfoBuffer) / 2;
+            auto ExclusiveMp = MpOpenExclusive(FnMpIf->GetIfIndex());
+            TEST_NOT_NULL(ExclusiveMp.get());
 
-        TEST_TRUE(MpOidFilter(ExclusiveMp, &OidKeys[Index], 1));
+            OidKeys[Index].PortNumber = Port;
 
-        LwfInfoBuffer = OriginalPacketFilter ^ (0x00000001);
-        LwfInfoBufferLength = sizeof(LwfInfoBuffer);
+            TEST_TRUE(MpOidFilter(ExclusiveMp, &OidKeys[Index], 1));
 
-        LWF_OID_SUBMIT_REQUEST Req;
-        Req.Handle = DefaultLwf.get();
-        Req.OidKey = OidKeys[Index];
-        Req.InfoBufferLength = &LwfInfoBufferLength;
-        Req.InfoBuffer = &LwfInfoBuffer;
+            LwfInfoBuffer = OriginalPacketFilter ^ (0x00000001);
+            LwfInfoBufferLength = sizeof(LwfInfoBuffer);
 
-        CXPLAT_THREAD_CONFIG ThreadConfig {
-            0, 0, NULL, LwfOidSubmitRequestFn, &Req
-        };
-        unique_cxplat_thread AsyncThread;
-        TEST_CXPLAT(CxPlatThreadCreate(&ThreadConfig, &AsyncThread));
+            //
+            // Verify OIDs are filtered only if port numbers match.
+            //
+            OID_KEY WrongPortKey = OidKeys[Index];
+            WrongPortKey.PortNumber = !WrongPortKey.PortNumber;
+            ULONG WrongInfoBuffer = LwfInfoBuffer;
+            UINT32 WrongInfoBufferLength = LwfInfoBufferLength;
+            TEST_FNLWFAPI(
+                FnLwfOidSubmitRequest(
+                    DefaultLwf.get(), WrongPortKey, &WrongInfoBufferLength, &WrongInfoBuffer));
+            MpInfoBufferLength = 0;
+            TEST_EQUAL(
+                FNMPAPI_STATUS_NOT_FOUND,
+                MpOidGetRequest(ExclusiveMp, OidKeys[Index], &MpInfoBufferLength, NULL));
 
-        MpInfoBuffer = MpOidAllocateAndGetRequest(ExclusiveMp, OidKeys[Index], &MpInfoBufferLength);
-        TEST_NOT_NULL(MpInfoBuffer.get());
+            LWF_OID_SUBMIT_REQUEST Req;
+            Req.Handle = DefaultLwf.get();
+            Req.OidKey = OidKeys[Index];
+            Req.InfoBufferLength = &LwfInfoBufferLength;
+            Req.InfoBuffer = &LwfInfoBuffer;
 
-        TEST_TRUE(MpOidCompleteRequest(
-            ExclusiveMp, OidKeys[Index], STATUS_SUCCESS, &LwfInfoBuffer, CompletionSize));
+            CXPLAT_THREAD_CONFIG ThreadConfig {
+                0, 0, NULL, LwfOidSubmitRequestFn, &Req
+            };
+            unique_cxplat_thread AsyncThread;
+            TEST_CXPLAT(CxPlatThreadCreate(&ThreadConfig, &AsyncThread));
 
-        TEST_TRUE(CxPlatThreadWait(AsyncThread.get(), TEST_TIMEOUT_ASYNC_MS));
-        TEST_FNMPAPI(Req.Status);
+            MpInfoBuffer = MpOidAllocateAndGetRequest(ExclusiveMp, OidKeys[Index], &MpInfoBufferLength);
+            TEST_NOT_NULL(MpInfoBuffer.get());
 
-        TEST_EQUAL(LwfInfoBufferLength, CompletionSize);
+            TEST_TRUE(MpOidCompleteRequest(
+                ExclusiveMp, OidKeys[Index], STATUS_SUCCESS, &LwfInfoBuffer, CompletionSize));
+
+            TEST_TRUE(CxPlatThreadWait(AsyncThread.get(), TEST_TIMEOUT_ASYNC_MS));
+            TEST_FNMPAPI(Req.Status);
+
+            TEST_EQUAL(LwfInfoBufferLength, CompletionSize);
+        }
     }
 }
 
