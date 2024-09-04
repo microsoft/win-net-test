@@ -866,7 +866,8 @@ MpIrpOidSetFilter(
     }
 
     for (UINT32 Index = 0; Index < KeyCount; Index++) {
-        const VOID *InAnyKey = RTL_PTR_ADD(InKeys, (UINT32)(Index * InKeySize));
+        #pragma warning(suppress:26451) // casting 4-byte multiplication to 8-byte type
+        const VOID *InAnyKey = RTL_PTR_ADD(InKeys, Index * InKeySize);
         OID_KEY *FilterKey = &OidFilterKeys[Index];
 
         if (UserContext->Header.ApiVersion >= 2) {
