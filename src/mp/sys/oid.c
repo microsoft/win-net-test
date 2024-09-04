@@ -597,8 +597,8 @@ MiniportRequestHandler(
     NDIS_STATUS Status;
 
     TraceEnter(
-        TRACE_CONTROL, "Adapter=%p Oid=%u RequestType=%u",
-        Adapter, NdisRequest->DATA.Oid, NdisRequest->RequestType);
+        TRACE_CONTROL, "Adapter=%p Oid=%u RequestType=%u PortNumber=%u",
+        Adapter, NdisRequest->DATA.Oid, NdisRequest->RequestType, NdisRequest->PortNumber);
 
     switch (NdisRequest->RequestType)
     {
