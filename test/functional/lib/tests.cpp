@@ -1617,7 +1617,7 @@ LwfBasicOid()
 
     for (UINT32 Index = 0; Index < RTL_NUMBER_OF(OidKeys); Index++) {
         for (UINT32 Port = 0; Port <= 1; Port++) {
-            const auto &OidKey = OidKeys[Index];
+            OID_KEY OidKey = OidKeys[Index];
             const UINT32 CompletionSize = sizeof(LwfInfoBuffer) / 2;
             auto ExclusiveMp = MpOpenExclusive(FnMpIf->GetIfIndex());
             TEST_NOT_NULL(ExclusiveMp.get());
@@ -1670,7 +1670,7 @@ LwfBasicOid()
             if (OidKey.Oid == OID_GEN_CURRENT_PACKET_FILTER &&
                 OidKey.RequestType == NdisRequestSetInformation) {
                 //
-                // Fix up the current packet filter.
+                // Update our cached packet filter.
                 //
                 OriginalPacketFilter ^= 0x00000001;
             }

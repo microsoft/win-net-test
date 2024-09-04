@@ -838,7 +838,7 @@ MpIrpOidSetFilter(
     KIRQL OldIrql = PASSIVE_LEVEL;
     BOOLEAN IsLockHeld = FALSE;
 
-    if (UserContext->Header.ApiVersion >= 2) {
+    if (UserContext->Header.ApiVersion >= MP_APIVER(2)) {
         InKeySize = sizeof(OID_KEY);
     } else {
         InKeySize = sizeof(OID_KEY_V0);
@@ -870,7 +870,7 @@ MpIrpOidSetFilter(
         const VOID *InAnyKey = RTL_PTR_ADD(InKeys, Index * InKeySize);
         OID_KEY *FilterKey = &OidFilterKeys[Index];
 
-        if (UserContext->Header.ApiVersion >= 2) {
+        if (UserContext->Header.ApiVersion >= MP_APIVER(2)) {
             const OID_KEY *InKey = InAnyKey;
             *FilterKey = *InKey;
         } else {
@@ -973,7 +973,7 @@ MpIrpOidGetRequest(
 
     *BytesReturned = 0;
 
-    if (UserContext->Header.ApiVersion >= 2) {
+    if (UserContext->Header.ApiVersion >= MP_APIVER(2)) {
         const OID_KEY *InKey = Irp->AssociatedIrp.SystemBuffer;
         if (IrpSp->Parameters.DeviceIoControl.InputBufferLength < sizeof(*InKey)) {
             Status = STATUS_INVALID_PARAMETER;
@@ -1075,7 +1075,7 @@ MpIrpOidCompleteRequest(
     BounceInitialize(&KeyBuffer);
     BounceInitialize(&InfoBuffer);
 
-    if (UserContext->Header.ApiVersion >= 2) {
+    if (UserContext->Header.ApiVersion >= MP_APIVER(2)) {
         const OID_COMPLETE_REQUEST_IN *InRequest = Irp->AssociatedIrp.SystemBuffer;
 
         if (IrpSp->Parameters.DeviceIoControl.InputBufferLength < sizeof(*InRequest)) {

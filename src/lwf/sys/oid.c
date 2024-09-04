@@ -315,7 +315,7 @@ OidIrpSubmitRequest(
     BounceInitialize(&InfoBuffer);
     *BytesReturned = 0;
 
-    if (Default->Header.ApiVersion >= 2) {
+    if (Default->Header.ApiVersion >= LWF_APIVER(2)) {
         OID_SUBMIT_REQUEST_IN *In = Irp->AssociatedIrp.SystemBuffer;
 
         if (IrpSp->Parameters.DeviceIoControl.InputBufferLength < sizeof(*In)) {

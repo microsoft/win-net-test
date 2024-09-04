@@ -31,3 +31,5 @@
 #include "shared.h"
 #include "trace.h"
 #include "tx.h"
+
+#define MP_APIVER(N) (_N)

@@ -28,3 +28,5 @@
 #include "trace.h"
 #include "tx.h"
 #include "fnlwfioctl.h"
+
+#define LWF_APIVER(_N) (_N)
