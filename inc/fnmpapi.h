@@ -332,18 +332,13 @@ FnMpOidGetRequest(
     _Out_opt_ VOID *InformationBuffer
     )
 {
-    OID_GET_REQUEST_IN In = {0};
-
     //
     // Supports exclusive handles only. Gets the information buffer of an OID
     // request previously pended by the OID filter set via FnMpOidFilter.
     //
-
-    In.Key = Key;
-
     return
         FnIoctl(
-            Handle, FNMP_IOCTL_OID_GET_REQUEST, &In, sizeof(In), InformationBuffer,
+            Handle, FNMP_IOCTL_OID_GET_REQUEST, &Key, sizeof(Key), InformationBuffer,
             *InformationBufferLength, InformationBufferLength, NULL);
 }
 
@@ -370,7 +365,7 @@ FnMpOidCompleteRequest(
     // number of bytes read.
     //
 
-    In.Key = Key;
+    In.Key = &Key;
     In.Status = Status;
     In.InformationBuffer = InformationBuffer;
     In.InformationBufferLength = InformationBufferLength;

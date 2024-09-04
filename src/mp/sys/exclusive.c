@@ -32,15 +32,15 @@ ExclusiveIrpDeviceIoControl(
 
     switch (IrpSp->Parameters.DeviceIoControl.IoControlCode) {
     case FNMP_IOCTL_OID_FILTER:
-        Status = MpIrpOidSetFilter(UserContext->Adapter, Irp, IrpSp);
+        Status = MpIrpOidSetFilter(UserContext, Irp, IrpSp);
         break;
 
     case FNMP_IOCTL_OID_GET_REQUEST:
-        Status = MpIrpOidGetRequest(UserContext->Adapter, Irp, IrpSp);
+        Status = MpIrpOidGetRequest(UserContext, Irp, IrpSp);
         break;
 
     case FNMP_IOCTL_OID_COMPLETE_REQUEST:
-        Status = MpIrpOidCompleteRequest(UserContext->Adapter, Irp, IrpSp);
+        Status = MpIrpOidCompleteRequest(UserContext, Irp, IrpSp);
         break;
 
     default:

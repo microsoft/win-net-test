@@ -50,7 +50,7 @@ NTSTATUS
 BounceBuffer(
     _Inout_ BOUNCE_BUFFER *Bounce,
     _In_ KPROCESSOR_MODE RequestorMode,
-    _In_ CONST VOID *Buffer,
+    _In_opt_ CONST VOID *Buffer,
     _In_ SIZE_T BufferSize,
     _In_ UINT32 Alignment
     )
@@ -78,8 +78,10 @@ BounceBuffer(
 
     __try {
         if (RequestorMode != KernelMode) {
+            #pragma warning(suppress:6387) // Buffer could be NULL.
             ProbeForRead((VOID *)Buffer, BufferSize, Alignment);
         }
+        #pragma warning(suppress:6387) // Buffer could be NULL.
         RtlCopyVolatileMemory(Bounce->Buffer, Buffer, BufferSize);
     } __except (EXCEPTION_EXECUTE_HANDLER) {
         Status = GetExceptionCode();

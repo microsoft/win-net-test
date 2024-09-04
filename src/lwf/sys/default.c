@@ -43,7 +43,7 @@ DefaultIrpDeviceIoControl(
         break;
 
     case FNLWF_IOCTL_OID_SUBMIT_REQUEST:
-        Status = OidIrpSubmitRequest(Default->Filter, Irp, IrpSp);
+        Status = OidIrpSubmitRequest(Default, Irp, IrpSp);
         break;
 
     case FNLWF_IOCTL_STATUS_SET_FILTER:

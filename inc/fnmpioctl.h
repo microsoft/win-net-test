@@ -7,7 +7,7 @@
 
 EXTERN_C_START
 
-#define FNMP_IOCTL_CURRENT_VERSION 1
+#define FNMP_IOCTL_CURRENT_VERSION 2
 
 #define FNMP_DEVICE_NAME L"\\Device\\FNMP"
 
@@ -80,17 +80,23 @@ typedef struct _MINIPORT_SET_MTU_IN {
 //
 // Parameters for FNMP_IOCTL_OID_GET_REQUEST.
 //
-
-typedef struct _OID_GET_REQUEST_IN {
-    OID_KEY Key;
-} OID_GET_REQUEST_IN;
+// InputBuffer: OID_KEY
+// InputBufferLength: sizeof(OID_KEY)
+//
 
 //
 // Parameters for FNMP_IOCTL_OID_COMPLETE_REQUEST.
 //
 
+typedef struct _OID_COMPLETE_REQUEST_IN_V0 {
+    OID_KEY_V0 Key;
+    NDIS_STATUS Status;
+    UINT32 InformationBufferLength;
+    const VOID *InformationBuffer;
+} OID_COMPLETE_REQUEST_IN_V0;
+
 typedef struct _OID_COMPLETE_REQUEST_IN {
-    OID_KEY Key;
+    const OID_KEY *Key;
     NDIS_STATUS Status;
     UINT32 InformationBufferLength;
     const VOID *InformationBuffer;

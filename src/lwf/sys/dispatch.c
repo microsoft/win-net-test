@@ -92,8 +92,12 @@ LwfIrpCreate(
             EaBuffer->EaValueLength - sizeof(FNLWF_OPEN_PACKET));
 
     if (NT_SUCCESS(Status)) {
-        ASSERT(IrpSp->FileObject->FsContext != NULL);
-        ASSERT(((FILE_OBJECT_HEADER *)IrpSp->FileObject->FsContext)->Dispatch != NULL);
+        FILE_OBJECT_HEADER *FileHeader = IrpSp->FileObject->FsContext;
+
+        ASSERT(FileHeader != NULL);
+        ASSERT(FileHeader->Dispatch != NULL);
+
+        FileHeader->ApiVersion = OpenPacket->ApiVersion;
     }
 
 Exit:

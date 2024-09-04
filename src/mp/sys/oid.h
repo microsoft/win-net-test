@@ -16,7 +16,7 @@ MINIPORT_CANCEL_DIRECT_OID_REQUEST MiniportCancelDirectRequestHandler;
 _IRQL_requires_max_(PASSIVE_LEVEL)
 NTSTATUS
 MpIrpOidSetFilter(
-    _In_ ADAPTER_CONTEXT *Adapter,
+    _In_ EXCLUSIVE_USER_CONTEXT *UserContext,
     _In_ IRP *Irp,
     _In_ IO_STACK_LOCATION *IrpSp
     );
@@ -24,7 +24,7 @@ MpIrpOidSetFilter(
 _IRQL_requires_max_(PASSIVE_LEVEL)
 NTSTATUS
 MpIrpOidGetRequest(
-    _In_ ADAPTER_CONTEXT *Adapter,
+    _In_ EXCLUSIVE_USER_CONTEXT *UserContext,
     _In_ IRP *Irp,
     _In_ IO_STACK_LOCATION *IrpSp
     );
@@ -32,7 +32,7 @@ MpIrpOidGetRequest(
 _IRQL_requires_max_(PASSIVE_LEVEL)
 NTSTATUS
 MpIrpOidCompleteRequest(
-    _In_ ADAPTER_CONTEXT *Adapter,
+    _In_ EXCLUSIVE_USER_CONTEXT *UserContext,
     _In_ IRP *Irp,
     _In_ IO_STACK_LOCATION *IrpSp
     );

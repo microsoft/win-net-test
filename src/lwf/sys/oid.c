@@ -178,6 +178,7 @@ OidInternalRequest(
     _In_ NDIS_REQUEST_TYPE RequestType,
     _In_ NDIS_OID Oid,
     _In_ OID_REQUEST_INTERFACE RequestInterface,
+    _In_ NDIS_PORT_NUMBER PortNumber,
     _Inout_updates_bytes_to_(InformationBufferLength, *BytesProcessed)
         VOID *InformationBuffer,
     _In_ ULONG InformationBufferLength,
@@ -199,6 +200,7 @@ OidInternalRequest(
     NdisRequest->Header.Revision = NDIS_OID_REQUEST_REVISION_2;
     NdisRequest->Header.Size = sizeof(NDIS_OID_REQUEST);
     NdisRequest->RequestType = RequestType;
+    NdisRequest->PortNumber = PortNumber;
 
     switch (RequestType) {
     case NdisRequestQueryInformation:
@@ -291,45 +293,77 @@ OidInternalRequest(
 _IRQL_requires_max_(PASSIVE_LEVEL)
 NTSTATUS
 OidIrpSubmitRequest(
-    _In_ LWF_FILTER *Filter,
+    _In_ DEFAULT_CONTEXT *Default,
     _In_ IRP *Irp,
     _In_ IO_STACK_LOCATION *IrpSp
     )
 {
-    OID_SUBMIT_REQUEST_IN *In = Irp->AssociatedIrp.SystemBuffer;
+    LWF_FILTER *Filter = Default->Filter;
     UINT32 OutputBufferLength =
         IrpSp->Parameters.DeviceIoControl.OutputBufferLength;
     VOID *OutputBuffer = Irp->AssociatedIrp.SystemBuffer;
     SIZE_T *BytesReturned = &Irp->IoStatus.Information;
     NTSTATUS Status;
+    OID_KEY Key = {0};
+    BOUNCE_BUFFER KeyBuffer;
     BOUNCE_BUFFER InfoBuffer;
+    const VOID *InInfoBuffer;
+    UINT32 InInfoBufferLength;
     ULONG RequiredSize = 0;
 
+    BounceInitialize(&KeyBuffer);
     BounceInitialize(&InfoBuffer);
     *BytesReturned = 0;
 
-    if (IrpSp->Parameters.DeviceIoControl.InputBufferLength < sizeof(*In)) {
-        Status = STATUS_BUFFER_TOO_SMALL;
-        goto Exit;
+    if (Default->Header.ApiVersion >= 2) {
+        OID_SUBMIT_REQUEST_IN *In = Irp->AssociatedIrp.SystemBuffer;
+
+        if (IrpSp->Parameters.DeviceIoControl.InputBufferLength < sizeof(*In)) {
+            Status = STATUS_BUFFER_TOO_SMALL;
+            goto Exit;
+        }
+
+        Status =
+            BounceBuffer(
+                &KeyBuffer, Irp->RequestorMode, In->Key, sizeof(OID_KEY), __alignof(OID_KEY));
+        if (!NT_SUCCESS(Status)) {
+            goto Exit;
+        }
+
+        Key = *(const OID_KEY *)KeyBuffer.Buffer;
+        InInfoBuffer = In->InformationBuffer;
+        InInfoBufferLength = In->InformationBufferLength;
+    } else {
+        OID_SUBMIT_REQUEST_IN_V0 *In = Irp->AssociatedIrp.SystemBuffer;
+
+        if (IrpSp->Parameters.DeviceIoControl.InputBufferLength < sizeof(*In)) {
+            Status = STATUS_BUFFER_TOO_SMALL;
+            goto Exit;
+        }
+
+        Key.Oid = In->Key.Oid;
+        Key.RequestType = In->Key.RequestType;
+        Key.RequestInterface = In->Key.RequestInterface;
+        InInfoBuffer = In->InformationBuffer;
+        InInfoBufferLength = In->InformationBufferLength;
     }
 
-    if ((UINT32)In->Key.RequestInterface >= (UINT32)OID_REQUEST_INTERFACE_MAX) {
+    if ((UINT32)Key.RequestInterface >= (UINT32)OID_REQUEST_INTERFACE_MAX) {
         Status = STATUS_INVALID_PARAMETER;
         goto Exit;
     }
 
     Status =
         BounceBuffer(
-            &InfoBuffer, Irp->RequestorMode, In->InformationBuffer,
-            In->InformationBufferLength, __alignof(UCHAR));
+            &InfoBuffer, Irp->RequestorMode, InInfoBuffer, InInfoBufferLength, __alignof(UCHAR));
     if (!NT_SUCCESS(Status)) {
         goto Exit;
     }
 
     Status =
         OidInternalRequest(
-            Filter, In->Key.RequestType, In->Key.Oid, In->Key.RequestInterface, InfoBuffer.Buffer,
-            In->InformationBufferLength, OutputBufferLength, 0, &RequiredSize);
+            Filter, Key.RequestType, Key.Oid, Key.RequestInterface, Key.PortNumber,
+            InfoBuffer.Buffer, InInfoBufferLength, OutputBufferLength, 0, &RequiredSize);
 
     if (Status == STATUS_BUFFER_TOO_SMALL &&
         (OutputBufferLength == 0) && (Irp->Flags & IRP_INPUT_OPERATION) == 0) {
@@ -354,6 +388,7 @@ OidIrpSubmitRequest(
 Exit:
 
     BounceCleanup(&InfoBuffer);
+    BounceCleanup(&KeyBuffer);
 
     return Status;
 }

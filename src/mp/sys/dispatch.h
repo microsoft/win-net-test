@@ -33,6 +33,7 @@ typedef struct FILE_DISPATCH {
 typedef struct FILE_OBJECT_HEADER {
     FNMP_FILE_TYPE ObjectType;
     CONST FILE_DISPATCH *Dispatch;
+    UINT32 ApiVersion;
 } FILE_OBJECT_HEADER;
 
 NDIS_STATUS
