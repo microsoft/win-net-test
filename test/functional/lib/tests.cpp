@@ -1617,35 +1617,36 @@ LwfBasicOid()
 
     for (UINT32 Index = 0; Index < RTL_NUMBER_OF(OidKeys); Index++) {
         for (UINT32 Port = 0; Port <= 1; Port++) {
+            const auto &OidKey = OidKeys[Index];
             const UINT32 CompletionSize = sizeof(LwfInfoBuffer) / 2;
             auto ExclusiveMp = MpOpenExclusive(FnMpIf->GetIfIndex());
             TEST_NOT_NULL(ExclusiveMp.get());
 
-            OidKeys[Index].PortNumber = Port;
+            OidKey.PortNumber = Port;
 
-            TEST_TRUE(MpOidFilter(ExclusiveMp, &OidKeys[Index], 1));
+            TEST_TRUE(MpOidFilter(ExclusiveMp, &OidKey, 1));
 
-            LwfInfoBuffer = OriginalPacketFilter ^ (0x00000001);
+            LwfInfoBuffer = OriginalPacketFilter ^ 0x00000001;
             LwfInfoBufferLength = sizeof(LwfInfoBuffer);
 
-            // //
-            // // Verify OIDs are filtered only if port numbers match.
-            // //
-            // OID_KEY WrongPortKey = OidKeys[Index];
-            // WrongPortKey.PortNumber = !WrongPortKey.PortNumber;
-            // ULONG WrongInfoBuffer = LwfInfoBuffer;
-            // UINT32 WrongInfoBufferLength = LwfInfoBufferLength;
-            // TEST_FNLWFAPI(
-            //     FnLwfOidSubmitRequest(
-            //         DefaultLwf.get(), WrongPortKey, &WrongInfoBufferLength, &WrongInfoBuffer));
-            // MpInfoBufferLength = 0;
-            // TEST_EQUAL(
-            //     FNMPAPI_STATUS_NOT_FOUND,
-            //     MpOidGetRequest(ExclusiveMp, OidKeys[Index], &MpInfoBufferLength, NULL));
+            //
+            // Verify OIDs are filtered only if port numbers match.
+            //
+            OID_KEY WrongPortKey = OidKeys[Index];
+            WrongPortKey.PortNumber = !WrongPortKey.PortNumber;
+            ULONG WrongInfoBuffer = LwfInfoBuffer;
+            UINT32 WrongInfoBufferLength = LwfInfoBufferLength;
+            TEST_FNLWFAPI(
+                FnLwfOidSubmitRequest(
+                    DefaultLwf.get(), WrongPortKey, &WrongInfoBufferLength, &WrongInfoBuffer));
+            MpInfoBufferLength = 0;
+            TEST_EQUAL(
+                FNMPAPI_STATUS_NOT_FOUND,
+                MpOidGetRequest(ExclusiveMp, OidKeys[Index], &MpInfoBufferLength, NULL));
 
             LWF_OID_SUBMIT_REQUEST Req;
             Req.Handle = DefaultLwf.get();
-            Req.OidKey = OidKeys[Index];
+            Req.OidKey = OidKey;
             Req.InfoBufferLength = &LwfInfoBufferLength;
             Req.InfoBuffer = &LwfInfoBuffer;
 
@@ -1655,16 +1656,24 @@ LwfBasicOid()
             unique_cxplat_thread AsyncThread;
             TEST_CXPLAT(CxPlatThreadCreate(&ThreadConfig, &AsyncThread));
 
-            MpInfoBuffer = MpOidAllocateAndGetRequest(ExclusiveMp, OidKeys[Index], &MpInfoBufferLength);
+            MpInfoBuffer = MpOidAllocateAndGetRequest(ExclusiveMp, OidKey, &MpInfoBufferLength);
             TEST_NOT_NULL(MpInfoBuffer.get());
 
             TEST_TRUE(MpOidCompleteRequest(
-                ExclusiveMp, OidKeys[Index], STATUS_SUCCESS, &LwfInfoBuffer, CompletionSize));
+                ExclusiveMp, OidKey, STATUS_SUCCESS, &LwfInfoBuffer, CompletionSize));
 
             TEST_TRUE(CxPlatThreadWait(AsyncThread.get(), TEST_TIMEOUT_ASYNC_MS));
             TEST_FNMPAPI(Req.Status);
 
             TEST_EQUAL(LwfInfoBufferLength, CompletionSize);
+
+            if (OidKey.Oid == OID_GEN_CURRENT_PACKET_FILTER &&
+                OidKey.RequestType == NdisRequestSetInformation) {
+                //
+                // Fix up the current packet filter.
+                //
+                OriginalPacketFilter ^= 0x00000001;
+            }
         }
     }
 }
