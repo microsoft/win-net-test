@@ -1643,6 +1643,13 @@ LwfBasicOid()
             TEST_EQUAL(
                 FNMPAPI_STATUS_NOT_FOUND,
                 MpOidGetRequest(ExclusiveMp, OidKey, &MpInfoBufferLength, NULL));
+            if (OidKey.Oid == OID_GEN_CURRENT_PACKET_FILTER &&
+                OidKey.RequestType == NdisRequestSetInformation) {
+                //
+                // Update our cached packet filter.
+                //
+                OriginalPacketFilter ^= 0x00000001;
+            }
 
             LWF_OID_SUBMIT_REQUEST Req;
             Req.Handle = DefaultLwf.get();
