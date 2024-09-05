@@ -17,8 +17,8 @@
 	<files>
 		<file src="..\..\..\tools\nuget\README.md" target="."/>
 		<file src="..\..\..\tools\nuget\win-net-test.props" target="build\native"/>
-		<file src="..\..\..\artifacts\bin\{winarchconfig}\fnsock_um.lib" target="build\native\lib"/>
-		<file src="..\..\..\artifacts\bin\{winarchconfig}\fnsock_km.lib" target="build\native\lib"/>
+		<file src="..\..\..\artifacts\bin\{archconfig}\fnsock_um.lib" target="build\native\lib"/>
+		<file src="..\..\..\artifacts\bin\{archconfig}\fnsock_km.lib" target="build\native\lib"/>
 		<file src="..\..\..\inc\*" target="build\native\include" />
 	</files>
 </package>

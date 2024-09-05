@@ -195,20 +195,3 @@ function Initiate-Bugcheck {
     Write-Host "$NotMyFault -accepteula -bugcheck $Code"
     & $NotMyFault -accepteula -bugcheck $Code
 }
-
-function Generate-WinConfig {
-    param (
-        [Parameter()]
-        [string]$Arch,
-
-        [Parameter()]
-        [string]$Config
-    )
-
-    $global:WinArch = $Arch
-    $global:WinConfig = $Config
-    if ($Arch -eq "x64")     { $global:WinArch = "amd64" }
-    else                     { $global:WinArch = "arm64" }
-    if ($Config -eq "Debug") { $global:WinConfig = "chk" }
-    else                     { $global:WinConfig = "fre" }
-}

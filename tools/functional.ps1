@@ -79,8 +79,7 @@ function CleanupKernelMode {
 # Important paths.
 $RootDir = Split-Path $PSScriptRoot -Parent
 . $RootDir\tools\common.ps1
-Generate-WinConfig $Arch $Config
-$ArtifactsDir = "$RootDir\artifacts\bin\$($WinArch)$($WinConfig)"
+$ArtifactsDir = "$RootDir\artifacts\bin\$($Arch)_$($Config)"
 $LogsDir = "$RootDir\artifacts\logs"
 $IterationFailureCount = 0
 $IterationTimeout = 0
