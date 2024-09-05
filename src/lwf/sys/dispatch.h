@@ -35,4 +35,5 @@ typedef struct FILE_DISPATCH {
 typedef struct FILE_OBJECT_HEADER {
     FNLWF_FILE_TYPE ObjectType;
     const FILE_DISPATCH *Dispatch;
+    UINT32 ApiVersion;
 } FILE_OBJECT_HEADER;

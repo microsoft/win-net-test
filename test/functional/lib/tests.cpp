@@ -39,6 +39,7 @@
 #include <invokesystemrelay.h>
 #endif
 #include <qeo_ndis.h>
+#include <fnoid.h>
 
 #include "fntrace.h"
 #include "fntest.h"
@@ -1579,24 +1580,9 @@ VOID
 LwfBasicOid()
 {
     OID_KEY OidKeys[3];
-    UINT32 MpInfoBufferLength;
-    unique_malloc_ptr<VOID> MpInfoBuffer;
-    UINT32 LwfInfoBufferLength;
-    ULONG LwfInfoBuffer;
-    ULONG OriginalPacketFilter = 0;
     auto DefaultLwf = LwfOpenDefault(FnMpIf->GetIfIndex());
 
     TEST_NOT_NULL(DefaultLwf.get());
-
-    //
-    // Get the existing packet filter from NDIS so we can tweak it to make sure
-    // the set OID makes it to the miniport. N.B. this get OID is handled by
-    // NDIS, not the miniport.
-    //
-    InitializeOidKey(&OidKeys[0], OID_GEN_CURRENT_PACKET_FILTER, NdisRequestQueryInformation);
-    LwfInfoBufferLength = sizeof(OriginalPacketFilter);
-    TEST_FNLWFAPI(
-        LwfOidSubmitRequest(DefaultLwf, OidKeys[0], &LwfInfoBufferLength, &OriginalPacketFilter));
 
     //
     // Get.
@@ -1606,47 +1592,68 @@ LwfBasicOid()
     //
     // Set.
     //
-    InitializeOidKey(&OidKeys[1], OID_GEN_CURRENT_PACKET_FILTER, NdisRequestSetInformation);
+    InitializeOidKey(&OidKeys[1], OID_FNMP_SET_NOP, NdisRequestSetInformation);
 
     //
     // Method. (Direct OID)
     //
     InitializeOidKey(
-        &OidKeys[2], OID_QUIC_CONNECTION_ENCRYPTION_PROTOTYPE, NdisRequestMethod,
-        OID_REQUEST_INTERFACE_DIRECT);
+        &OidKeys[2], OID_FNMP_METHOD_DIRECT_NOP, NdisRequestMethod, OID_REQUEST_INTERFACE_DIRECT);
 
     for (UINT32 Index = 0; Index < RTL_NUMBER_OF(OidKeys); Index++) {
-        const UINT32 CompletionSize = sizeof(LwfInfoBuffer) / 2;
-        auto ExclusiveMp = MpOpenExclusive(FnMpIf->GetIfIndex());
-        TEST_NOT_NULL(ExclusiveMp.get());
+        for (UINT32 Port = 0; Port <= 1; Port++) {
+            OID_KEY OidKey = OidKeys[Index];
+            ULONG LwfInfoBuffer = 0x12345678;
+            const UINT32 CompletionSize = sizeof(LwfInfoBuffer) / 2;
+            UINT32 MpInfoBufferLength;
+            unique_malloc_ptr<VOID> MpInfoBuffer;
+            auto ExclusiveMp = MpOpenExclusive(FnMpIf->GetIfIndex());
+            TEST_NOT_NULL(ExclusiveMp.get());
 
-        TEST_TRUE(MpOidFilter(ExclusiveMp, &OidKeys[Index], 1));
+            OidKey.PortNumber = Port;
 
-        LwfInfoBuffer = OriginalPacketFilter ^ (0x00000001);
-        LwfInfoBufferLength = sizeof(LwfInfoBuffer);
+            TEST_TRUE(MpOidFilter(ExclusiveMp, &OidKey, 1));
 
-        LWF_OID_SUBMIT_REQUEST Req;
-        Req.Handle = DefaultLwf.get();
-        Req.OidKey = OidKeys[Index];
-        Req.InfoBufferLength = &LwfInfoBufferLength;
-        Req.InfoBuffer = &LwfInfoBuffer;
+            UINT32 LwfInfoBufferLength = sizeof(LwfInfoBuffer);
 
-        CXPLAT_THREAD_CONFIG ThreadConfig {
-            0, 0, NULL, LwfOidSubmitRequestFn, &Req
-        };
-        unique_cxplat_thread AsyncThread;
-        TEST_CXPLAT(CxPlatThreadCreate(&ThreadConfig, &AsyncThread));
+            //
+            // Verify OIDs are filtered only if port numbers match.
+            //
+            OID_KEY WrongPortKey = OidKey;
+            WrongPortKey.PortNumber = !WrongPortKey.PortNumber;
+            ULONG WrongInfoBuffer = LwfInfoBuffer;
+            UINT32 WrongInfoBufferLength = LwfInfoBufferLength;
+            TEST_FNLWFAPI(
+                LwfOidSubmitRequest(
+                    DefaultLwf, WrongPortKey, &WrongInfoBufferLength, &WrongInfoBuffer));
+            MpInfoBufferLength = 0;
+            TEST_EQUAL(
+                FNMPAPI_STATUS_NOT_FOUND,
+                MpOidGetRequest(ExclusiveMp, OidKey, &MpInfoBufferLength, NULL));
 
-        MpInfoBuffer = MpOidAllocateAndGetRequest(ExclusiveMp, OidKeys[Index], &MpInfoBufferLength);
-        TEST_NOT_NULL(MpInfoBuffer.get());
+            LWF_OID_SUBMIT_REQUEST Req;
+            Req.Handle = DefaultLwf.get();
+            Req.OidKey = OidKey;
+            Req.InfoBufferLength = &LwfInfoBufferLength;
+            Req.InfoBuffer = &LwfInfoBuffer;
 
-        TEST_TRUE(MpOidCompleteRequest(
-            ExclusiveMp, OidKeys[Index], STATUS_SUCCESS, &LwfInfoBuffer, CompletionSize));
+            CXPLAT_THREAD_CONFIG ThreadConfig {
+                0, 0, NULL, LwfOidSubmitRequestFn, &Req
+            };
+            unique_cxplat_thread AsyncThread;
+            TEST_CXPLAT(CxPlatThreadCreate(&ThreadConfig, &AsyncThread));
 
-        TEST_TRUE(CxPlatThreadWait(AsyncThread.get(), TEST_TIMEOUT_ASYNC_MS));
-        TEST_FNMPAPI(Req.Status);
+            MpInfoBuffer = MpOidAllocateAndGetRequest(ExclusiveMp, OidKey, &MpInfoBufferLength);
+            TEST_NOT_NULL(MpInfoBuffer.get());
 
-        TEST_EQUAL(LwfInfoBufferLength, CompletionSize);
+            TEST_TRUE(MpOidCompleteRequest(
+                ExclusiveMp, OidKey, STATUS_SUCCESS, &LwfInfoBuffer, CompletionSize));
+
+            TEST_TRUE(CxPlatThreadWait(AsyncThread.get(), TEST_TIMEOUT_ASYNC_MS));
+            TEST_FNMPAPI(Req.Status);
+
+            TEST_EQUAL(LwfInfoBufferLength, CompletionSize);
+        }
     }
 }
 

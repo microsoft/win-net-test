@@ -83,7 +83,7 @@ typedef struct _ADAPTER_CONTEXT {
 
     KSPIN_LOCK Lock;
     EX_PUSH_LOCK PushLock;
-    OID_KEY *OidFilterKeys;
+    const OID_KEY *OidFilterKeys;
     UINT32 OidFilterKeyCount;
     LIST_ENTRY FilteredOidRequestLists[OID_REQUEST_INTERFACE_MAX];
     FN_TIMER_HANDLE WatchdogTimer;

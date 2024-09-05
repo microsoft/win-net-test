@@ -7,7 +7,7 @@
 
 EXTERN_C_START
 
-#define FNLWF_IOCTL_CURRENT_VERSION 1
+#define FNLWF_IOCTL_CURRENT_VERSION 2
 
 #define FNLWF_DEVICE_NAME L"\\Device\\fnlwf"
 
@@ -58,8 +58,14 @@ typedef struct _FNLWF_OPEN_DEFAULT {
 // Parameters for FNLWF_IOCTL_OID_SUBMIT_REQUEST.
 //
 
+typedef struct _OID_SUBMIT_REQUEST_IN_V0 {
+    OID_KEY_V0 Key;
+    VOID *InformationBuffer;
+    UINT32 InformationBufferLength;
+} OID_SUBMIT_REQUEST_IN_V0;
+
 typedef struct _OID_SUBMIT_REQUEST_IN {
-    OID_KEY Key;
+    const OID_KEY *Key;
     VOID *InformationBuffer;
     UINT32 InformationBufferLength;
 } OID_SUBMIT_REQUEST_IN;

@@ -137,10 +137,17 @@ typedef enum _FNIO_OID_REQUEST_INTERFACE {
 // Helper type used by parameters for OID related IOCTLs.
 //
 
+typedef struct _OID_KEY_V0 {
+    NDIS_OID Oid;
+    NDIS_REQUEST_TYPE RequestType;
+    OID_REQUEST_INTERFACE RequestInterface;
+} OID_KEY_V0;
+
 typedef struct _OID_KEY {
     NDIS_OID Oid;
     NDIS_REQUEST_TYPE RequestType;
     OID_REQUEST_INTERFACE RequestInterface;
+    NDIS_PORT_NUMBER PortNumber;
 } OID_KEY;
 
 //

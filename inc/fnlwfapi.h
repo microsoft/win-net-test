@@ -259,7 +259,7 @@ FnLwfOidSubmitRequest(
     // Issues an OID and waits for completion.
     //
 
-    In.Key = Key;
+    In.Key = &Key;
     In.InformationBuffer = InformationBuffer;
     In.InformationBufferLength = *InformationBufferLength;
 
