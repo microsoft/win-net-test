@@ -70,8 +70,7 @@ $RootDir = Split-Path $PSScriptRoot -Parent
 # Important paths.
 if ([string]::IsNullOrEmpty($ArtifactsDir)) {
     . $RootDir\tools\common.ps1
-    Generate-WinConfig $Arch $Config
-    $ArtifactsDir = "$RootDir\artifacts\bin\$($WinArch)$($WinConfig)"
+    $ArtifactsDir = "$RootDir\artifacts\bin\$($Arch)_$($Config)"
 }
 if ([string]::IsNullOrEmpty($LogsDir)) {
     $LogsDir = "$RootDir\artifacts\logs"

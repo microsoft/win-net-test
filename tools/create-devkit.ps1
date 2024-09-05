@@ -18,7 +18,6 @@ $ErrorActionPreference = 'Stop'
 
 $RootDir = Split-Path $PSScriptRoot -Parent
 . $RootDir\tools\common.ps1
-Generate-WinConfig $Platform $Config
 
 $Name = "fn-devkit-$Platform"
 if ($Config -eq "Debug") {

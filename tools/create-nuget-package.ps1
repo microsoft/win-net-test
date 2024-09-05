@@ -19,18 +19,17 @@ $ErrorActionPreference = 'Stop'
 
 $RootDir = Split-Path $PSScriptRoot -Parent
 . $RootDir\tools\common.ps1
-Generate-WinConfig -Arch $Platform -Config $Config
 
 try {
     $Version = Get-ProjectBuildVersionString
-    $WinArchConfig = "$WinArch" + "$WinConfig"
+    $ArchConfig = "$($Platform)_$Config"
 
-    $DstPath = "artifacts\pkg\$WinArchConfig"
+    $DstPath = "artifacts\pkg\$ArchConfig"
     New-Item -ItemType Directory -Path $DstPath -ErrorAction Ignore
 
     $Content = Get-Content "tools\nuget\win-net-test.nuspec.in"
     $Content = $Content.Replace("{version}", $Version)
-    $Content = $Content.Replace("{winarchconfig}", $WinArchConfig)
+    $Content = $Content.Replace("{archconfig}", $ArchConfig)
     Set-Content $DstPath\win-net-test.nuspec $Content
 
     nuget.exe pack $DstPath\win-net-test.nuspec -OutputDirectory $DstPath
