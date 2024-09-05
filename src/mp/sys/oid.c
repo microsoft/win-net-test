@@ -571,6 +571,17 @@ MpProcessMethodOid(
         break;
     }
 
+    case OID_FNMP_METHOD_DIRECT_NOP:
+        if (RequestInterface != OID_REQUEST_INTERFACE_DIRECT) {
+            Status = NDIS_STATUS_INVALID_PARAMETER;
+            goto Exit;
+        }
+
+        *BytesRead = InputBufferLength;
+        *BytesWritten = OutputBufferLength;
+        Status = NDIS_STATUS_SUCCESS;
+        break;
+
     default:
         Status = STATUS_NOT_SUPPORTED;
         break;

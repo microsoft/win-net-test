@@ -1598,8 +1598,7 @@ LwfBasicOid()
     // Method. (Direct OID)
     //
     InitializeOidKey(
-        &OidKeys[2], OID_QUIC_CONNECTION_ENCRYPTION_PROTOTYPE, NdisRequestMethod,
-        OID_REQUEST_INTERFACE_DIRECT);
+        &OidKeys[2], OID_FNMP_METHOD_DIRECT_NOP, NdisRequestMethod, OID_REQUEST_INTERFACE_DIRECT);
 
     for (UINT32 Index = 0; Index < RTL_NUMBER_OF(OidKeys); Index++) {
         for (UINT32 Port = 0; Port <= 1; Port++) {
