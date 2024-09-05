@@ -17,4 +17,9 @@ EXTERN_C_START
 //
 #define OID_TCP_OFFLOAD_HW_PARAMETERS   0xff000000
 
+//
+// Set no-op.
+//
+#define OID_FNMP_SET_NOP                0xff000001
+
 EXTERN_C_END

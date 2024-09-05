@@ -44,6 +44,7 @@ CONST NDIS_OID MpSupportedOidArray[] =
     OID_TCP_OFFLOAD_HW_PARAMETERS,
     OID_QUIC_CONNECTION_ENCRYPTION,
     OID_QUIC_CONNECTION_ENCRYPTION_PROTOTYPE,
+    OID_FNMP_SET_NOP,
 };
 
 CONST UINT32 MpSupportedOidArraySize = sizeof(MpSupportedOidArray);
@@ -504,6 +505,11 @@ MpProcessSetOid(
                     Adapter, &Adapter->OffloadCapabilities, InformationBuffer,
                     InformationBufferLength, NDIS_STATUS_TASK_OFFLOAD_HARDWARE_CAPABILITIES);
 
+            break;
+
+        case OID_FNMP_SET_NOP:
+            *BytesRead = InformationBufferLength;
+            Status = NDIS_STATUS_SUCCESS;
             break;
 
         default:
