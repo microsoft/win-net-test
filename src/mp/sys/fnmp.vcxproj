@@ -25,6 +25,7 @@
     <ClCompile Include="shared.c" />
     <ClCompile Include="miniport.c" />
     <ClCompile Include="oid.c" />
+    <ClCompile Include="port.c" />
     <ClCompile Include="rss.c" />
     <ClCompile Include="rx.c" />
     <ClCompile Include="trace.c" />

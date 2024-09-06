@@ -43,6 +43,14 @@ ExclusiveIrpDeviceIoControl(
         Status = MpIrpOidCompleteRequest(UserContext, Irp, IrpSp);
         break;
 
+    case FNMP_IOCTL_MINIPORT_ALLOCATE_PORT:
+        Status = MpIrpAllocatePort(UserContext, Irp, IrpSp);
+        break;
+
+    case FNMP_IOCTL_MINIPORT_FREE_PORT:
+        Status = MpIrpFreePort(UserContext, Irp, IrpSp);
+        break;
+
     default:
         Status = STATUS_NOT_SUPPORTED;
         goto Exit;
@@ -62,6 +70,8 @@ ExclusiveCleanup(
     KIRQL OldIrql;
 
     if (UserContext->Adapter != NULL) {
+        MpPortCleanup(UserContext->Adapter);
+
         if (UserContext->SetOidFilter) {
             MpOidClearFilterAndFlush(UserContext->Adapter);
         }

@@ -428,4 +428,37 @@ FnMpUpdateTaskOffload(
             Handle, OffloadType, OffloadParameters, OffloadParametersLength, NULL);
 }
 
+FNMPAPI
+FNMPAPI_STATUS
+FnMpAllocatePort(
+    _In_ FNMP_HANDLE Handle,
+    _Out_ NDIS_PORT_NUMBER *PortNumber
+    )
+{
+    //
+    // Supports exclusive handles only. Allocates an NDIS port and returns its
+    // number.
+    //
+    return
+        FnIoctl(
+            Handle, FNMP_IOCTL_MINIPORT_ALLOCATE_PORT, NULL, 0, PortNumber, sizeof(*PortNumber),
+            NULL, NULL);
+}
+
+FNMPAPI
+FNMPAPI_STATUS
+FnMpFreePort(
+    _In_ FNMP_HANDLE Handle,
+    _In_ NDIS_PORT_NUMBER PortNumber
+    )
+{
+    //
+    // Supports exclusive handles only. Frees the specified NDIS port.
+    //
+    return
+        FnIoctl(
+            Handle, FNMP_IOCTL_MINIPORT_FREE_PORT, &PortNumber, sizeof(PortNumber), NULL, 0,
+            NULL, NULL);
+}
+
 EXTERN_C_END
