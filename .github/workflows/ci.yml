@@ -30,6 +30,9 @@ jobs:
         os: [2019, 2022]
         configuration: [Release, Debug]
         platform: [x64, arm64]
+        exclude:
+          - os: 2019
+            platform: arm64
     runs-on: windows-${{ matrix.os }}
     steps:
     - name: Checkout repository
