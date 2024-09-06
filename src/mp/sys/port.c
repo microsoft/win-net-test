@@ -159,7 +159,7 @@ MpIrpFreePort(
     FN_PORT_ENTRY *PortEntry;
     BOOLEAN LockHeld = FALSE;
 
-    if (IrpSp->Parameters.DeviceIoControl.OutputBufferLength < sizeof(PortEntry->Number)) {
+    if (IrpSp->Parameters.DeviceIoControl.InputBufferLength < sizeof(PortEntry->Number)) {
         Status = STATUS_BUFFER_TOO_SMALL;
         goto Exit;
     }
