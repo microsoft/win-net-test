@@ -92,6 +92,8 @@ MpCleanupAdapter(
         SharedAdapterCleanup(Adapter->Shared);
     }
 
+    ASSERT(IsListEmpty(&Adapter->PortList));
+
     MpIoctlDereference();
     TraceInfo(TRACE_CONTROL, "Adapter=%p freed", Adapter);
     ExFreePool(Adapter);
@@ -122,6 +124,7 @@ MpCreateAdapter(
     Adapter->IfIndex = IfIndex;
     Adapter->ReferenceCount = 1;
     InitializeListHead(&Adapter->AdapterListLink);
+    InitializeListHead(&Adapter->PortList);
     KeInitializeSpinLock(&Adapter->Lock);
     ExInitializePushLock(&Adapter->PushLock);
 

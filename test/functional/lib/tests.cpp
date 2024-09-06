@@ -683,6 +683,50 @@ MpOidCompleteRequest(
     return true;
 }
 
+[[nodiscard]]
+static
+FNMPAPI_STATUS
+MpAllocatePort(
+    _In_ const unique_fnmp_handle& Handle,
+    _Out_ NDIS_PORT_NUMBER *PortNumber
+    )
+{
+    return FnMpAllocatePort(Handle.get(), PortNumber);
+}
+
+[[nodiscard]]
+static
+FNMPAPI_STATUS
+MpFreePort(
+    _In_ const unique_fnmp_handle& Handle,
+    _In_ NDIS_PORT_NUMBER PortNumber
+    )
+{
+    return FnMpFreePort(Handle.get(), PortNumber);
+}
+
+[[nodiscard]]
+static
+FNMPAPI_STATUS
+MpActivatePort(
+    _In_ const unique_fnmp_handle& Handle,
+    _In_ NDIS_PORT_NUMBER PortNumber
+    )
+{
+    return FnMpActivatePort(Handle.get(), PortNumber);
+}
+
+[[nodiscard]]
+static
+FNMPAPI_STATUS
+MpDeactivatePort(
+    _In_ const unique_fnmp_handle& Handle,
+    _In_ NDIS_PORT_NUMBER PortNumber
+    )
+{
+    return FnMpDeactivatePort(Handle.get(), PortNumber);
+}
+
 static
 unique_fnlwf_handle
 LwfOpenDefault(
@@ -1472,6 +1516,87 @@ MpBasicWatchdog()
         MpTxGetFrame(SharedMp, 0, &FrameLength, NULL, 0));
 
     TEST_TRUE(CxPlatThreadWait(AsyncThread.get(), TEST_TIMEOUT_ASYNC_MS));
+}
+
+static
+VOID
+MpVerifyPortState(
+    _In_ const unique_fnlwf_handle& LwfHandle,
+    _In_ NDIS_PORT_NUMBER PortNumber,
+    _In_ BOOLEAN ExpectFound
+    )
+{
+    OID_KEY OidKey;
+    InitializeOidKey(&OidKey, OID_GEN_PORT_STATE, NdisRequestQueryInformation);
+    OidKey.PortNumber = PortNumber;
+    NDIS_PORT_STATE PortState = {0};
+    UINT32 PortStateSize = sizeof(PortState);
+
+    //
+    // Verify the port state is accurately reported to NDIS components.
+    //
+
+    FNLWFAPI_STATUS Status = LwfOidSubmitRequest(LwfHandle, OidKey, &PortStateSize, &PortState);
+
+    if (ExpectFound) {
+        TEST_FNLWFAPI(Status);
+    } else {
+        TEST_NOT_EQUAL(FNLWFAPI_STATUS_SUCCESS, Status);
+    }
+}
+
+EXTERN_C
+VOID
+MpBasicPort()
+{
+    auto ExclusiveMp = MpOpenExclusive(FnMpIf->GetIfIndex());
+    auto DefaultLwf = LwfOpenDefault(FnMpIf->GetIfIndex());
+
+    NDIS_PORT_NUMBER Number;
+    TEST_FNMPAPI(MpAllocatePort(ExclusiveMp, &Number));
+
+    NDIS_PORT_NUMBER LeakAllocatedNumber;
+    TEST_FNMPAPI(MpAllocatePort(ExclusiveMp, &LeakAllocatedNumber));
+    TEST_NOT_EQUAL(FNMPAPI_STATUS_SUCCESS, MpDeactivatePort(ExclusiveMp, Number));
+
+    TEST_NOT_EQUAL(Number, LeakAllocatedNumber);
+
+    TEST_FNMPAPI(MpFreePort(ExclusiveMp, Number));
+    TEST_EQUAL(FNMPAPI_STATUS_NOT_FOUND, MpFreePort(ExclusiveMp, Number));
+
+    TEST_FNMPAPI(MpAllocatePort(ExclusiveMp, &Number));
+    MpVerifyPortState(DefaultLwf, Number, FALSE);
+
+    TEST_FNMPAPI(MpActivatePort(ExclusiveMp, Number));
+    MpVerifyPortState(DefaultLwf, Number, TRUE);
+
+    TEST_NOT_EQUAL(FNMPAPI_STATUS_SUCCESS, MpActivatePort(ExclusiveMp, Number));
+    TEST_NOT_EQUAL(FNMPAPI_STATUS_SUCCESS, MpFreePort(ExclusiveMp, Number));
+
+    TEST_FNMPAPI(MpDeactivatePort(ExclusiveMp, Number));
+    MpVerifyPortState(DefaultLwf, Number, FALSE);
+
+    TEST_FNMPAPI(MpActivatePort(ExclusiveMp, Number));
+    MpVerifyPortState(DefaultLwf, Number, TRUE);
+
+    TEST_FNMPAPI(MpDeactivatePort(ExclusiveMp, Number));
+    MpVerifyPortState(DefaultLwf, Number, FALSE);
+
+    TEST_FNMPAPI(MpFreePort(ExclusiveMp, Number));
+    TEST_EQUAL(FNMPAPI_STATUS_NOT_FOUND, MpActivatePort(ExclusiveMp, Number));
+    TEST_EQUAL(FNMPAPI_STATUS_NOT_FOUND, MpDeactivatePort(ExclusiveMp, Number));
+    MpVerifyPortState(DefaultLwf, Number, FALSE);
+
+    NDIS_PORT_NUMBER LeakActivatedNumber;
+    TEST_FNMPAPI(MpAllocatePort(ExclusiveMp, &LeakActivatedNumber));
+    TEST_FNMPAPI(MpActivatePort(ExclusiveMp, LeakActivatedNumber));
+
+    NDIS_PORT_NUMBER LeakDeactivatedNumber;
+    TEST_FNMPAPI(MpAllocatePort(ExclusiveMp, &LeakDeactivatedNumber));
+    TEST_FNMPAPI(MpActivatePort(ExclusiveMp, LeakDeactivatedNumber));
+    TEST_FNMPAPI(MpDeactivatePort(ExclusiveMp, LeakDeactivatedNumber));
+    TEST_NOT_EQUAL(Number, LeakAllocatedNumber);
+    TEST_NOT_EQUAL(LeakActivatedNumber, LeakDeactivatedNumber);
 }
 
 EXTERN_C

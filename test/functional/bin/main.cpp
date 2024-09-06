@@ -476,6 +476,14 @@ public:
             ::MpBasicWatchdog();
         }
     }
+
+    TEST_METHOD(MpBasicPort) {
+        if (TestingKernelMode) {
+            TEST_TRUE(TestDriverClient.Run(IOCTL_MP_BASIC_PORT));
+        } else {
+            ::MpBasicPort();
+        }
+    }
 };
 
 TEST_CLASS(fnlwffunctionaltests)

@@ -86,6 +86,7 @@ typedef struct _ADAPTER_CONTEXT {
     const OID_KEY *OidFilterKeys;
     UINT32 OidFilterKeyCount;
     LIST_ENTRY FilteredOidRequestLists[OID_REQUEST_INTERFACE_MAX];
+    LIST_ENTRY PortList;
     FN_TIMER_HANDLE WatchdogTimer;
 
     //

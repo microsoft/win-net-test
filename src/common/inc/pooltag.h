@@ -13,6 +13,7 @@
 #define POOLTAG_MP_ADAPTER                 'dApM' // MpAd
 #define POOLTAG_MP_EXCLUSIVE               'xEpM' // MpEx
 #define POOLTAG_MP_OID                     'iOpM' // MpOi
+#define POOLTAG_MP_PORT                    'tPpM' // MpPt
 #define POOLTAG_MP_RSS                     'sRpM' // MpRs
 #define POOLTAG_MP_SHARED                  'hSpM' // MpSh
 #define POOLTAG_MP_SHARED_RX               'rSpM' // MpSr
