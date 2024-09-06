@@ -328,6 +328,7 @@ size_t IOCTL_BUFFER_SIZES[] =
     sizeof(USHORT),
     sizeof(USHORT),
     0,
+    0,
 };
 
 static_assert(

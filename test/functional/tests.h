@@ -29,6 +29,9 @@ VOID
 MpBasicWatchdog();
 
 VOID
+MpBasicPort();
+
+VOID
 LwfBasicRx();
 
 VOID

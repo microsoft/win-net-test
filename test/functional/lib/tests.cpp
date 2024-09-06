@@ -683,6 +683,28 @@ MpOidCompleteRequest(
     return true;
 }
 
+[[nodiscard]]
+static
+FNMPAPI_STATUS
+MpAllocatePort(
+    _In_ const unique_fnmp_handle& Handle,
+    _Out_ NDIS_PORT_NUMBER *PortNumber
+    )
+{
+    return FnMpAllocatePort(Handle.get(), PortNumber);
+}
+
+[[nodiscard]]
+static
+FNMPAPI_STATUS
+MpFreePort(
+    _In_ const unique_fnmp_handle& Handle,
+    _In_ NDIS_PORT_NUMBER PortNumber
+    )
+{
+    return FnMpFreePort(Handle.get(), PortNumber);
+}
+
 static
 unique_fnlwf_handle
 LwfOpenDefault(
@@ -1472,6 +1494,24 @@ MpBasicWatchdog()
         MpTxGetFrame(SharedMp, 0, &FrameLength, NULL, 0));
 
     TEST_TRUE(CxPlatThreadWait(AsyncThread.get(), TEST_TIMEOUT_ASYNC_MS));
+}
+
+EXTERN_C
+VOID
+MpBasicPort()
+{
+    auto ExclusiveMp = MpOpenExclusive(FnMpIf->GetIfIndex());
+
+    NDIS_PORT_NUMBER Number;
+    TEST_FNMPAPI(MpAllocatePort(ExclusiveMp, &Number));
+
+    NDIS_PORT_NUMBER LeakNumber;
+    TEST_FNMPAPI(MpAllocatePort(ExclusiveMp, &LeakNumber));
+
+    TEST_NOT_EQUAL(Number, LeakNumber);
+
+    TEST_FNMPAPI(MpFreePort(ExclusiveMp, Number));
+    TEST_EQUAL(FNMPAPI_STATUS_NOT_FOUND, MpFreePort(ExclusiveMp, Number));
 }
 
 EXTERN_C
