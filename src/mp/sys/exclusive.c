@@ -51,6 +51,14 @@ ExclusiveIrpDeviceIoControl(
         Status = MpIrpFreePort(UserContext, Irp, IrpSp);
         break;
 
+    case FNMP_IOCTL_MINIPORT_ACTIVATE_PORT:
+        Status = MpIrpActivatePort(UserContext, Irp, IrpSp);
+        break;
+
+    case FNMP_IOCTL_MINIPORT_DEACTIVATE_PORT:
+        Status = MpIrpDeactivatePort(UserContext, Irp, IrpSp);
+        break;
+
     default:
         Status = STATUS_NOT_SUPPORTED;
         goto Exit;

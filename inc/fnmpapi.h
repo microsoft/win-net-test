@@ -461,4 +461,36 @@ FnMpFreePort(
             NULL, NULL);
 }
 
+FNMPAPI
+FNMPAPI_STATUS
+FnMpActivatePort(
+    _In_ FNMP_HANDLE Handle,
+    _In_ NDIS_PORT_NUMBER PortNumber
+    )
+{
+    //
+    // Supports exclusive handles only. Activates the specified NDIS port.
+    //
+    return
+        FnIoctl(
+            Handle, FNMP_IOCTL_MINIPORT_ACTIVATE_PORT, &PortNumber, sizeof(PortNumber), NULL, 0,
+            NULL, NULL);
+}
+
+FNMPAPI
+FNMPAPI_STATUS
+FnMpDeactivatePort(
+    _In_ FNMP_HANDLE Handle,
+    _In_ NDIS_PORT_NUMBER PortNumber
+    )
+{
+    //
+    // Supports exclusive handles only. Deactivates the specified NDIS port.
+    //
+    return
+        FnIoctl(
+            Handle, FNMP_IOCTL_MINIPORT_DEACTIVATE_PORT, &PortNumber, sizeof(PortNumber), NULL, 0,
+            NULL, NULL);
+}
+
 EXTERN_C_END
