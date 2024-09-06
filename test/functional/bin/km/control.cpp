@@ -445,6 +445,10 @@ TestDrvCtlEvtIoDeviceControl(
         break;
     case IOCTL_MP_BASIC_WATCHDOG:
         TestDrvCtlRun(MpBasicWatchdog());
+        break;
+    case IOCTL_MP_BASIC_PORT:
+        TestDrvCtlRun(MpBasicPort());
+        break;
     case IOCTL_LWF_BASIC_RX:
         TestDrvCtlRun(LwfBasicRx());
         break;
