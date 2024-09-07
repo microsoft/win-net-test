@@ -757,7 +757,8 @@ MiniportInitializeHandler(
     RegAttributes->AttributeFlags =
         NDIS_MINIPORT_ATTRIBUTES_NDIS_WDM |
         NDIS_MINIPORT_ATTRIBUTES_SURPRISE_REMOVE_OK |
-        NDIS_MINIPORT_ATTRIBUTES_NO_PAUSE_ON_SUSPEND;
+        NDIS_MINIPORT_ATTRIBUTES_NO_PAUSE_ON_SUSPEND |
+        NDIS_MINIPORT_ATTRIBUTES_NO_OID_INTERCEPT_ON_NONDEFAULT_PORTS;
     RegAttributes->CheckForHangTimeInSeconds = 0;
     RegAttributes->InterfaceType = NdisInterfacePNPBus;
 
