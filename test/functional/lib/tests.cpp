@@ -1568,7 +1568,7 @@ MpVerifyPortState(
         LwfOidAllocateAndSubmitRequest<NDIS_PORT_ARRAY>(LwfHandle, OidKey, &BytesReturned);
     TEST_NOT_NULL(PortArray.get());
 
-    for (UINT32 i = 0; i < PortArray->NumberOfPorts; i++) {
+    for (UINT64 i = 0; i < PortArray->NumberOfPorts; i++) {
         const NDIS_PORT_CHARACTERISTICS *PortCharacteristics = (const NDIS_PORT_CHARACTERISTICS *)
             RTL_PTR_ADD(PortArray.get(), PortArray->OffsetFirstPort + PortArray->ElementSize * i);
 
