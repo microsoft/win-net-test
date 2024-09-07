@@ -47,6 +47,12 @@ CONST NDIS_OID MpSupportedOidArray[] =
     OID_QUIC_CONNECTION_ENCRYPTION,
     OID_QUIC_CONNECTION_ENCRYPTION_PROTOTYPE,
     OID_FNMP_SET_NOP,
+    //
+    // Instead of adding new dummy OIDs to FNMP on behalf of tests, add an FNMP
+    // API for dynamic OID support, using NetEventRequirePause and
+    // NetEventAllowStart to restart the miniport. The FNMP restart handler will
+    // specify the dynamically generated SupportedOidList.
+    //
 };
 
 CONST UINT32 MpSupportedOidArraySize = sizeof(MpSupportedOidArray);
