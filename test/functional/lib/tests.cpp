@@ -917,6 +917,34 @@ LwfOidSubmitRequestFn(
     CXPLAT_THREAD_RETURN(0);
 }
 
+template <typename T>
+static
+unique_malloc_ptr<T>
+LwfOidAllocateAndSubmitRequest(
+    _In_ const unique_fnlwf_handle &Handle,
+    _In_ OID_KEY Key,
+    _Out_ UINT32 *BytesReturned
+    )
+{
+    unique_malloc_ptr<T> InformationBuffer;
+    UINT32 InformationBufferLength = 0;
+    FNLWFAPI_STATUS Result;
+
+    Result = LwfOidSubmitRequest(Handle, Key, &InformationBufferLength, NULL);
+    TEST_EQUAL_RET(FNLWFAPI_STATUS_MORE_DATA, Result, InformationBuffer);
+    TEST_TRUE_RET(InformationBufferLength > 0, InformationBuffer);
+
+    InformationBuffer.reset((T *)CxPlatAllocNonPaged(InformationBufferLength, POOL_TAG));
+    TEST_NOT_NULL_RET(InformationBuffer.get(), InformationBuffer);
+
+    Result = LwfOidSubmitRequest(Handle, Key, &InformationBufferLength, InformationBuffer.get());
+    TEST_FNLWFAPI_RET(Result, InformationBuffer);
+    TEST_TRUE_RET(InformationBufferLength > 0, InformationBuffer);
+    *BytesReturned = InformationBufferLength;
+
+    return InformationBuffer;
+}
+
 static
 bool
 WaitForWfpQuarantine(
@@ -1521,28 +1549,33 @@ MpBasicWatchdog()
 static
 VOID
 MpVerifyPortState(
-    _In_ const unique_fnlwf_handle& LwfHandle,
+    _In_ const unique_fnlwf_handle &LwfHandle,
     _In_ NDIS_PORT_NUMBER PortNumber,
     _In_ BOOLEAN ExpectFound
     )
 {
     OID_KEY OidKey;
-    InitializeOidKey(&OidKey, OID_GEN_PORT_STATE, NdisRequestQueryInformation);
-    OidKey.PortNumber = PortNumber;
+    InitializeOidKey(&OidKey, OID_GEN_ENUMERATE_PORTS, NdisRequestQueryInformation);
     NDIS_PORT_STATE PortState = {0};
-    UINT32 PortStateSize = sizeof(PortState);
+    UINT32 BytesReturned;
+    BOOLEAN Found = FALSE;
 
     //
     // Verify the port state is accurately reported to NDIS components.
     //
 
-    FNLWFAPI_STATUS Status = LwfOidSubmitRequest(LwfHandle, OidKey, &PortStateSize, &PortState);
+    auto PortArray =
+        LwfOidAllocateAndSubmitRequest<NDIS_PORT_ARRAY>(LwfHandle, OidKey, &BytesReturned);
+    TEST_NOT_NULL(PortArray.get());
 
-    if (ExpectFound) {
-        TEST_FNLWFAPI(Status);
-    } else {
-        TEST_NOT_EQUAL(FNLWFAPI_STATUS_SUCCESS, Status);
+    for (UINT32 i = 0; i < PortArray->NumberOfPorts; i++) {
+        const NDIS_PORT_CHARACTERISTICS *PortCharacteristics = (const NDIS_PORT_CHARACTERISTICS *)
+            RTL_PTR_ADD(PortArray.get(), PortArray->OffsetFirstPort + PortArray->ElementSize * i);
+
+        Found |= PortCharacteristics->PortNumber == PortNumber;
     }
+
+    TEST_EQUAL(ExpectFound, Found);
 }
 
 EXTERN_C
