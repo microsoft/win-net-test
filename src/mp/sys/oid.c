@@ -39,7 +39,9 @@ CONST NDIS_OID MpSupportedOidArray[] =
     OID_PNP_SET_POWER,
     OID_PNP_QUERY_POWER,
     OID_OFFLOAD_ENCAPSULATION,
+    OID_GEN_RECEIVE_SCALE_CAPABILITIES,
     OID_GEN_RECEIVE_SCALE_PARAMETERS,
+    OID_GEN_DRIVER_VERSION,
     OID_TCP_OFFLOAD_PARAMETERS,
     OID_TCP_OFFLOAD_HW_PARAMETERS,
     OID_QUIC_CONNECTION_ENCRYPTION,
@@ -153,6 +155,7 @@ MpProcessQueryOid(
     PUINT BytesWritten = &NdisRequest->DATA.QUERY_INFORMATION.BytesWritten;
     PUINT BytesNeeded = &NdisRequest->DATA.QUERY_INFORMATION.BytesNeeded;
     BOOLEAN DoCopy = TRUE;
+    UINT16 DriverVersion;
     ULONG LocalData = 0;
     ULONG DataLength = sizeof(LocalData);
     VOID *Data = &LocalData;
@@ -220,6 +223,13 @@ MpProcessQueryOid(
         case OID_GEN_TRANSMIT_BLOCK_SIZE:
         case OID_GEN_RECEIVE_BLOCK_SIZE:
             LocalData = Adapter->MtuSize + ETH_HDR_LEN;
+            break;
+
+        case OID_GEN_DRIVER_VERSION:
+            DriverVersion =
+                (NDIS_MINIPORT_MAJOR_VERSION << RTL_BITS_OF(UINT8)) | NDIS_MINIPORT_MINOR_VERSION;
+            DataLength = sizeof(DriverVersion);
+            Data = &DriverVersion;
             break;
 
         case OID_GEN_VENDOR_ID:
