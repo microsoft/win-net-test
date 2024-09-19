@@ -1,8 +1,8 @@
 <?xml version="1.0" encoding="utf-8"?>
 <Project xmlns="http://schemas.microsoft.com/developer/msbuild/2003" ToolsVersion="15.0">
   <PropertyGroup>
-    <WntLibPath>$(MSBuildThisFileDirectory)lib</WntLibPath>
-    <WntBinPath>$(MSBuildThisFileDirectory)bin</WntBinPath>
+    <WntLibPath>$(MSBuildThisFileDirectory)lib\$(Platform)</WntLibPath>
+    <WntBinPath>$(MSBuildThisFileDirectory)bin\$(Platform)</WntBinPath>
     <WntIncPath>$(MSBuildThisFileDirectory)include</WntIncPath>
   </PropertyGroup>
   <ItemDefinitionGroup>

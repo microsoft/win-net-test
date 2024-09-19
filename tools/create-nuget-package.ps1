@@ -6,7 +6,7 @@
 param (
     [ValidateSet("x64", "arm64")]
     [Parameter(Mandatory=$false)]
-    [string]$Platform = "x64",
+    [string[]]$Platform = "x64",
 
     [ValidateSet("Debug", "Release")]
     [Parameter(Mandatory=$false)]
@@ -22,15 +22,26 @@ $RootDir = Split-Path $PSScriptRoot -Parent
 
 try {
     $Version = Get-ProjectBuildVersionString
-    $ArchConfig = "$($Platform)_$Config"
 
-    $DstPath = "artifacts\pkg\$ArchConfig"
+    $DstPath = "artifacts\pkg\$Config"
     New-Item -ItemType Directory -Path $DstPath -ErrorAction Ignore
 
     $Content = Get-Content "tools\nuget\win-net-test.nuspec.in"
     $Content = $Content.Replace("{version}", $Version)
-    $Content = $Content.Replace("{archconfig}", $ArchConfig)
-    Set-Content $DstPath\win-net-test.nuspec $Content
+    $Content = $Content.Replace("{config}", $Config)
+    $ExpandedContent = @()
+
+    foreach ($Line in $Content) {
+        if ($Line -like "*{arch}*") {
+            foreach ($PlatformName in $Platform) {
+                $ExpandedContent += $Line.Replace("{arch}", $PlatformName)
+            }
+        } else {
+            $ExpandedContent += $Line
+        }
+    }
+
+    Set-Content $DstPath\win-net-test.nuspec $ExpandedContent
 
     nuget.exe pack $DstPath\win-net-test.nuspec -OutputDirectory $DstPath
 } catch {
