@@ -139,7 +139,7 @@ jobs:
     - name: Upload Release Artifacts
       uses: actions/upload-artifact@50769540e7f4bd5e21e526ee35c689e35e0d6874
       with:
-        name: release_dev_artifacts_${{ matrix.configuration }}
+        name: release_artifacts_${{ matrix.configuration }}
         path: |
           artifacts/pkg/**/*.nupkg
 
@@ -166,7 +166,7 @@ jobs:
     - name: Upload Release Artifacts
       uses: actions/upload-artifact@50769540e7f4bd5e21e526ee35c689e35e0d6874
       with:
-        name: release_runtime_artifacts_${{ matrix.configuration }}_${{ matrix.platform }}
+        name: release_artifacts_${{ matrix.configuration }}
         path: |
           artifacts/kit/**/*.zip
 
