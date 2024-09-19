@@ -173,7 +173,7 @@ jobs:
   Complete:
     name: Complete
     if: always()
-    needs: [build, functional_tests, create_artifacts]
+    needs: [build, functional_tests, create_dev_artifacts, create_runtime_artifacts]
     runs-on: ubuntu-latest
     permissions: {} # No need for any permissions.
     steps:
