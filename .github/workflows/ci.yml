@@ -112,8 +112,39 @@ jobs:
         name: logs_func_${{ matrix.apimode }}_${{ matrix.os }}_${{ matrix.configuration }}_${{ matrix.platform }}
         path: artifacts/logs
 
-  create_artifacts:
-    name: Create Release Artifacts
+  create_dev_artifacts:
+    name: Create Dev Artifacts
+    needs: build
+    strategy:
+      fail-fast: false
+      matrix:
+        configuration: [Release]
+    runs-on: windows-2022
+    steps:
+    - name: Checkout repository
+      uses: actions/checkout@692973e3d937129bcbf40652eb9f2f61becf3332
+    - name: Download x64 Artifacts
+      uses: actions/download-artifact@fa0a91b85d4f404e444e00e005971372dc801d16
+      with:
+        name: bin_${{ matrix.configuration }}_x64
+        path: artifacts/bin
+    - name: Download arm64 Artifacts
+      uses: actions/download-artifact@fa0a91b85d4f404e444e00e005971372dc801d16
+      with:
+        name: bin_${{ matrix.configuration }}_arm64
+        path: artifacts/bin
+    - name: Create Nuget Package
+      shell: PowerShell
+      run: tools/create-nuget-package.ps1 -Config ${{ matrix.configuration }} -Platform x64, arm64
+    - name: Upload Release Artifacts
+      uses: actions/upload-artifact@50769540e7f4bd5e21e526ee35c689e35e0d6874
+      with:
+        name: release_dev_artifacts_${{ matrix.configuration }}
+        path: |
+          artifacts/pkg/**/*.nupkg
+
+  create_runtime_artifacts:
+    name: Create Runtime Artifacts
     needs: build
     strategy:
       fail-fast: false
@@ -129,22 +160,15 @@ jobs:
       with:
         name: bin_${{ matrix.configuration }}_${{ matrix.platform }}
         path: artifacts/bin
-    - name: Create Nuget Package
-      shell: PowerShell
-      run: tools/create-nuget-package.ps1 -Config ${{ matrix.configuration }} -Platform ${{ matrix.platform }}
-    - name: Create Dev Kit
-      shell: PowerShell
-      run: tools/create-devkit.ps1 -Config ${{ matrix.configuration }} -Platform ${{ matrix.platform }}
     - name: Create Runtime Kit
       shell: PowerShell
       run: tools/create-runtimekit.ps1 -Config ${{ matrix.configuration }} -Platform ${{ matrix.platform }}
     - name: Upload Release Artifacts
       uses: actions/upload-artifact@50769540e7f4bd5e21e526ee35c689e35e0d6874
       with:
-        name: release_artifacts_${{ matrix.configuration }}_${{ matrix.platform }}
+        name: release_runtime_artifacts_${{ matrix.configuration }}_${{ matrix.platform }}
         path: |
           artifacts/kit/**/*.zip
-          artifacts/pkg/**/*.nupkg
 
   Complete:
     name: Complete
