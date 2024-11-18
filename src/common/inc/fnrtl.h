@@ -173,6 +173,8 @@ RtlReleasePushLockShared(
     KeLeaveCriticalRegion();
 }
 
+#ifndef _RTL_VOL_MEM_ACCESSORS_
+
 FORCEINLINE
 VOID
 RtlCopyVolatileMemory(
@@ -184,6 +186,8 @@ RtlCopyVolatileMemory(
     RtlCopyMemory(Destination, (const VOID *)Source, Size);
     _ReadWriteBarrier();
 }
+
+#endif
 
 FORCEINLINE
 HANDLE
