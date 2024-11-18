@@ -21,12 +21,6 @@
         %(AdditionalIncludeDirectories)
       </AdditionalIncludeDirectories>
     </ClCompile>
-    <Link>
-      <AdditionalDependencies>
-        volatileaccessk.lib;
-        %(AdditionalDependencies)
-      </AdditionalDependencies>
-    </Link>
   </ItemDefinitionGroup>
   <Import Project="$(UndockedDir)vs\windows.undocked.targets" />
 </Project>

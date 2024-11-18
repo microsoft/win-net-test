@@ -59,6 +59,7 @@
       <AdditionalDependencies>
         ndis.lib;
         netio.lib;
+        volatileaccessk.lib;
         %(AdditionalDependencies)
       </AdditionalDependencies>
     </Link>
