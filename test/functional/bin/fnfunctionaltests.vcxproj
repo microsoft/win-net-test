@@ -10,7 +10,6 @@
     <UndockedOut>$(SolutionDir)artifacts\</UndockedOut>
     <UndockedSourceLink>true</UndockedSourceLink>
   </PropertyGroup>
-  <Import Project="$(UndockedDir)vs\windows.undocked.props" />
   <Import Project="$(SolutionDir)src\wnt.cpp.props" />
   <ItemGroup>
     <ProjectReference Include="$(SolutionDir)test\functional\bin\km\fnfunctionaltestdrv.vcxproj">

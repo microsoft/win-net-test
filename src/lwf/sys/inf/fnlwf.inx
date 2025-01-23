@@ -18,9 +18,9 @@ fnlwf.CopyFiles = %DIRID_DRIVERS%
 fnlwf.sys = 1
 
 [Manufacturer]
-%Msft% = MSFT,NT$ARCH$
+%Msft% = MSFT,NT$ARCH$.10.0...17763
 
-[MSFT.NT$ARCH$]
+[MSFT.NT$ARCH$.10.0...17763]
 %fnlwf.DeviceDesc% = Install, ms_fnlwf
 
 [Install]
