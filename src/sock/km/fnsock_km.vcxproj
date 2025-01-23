@@ -8,8 +8,6 @@
     <UndockedOut>$(SolutionDir)artifacts\</UndockedOut>
     <UndockedSourceLink>true</UndockedSourceLink>
   </PropertyGroup>
-  <Import Project="$(UndockedDir)vs\windows.undocked.props" />
-  <Import Project="$(SolutionDir)src\wnt.cpp.props" />
   <Import Project="$(SolutionDir)src\wnt.cpp.kernel.props" />
   <ItemGroup>
     <ProjectReference Include="$(SolutionDir)src\wskclient\wskclient.vcxproj">
