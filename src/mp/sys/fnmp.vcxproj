@@ -59,7 +59,7 @@
         netio.lib;
         %(AdditionalDependencies)
       </AdditionalDependencies>
-      <AdditionalDependencies Condition="'$(LatestWdkPlatformVersion)' &gt;= '10.0.26100.0'">
+      <AdditionalDependencies Condition="'$(LatestWdkPlatformVersion)' != '' And '$(LatestWdkPlatformVersion)' &gt;= '10.0.26100.0'">
         volatileaccessk.lib;
         %(AdditionalDependencies)
       </AdditionalDependencies>
