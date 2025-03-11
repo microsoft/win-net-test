@@ -309,15 +309,10 @@ PktBuildTcpFrame(
     return TRUE;
 }
 
-//
-// Build a QUIC frame from the given parameters and paylaod.
-// The frame is meant to be wraped in a TCP or UDP frames,
-// as the payload in `PktBuildTcpFrame` or `PktBuildUdpFrame`.
-//
 inline
 _Success_(return != FALSE)
 BOOLEAN
-PktBuildQuicLongHeader(
+PktBuildQuicV1PacketLongHeader(
     _Out_writes_bytes_(*BufferSize) VOID *Buffer,
     _Inout_ UINT32 *BufferSize,
     _In_ UINT8 TypeAndSpecificBits,
@@ -370,7 +365,7 @@ PktBuildQuicLongHeader(
 inline
 _Success_(return != FALSE)
 BOOLEAN
-PktBuildQuicShortHeader(
+PktBuildQuicPacketShortHeader(
     _Out_writes_bytes_(*BufferSize) VOID *Buffer,
     _Inout_ UINT32 *BufferSize,
     _In_ UINT8 TypeAndSpecificBits,
@@ -406,15 +401,21 @@ PktBuildQuicShortHeader(
     return TRUE;
 }
 
+//
+// Build a QUIC packet from the given parameters and paylaod.
+// The frame is meant to be wraped in a TCP or UDP frames,
+// as the payload in `PktBuildTcpFrame` or `PktBuildUdpFrame`.
+//
 inline
 _Success_(return != FALSE)
 BOOLEAN
-PktBuildQuicFrame(
+PktBuildQuicPacket(
     _Out_writes_bytes_(*BufferSize) VOID *Buffer,
     _Inout_ UINT32 *BufferSize,
     _In_opt_ CONST UCHAR *Payload,
     _In_ UINT16 PayloadLength,
     _In_ UINT8 TypeAndSpecificBits,
+    _In_ UINT32 Version,
     _In_reads_bytes_(DestConnIdLength) CONST UCHAR *DestConnId,
     _In_ UINT8 DestConnIdLength,
     _In_reads_bytes_(SrcConnIdLength) CONST UCHAR *SrcConnId,
@@ -422,12 +423,20 @@ PktBuildQuicFrame(
     _In_ BOOLEAN UseShortHeader
     )
 {
+    //
+    // Only QUIC v1 is supported.
+    //
+    if (Version != 1) {
+        return FALSE;
+    }
+
     if (UseShortHeader) {
-        return PktBuildQuicShortHeader(
+        return PktBuildQuicPacketShortHeader(
             Buffer, BufferSize, TypeAndSpecificBits, DestConnId, DestConnIdLength, Payload,
             PayloadLength);
     }
-    return PktBuildQuicLongHeader(
+
+    return PktBuildQuicV1PacketLongHeader(
         Buffer, BufferSize, TypeAndSpecificBits, DestConnId, DestConnIdLength, SrcConnId,
         SrcConnIdLength, Payload, PayloadLength);
 }
