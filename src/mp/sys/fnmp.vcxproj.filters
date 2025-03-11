@@ -1,0 +1,44 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<Project ToolsVersion="4.0" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
+  <ItemGroup>
+    <ClCompile Include="exclusive.c" />
+    <ClCompile Include="dispatch.c" />
+    <ClCompile Include="shared.c" />
+    <ClCompile Include="miniport.c" />
+    <ClCompile Include="oid.c" />
+    <ClCompile Include="port.c" />
+    <ClCompile Include="rss.c" />
+    <ClCompile Include="rx.c" />
+    <ClCompile Include="trace.c" />
+    <ClCompile Include="tx.c" />
+  </ItemGroup>
+  <ItemGroup>
+    <ClInclude Include="precomp.h" />
+    <ClInclude Include="..\..\..\inc\fnmpapi.h">
+      <Filter>inc</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\..\inc\fnmpapiconfig.h">
+      <Filter>inc</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\..\inc\fnmpapistatus_km.h">
+      <Filter>inc</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\..\inc\fnmpapistatus_um.h">
+      <Filter>inc</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\..\inc\fnmpioctl.h">
+      <Filter>inc</Filter>
+    </ClInclude>
+  </ItemGroup>
+  <ItemGroup>
+    <ResourceCompile Include="fnmp.rc" />
+  </ItemGroup>
+  <ItemGroup>
+    <Inf Include="inf\fnmp.inx" />
+  </ItemGroup>
+  <ItemGroup>
+    <Filter Include="inc">
+      <UniqueIdentifier>{074d1379-f6f0-4838-bb1a-a21df794eda2}</UniqueIdentifier>
+    </Filter>
+  </ItemGroup>
+</Project>
