@@ -28,11 +28,6 @@
     <ClCompile Include="rx.c" />
     <ClCompile Include="trace.c" />
     <ClCompile Include="tx.c" />
-    <ClInclude Include="$(SolutionDir)inc\fnmpapi.h" />
-    <ClInclude Include="$(SolutionDir)inc\fnmpapiconfig.h" />
-    <ClInclude Include="$(SolutionDir)inc\fnmpapistatus_km.h" />
-    <ClInclude Include="$(SolutionDir)inc\fnmpapistatus_um.h" />
-    <ClInclude Include="$(SolutionDir)inc\fnmpioctl.h" />
     <ClInclude Include="precomp.h" />
     <FilesToPackage Include="$(TargetPath)" />
     <ResourceCompile Include="fnmp.rc" />
