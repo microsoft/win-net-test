@@ -341,7 +341,7 @@ PktBuildQuicLongHeader(
     //
     // Set the Header Form bit to 1 for a long header, and Fixed bit to 1
     //
-    CONST UINT8 Prelude = 0b1100'0000 | (0b0011'1111 & TypeAndSpecificBits);
+    CONST UINT8 Prelude = 0xC0 | (0x3F & TypeAndSpecificBits);
 
     *Cursor = Prelude;
     Cursor += sizeof(Prelude);
@@ -390,7 +390,7 @@ PktBuildQuicShortHeader(
     //
     // Set the Header Form bit to 0 for a short header, and Fixed bit to 1
     //
-    CONST UINT8 Prelude = 0b0100'0000 | (0b0011'1111 & TypeAndSpecificBits);
+    CONST UINT8 Prelude = 0x40 | (0x3F & TypeAndSpecificBits);
 
     *Cursor = Prelude;
     Cursor += sizeof(Prelude);
@@ -423,9 +423,13 @@ PktBuildQuicFrame(
     )
 {
     if (UseShortHeader) {
-        return PktBuildQuicShortHeader(Buffer, BufferSize, TypeAndSpecificBits, DestConnId, DestConnIdLength, Payload, PayloadLength);
+        return PktBuildQuicShortHeader(
+            Buffer, BufferSize, TypeAndSpecificBits, DestConnId, DestConnIdLength, Payload,
+            PayloadLength);
     }
-    return PktBuildQuicLongHeader(Buffer, BufferSize, TypeAndSpecificBits, DestConnId, DestConnIdLength, SrcConnId, SrcConnIdLength, Payload, PayloadLength);
+    return PktBuildQuicLongHeader(
+        Buffer, BufferSize, TypeAndSpecificBits, DestConnId, DestConnIdLength, SrcConnId,
+        SrcConnIdLength, Payload, PayloadLength);
 }
 
 inline

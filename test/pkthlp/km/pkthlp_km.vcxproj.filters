@@ -9,7 +9,7 @@
     </Filter>
   </ItemGroup>
   <ItemGroup>
-    <ClInclude Include="..\..\..\inc\pkthlp.h">
+    <ClInclude Include="$(SolutionDir)inc\pkthlp.h">
       <Filter>inc</Filter>
     </ClInclude>
   </ItemGroup>
