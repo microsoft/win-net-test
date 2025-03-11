@@ -357,7 +357,7 @@ PktBuildQuicLongHeader(
     Cursor += SrcConnIdLength;
 
     if (Payload) {
-		RtlCopyMemory(Cursor, Payload, PayloadLength);
+        RtlCopyMemory(Cursor, Payload, PayloadLength);
     }
 
     *BufferSize = TotalLength;
@@ -393,7 +393,7 @@ PktBuildQuicShortHeader(
     Cursor += DestConnIdLength;
 
     if (Payload) {
-		RtlCopyMemory(Cursor, Payload, PayloadLength);
+        RtlCopyMemory(Cursor, Payload, PayloadLength);
     }
 
     *BufferSize = TotalLength;
@@ -419,7 +419,7 @@ PktBuildQuicFrame(
     if (UseShortHeader) {
         return PktBuildQuicShortHeader(Buffer, BufferSize, TypeAndSpecificBits, DestConnId, DestConnIdLength, Payload, PayloadLength);
     }
-	return PktBuildQuicLongHeader(Buffer, BufferSize, TypeAndSpecificBits, DestConnId, DestConnIdLength, SrcConnId, SrcConnIdLength, Payload, PayloadLength);
+    return PktBuildQuicLongHeader(Buffer, BufferSize, TypeAndSpecificBits, DestConnId, DestConnIdLength, SrcConnId, SrcConnIdLength, Payload, PayloadLength);
 }
 
 inline
