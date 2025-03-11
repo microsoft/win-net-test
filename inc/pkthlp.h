@@ -308,6 +308,119 @@ PktBuildTcpFrame(
     return TRUE;
 }
 
+//
+// Build a QUIC frame from the given parameters and paylaod.
+// The frame is meant to be wraped in a TCP or UDP frames,
+// as the payload in `PktBuildTcpFrame` or `PktBuildUdpFrame`.
+//
+inline
+_Success_(return != FALSE)
+BOOLEAN
+PktBuildQuicLongHeader(
+    _Out_writes_bytes_(*BufferSize) VOID *Buffer,
+    _Inout_ UINT32 *BufferSize,
+    _In_ UINT8 TypeAndSpecificBits,
+    _In_reads_bytes_(DestConnIdLength) CONST UCHAR *DestConnId,
+    _In_ UINT8 DestConnIdLength,
+    _In_reads_bytes_(SrcConnIdLength) CONST UCHAR *SrcConnId,
+    _In_ UINT8 SrcConnIdLength,
+    _In_opt_ CONST UCHAR *Payload,
+    _In_ UINT16 PayloadLength
+    )
+{
+    UINT8* Cursor = (UINT8*)Buffer;
+    CONST UINT32 Version = 1;
+    CONST UINT32 TotalLength = sizeof(UINT8) + sizeof(Version) + sizeof(DestConnIdLength) +
+        DestConnIdLength + sizeof(SrcConnIdLength) + SrcConnIdLength + PayloadLength;
+
+    if (*BufferSize < TotalLength) {
+        return FALSE;
+    }
+
+    CONST UINT8 Prelude = 0b1100'0000 | (0b0011'1111 & TypeAndSpecificBits);
+
+    *Cursor = Prelude;
+    Cursor += sizeof(Prelude);
+
+    RtlCopyMemory(Cursor, &Version, sizeof(Version));
+    Cursor += sizeof(Version);
+
+    *Cursor = DestConnIdLength;
+    Cursor += sizeof(DestConnIdLength);
+    RtlCopyMemory(Cursor, DestConnId, DestConnIdLength);
+    Cursor += DestConnIdLength;
+
+    *Cursor = SrcConnIdLength;
+    Cursor += sizeof(SrcConnIdLength);
+    RtlCopyMemory(Cursor, SrcConnId, SrcConnIdLength);
+    Cursor += SrcConnIdLength;
+
+    if (Payload) {
+		RtlCopyMemory(Cursor, Payload, PayloadLength);
+    }
+
+    *BufferSize = TotalLength;
+    return TRUE;
+}
+
+inline
+_Success_(return != FALSE)
+BOOLEAN
+PktBuildQuicShortHeader(
+    _Out_writes_bytes_(*BufferSize) VOID *Buffer,
+    _Inout_ UINT32 *BufferSize,
+    _In_ UINT8 TypeAndSpecificBits,
+    _In_reads_bytes_(DestConnIdLength) CONST UCHAR *DestConnId,
+    _In_ UINT8 DestConnIdLength,
+    _In_opt_ CONST UCHAR *Payload,
+    _In_ UINT16 PayloadLength
+    )
+{
+    UINT8* Cursor = (UINT8*)Buffer;
+
+    CONST UINT32 TotalLength = sizeof(UINT8) + DestConnIdLength + PayloadLength;
+    if (*BufferSize < TotalLength) {
+        return FALSE;
+    }
+
+    CONST UINT8 Prelude = 0b0100'0000 | (0b0011'1111 & TypeAndSpecificBits);
+
+    *Cursor = Prelude;
+    Cursor += sizeof(Prelude);
+
+    RtlCopyMemory(Cursor, DestConnId, DestConnIdLength);
+    Cursor += DestConnIdLength;
+
+    if (Payload) {
+		RtlCopyMemory(Cursor, Payload, PayloadLength);
+    }
+
+    *BufferSize = TotalLength;
+    return TRUE;
+}
+
+inline
+_Success_(return != FALSE)
+BOOLEAN
+PktBuildQuicFrame(
+    _Out_writes_bytes_(*BufferSize) VOID *Buffer,
+    _Inout_ UINT32 *BufferSize,
+    _In_opt_ CONST UCHAR *Payload,
+    _In_ UINT16 PayloadLength,
+    _In_ UINT8 TypeAndSpecificBits,
+    _In_reads_bytes_(DestConnIdLength) CONST UCHAR *DestConnId,
+    _In_ UINT8 DestConnIdLength,
+    _In_reads_bytes_(SrcConnIdLength) CONST UCHAR *SrcConnId,
+    _In_ UINT8 SrcConnIdLength,
+    _In_ BOOLEAN UseShortHeader
+    )
+{
+    if (UseShortHeader) {
+        return PktBuildQuicShortHeader(Buffer, BufferSize, TypeAndSpecificBits, DestConnId, DestConnIdLength, Payload, PayloadLength);
+    }
+	return PktBuildQuicLongHeader(Buffer, BufferSize, TypeAndSpecificBits, DestConnId, DestConnIdLength, SrcConnId, SrcConnIdLength, Payload, PayloadLength);
+}
+
 inline
 _Success_(return != FALSE)
 BOOLEAN

@@ -12,6 +12,9 @@
   <ItemGroup>
     <ClCompile Include="..\pkthlp.c" />
   </ItemGroup>
+  <ItemGroup>
+    <ClInclude Include="..\..\..\inc\pkthlp.h" />
+  </ItemGroup>
   <ItemDefinitionGroup>
     <ClCompile>
       <AdditionalIncludeDirectories>
