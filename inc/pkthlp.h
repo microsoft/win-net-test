@@ -46,6 +46,7 @@ typedef union {
         ((AddressFamily == AF_INET) ? sizeof(IPV4_HEADER) : sizeof(IPV6_HEADER)))
 
 #define TCP_MAX_OPTION_LEN 40
+#define QUIC_MAX_HEADER_LEN 47 // Based on RCF 9000 (QUIC v1)
 #define UDP_HEADER_STORAGE UDP_HEADER_BACKFILL(AF_INET6)
 #define TCP_HEADER_STORAGE (TCP_HEADER_BACKFILL(AF_INET6) + TCP_MAX_OPTION_LEN)
 
