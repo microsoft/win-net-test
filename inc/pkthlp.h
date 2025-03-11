@@ -338,6 +338,9 @@ PktBuildQuicLongHeader(
         return FALSE;
     }
 
+    //
+    // Set the Header Form bit to 1 for a long header, and Fixed bit to 1
+    //
     CONST UINT8 Prelude = 0b1100'0000 | (0b0011'1111 & TypeAndSpecificBits);
 
     *Cursor = Prelude;
@@ -384,6 +387,9 @@ PktBuildQuicShortHeader(
         return FALSE;
     }
 
+    //
+    // Set the Header Form bit to 0 for a short header, and Fixed bit to 1
+    //
     CONST UINT8 Prelude = 0b0100'0000 | (0b0011'1111 & TypeAndSpecificBits);
 
     *Cursor = Prelude;
