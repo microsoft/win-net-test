@@ -430,7 +430,7 @@ PktBuildQuicPacket(
         return FALSE;
     }
 
-    if (UseShortHeader != NULL) {
+    if (UseShortHeader) {
         return
             PktBuildQuicPacketShortHeader(
                 Buffer, BufferSize, TypeAndSpecificBits, DestConnId, DestConnIdLength, Payload,
