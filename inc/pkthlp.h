@@ -46,6 +46,7 @@ typedef union {
         ((AddressFamily == AF_INET) ? sizeof(IPV4_HEADER) : sizeof(IPV6_HEADER)))
 
 #define TCP_MAX_OPTION_LEN 40
+#define QUIC_MAX_HEADER_LEN 47 // Based on RFC 9000 (QUIC v1)
 #define UDP_HEADER_STORAGE UDP_HEADER_BACKFILL(AF_INET6)
 #define TCP_HEADER_STORAGE (TCP_HEADER_BACKFILL(AF_INET6) + TCP_MAX_OPTION_LEN)
 
@@ -306,6 +307,140 @@ PktBuildTcpFrame(
     *BufferSize = TotalLength;
 
     return TRUE;
+}
+
+inline
+_Success_(return != FALSE)
+BOOLEAN
+PktBuildQuicV1PacketLongHeader(
+    _Out_writes_bytes_(*BufferSize) VOID *Buffer,
+    _Inout_ UINT32 *BufferSize,
+    _In_ UINT8 TypeAndSpecificBits,
+    _In_reads_bytes_(DestConnIdLength) CONST UCHAR *DestConnId,
+    _In_ UINT8 DestConnIdLength,
+    _In_reads_bytes_(SrcConnIdLength) CONST UCHAR *SrcConnId,
+    _In_ UINT8 SrcConnIdLength,
+    _In_opt_ CONST UCHAR *Payload,
+    _In_ UINT16 PayloadLength
+    )
+{
+    UINT8* Cursor = (UINT8*)Buffer;
+    CONST UINT32 Version = 1;
+    CONST UINT32 TotalLength = sizeof(UINT8) + sizeof(Version) + sizeof(DestConnIdLength) +
+        DestConnIdLength + sizeof(SrcConnIdLength) + SrcConnIdLength + PayloadLength;
+
+    if (*BufferSize < TotalLength) {
+        return FALSE;
+    }
+
+    //
+    // Set the Header Form bit to 1 for a long header, and Fixed bit to 1
+    //
+    CONST UINT8 Prelude = 0xC0 | (0x3F & TypeAndSpecificBits);
+
+    *Cursor = Prelude;
+    Cursor += sizeof(Prelude);
+
+    RtlCopyMemory(Cursor, &Version, sizeof(Version));
+    Cursor += sizeof(Version);
+
+    *Cursor = DestConnIdLength;
+    Cursor += sizeof(DestConnIdLength);
+    RtlCopyMemory(Cursor, DestConnId, DestConnIdLength);
+    Cursor += DestConnIdLength;
+
+    *Cursor = SrcConnIdLength;
+    Cursor += sizeof(SrcConnIdLength);
+    RtlCopyMemory(Cursor, SrcConnId, SrcConnIdLength);
+    Cursor += SrcConnIdLength;
+
+    if (Payload != NULL) {
+        RtlCopyMemory(Cursor, Payload, PayloadLength);
+    }
+
+    *BufferSize = TotalLength;
+    return TRUE;
+}
+
+inline
+_Success_(return != FALSE)
+BOOLEAN
+PktBuildQuicPacketShortHeader(
+    _Out_writes_bytes_(*BufferSize) VOID *Buffer,
+    _Inout_ UINT32 *BufferSize,
+    _In_ UINT8 TypeAndSpecificBits,
+    _In_reads_bytes_(DestConnIdLength) CONST UCHAR *DestConnId,
+    _In_ UINT8 DestConnIdLength,
+    _In_opt_ CONST UCHAR *Payload,
+    _In_ UINT16 PayloadLength
+    )
+{
+    UINT8* Cursor = (UINT8*)Buffer;
+
+    CONST UINT32 TotalLength = sizeof(UINT8) + DestConnIdLength + PayloadLength;
+    if (*BufferSize < TotalLength) {
+        return FALSE;
+    }
+
+    //
+    // Set the Header Form bit to 0 for a short header, and Fixed bit to 1
+    //
+    CONST UINT8 Prelude = 0x40 | (0x3F & TypeAndSpecificBits);
+
+    *Cursor = Prelude;
+    Cursor += sizeof(Prelude);
+
+    RtlCopyMemory(Cursor, DestConnId, DestConnIdLength);
+    Cursor += DestConnIdLength;
+
+    if (Payload != NULL) {
+        RtlCopyMemory(Cursor, Payload, PayloadLength);
+    }
+
+    *BufferSize = TotalLength;
+    return TRUE;
+}
+
+//
+// Build a QUIC packet from the given parameters and paylaod.
+// The frame is meant to be wraped in a TCP or UDP frames,
+// as the payload in `PktBuildTcpFrame` or `PktBuildUdpFrame`.
+//
+inline
+_Success_(return != FALSE)
+BOOLEAN
+PktBuildQuicPacket(
+    _Out_writes_bytes_(*BufferSize) VOID *Buffer,
+    _Inout_ UINT32 *BufferSize,
+    _In_opt_ CONST UCHAR *Payload,
+    _In_ UINT16 PayloadLength,
+    _In_ UINT8 TypeAndSpecificBits,
+    _In_ UINT32 Version,
+    _In_reads_bytes_(DestConnIdLength) CONST UCHAR *DestConnId,
+    _In_ UINT8 DestConnIdLength,
+    _In_reads_bytes_(SrcConnIdLength) CONST UCHAR *SrcConnId,
+    _In_ UINT8 SrcConnIdLength,
+    _In_ BOOLEAN UseShortHeader
+    )
+{
+    //
+    // Only QUIC v1 is supported.
+    //
+    if (Version != 1) {
+        return FALSE;
+    }
+
+    if (UseShortHeader) {
+        return
+            PktBuildQuicPacketShortHeader(
+                Buffer, BufferSize, TypeAndSpecificBits, DestConnId, DestConnIdLength, Payload,
+                PayloadLength);
+    }
+
+    return
+        PktBuildQuicV1PacketLongHeader(
+            Buffer, BufferSize, TypeAndSpecificBits, DestConnId, DestConnIdLength, SrcConnId,
+            SrcConnIdLength, Payload, PayloadLength);
 }
 
 inline
