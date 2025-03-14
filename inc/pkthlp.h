@@ -46,7 +46,7 @@ typedef union {
         ((AddressFamily == AF_INET) ? sizeof(IPV4_HEADER) : sizeof(IPV6_HEADER)))
 
 #define TCP_MAX_OPTION_LEN 40
-#define QUIC_MAX_HEADER_LEN 47 // Based on RCF 9000 (QUIC v1)
+#define QUIC_MAX_HEADER_LEN 47 // Based on RFC 9000 (QUIC v1)
 #define UDP_HEADER_STORAGE UDP_HEADER_BACKFILL(AF_INET6)
 #define TCP_HEADER_STORAGE (TCP_HEADER_BACKFILL(AF_INET6) + TCP_MAX_OPTION_LEN)
 
@@ -354,7 +354,7 @@ PktBuildQuicV1PacketLongHeader(
     RtlCopyMemory(Cursor, SrcConnId, SrcConnIdLength);
     Cursor += SrcConnIdLength;
 
-    if (Payload) {
+    if (Payload != NULL) {
         RtlCopyMemory(Cursor, Payload, PayloadLength);
     }
 
@@ -393,7 +393,7 @@ PktBuildQuicPacketShortHeader(
     RtlCopyMemory(Cursor, DestConnId, DestConnIdLength);
     Cursor += DestConnIdLength;
 
-    if (Payload) {
+    if (Payload != NULL) {
         RtlCopyMemory(Cursor, Payload, PayloadLength);
     }
 
@@ -430,15 +430,17 @@ PktBuildQuicPacket(
         return FALSE;
     }
 
-    if (UseShortHeader) {
-        return PktBuildQuicPacketShortHeader(
-            Buffer, BufferSize, TypeAndSpecificBits, DestConnId, DestConnIdLength, Payload,
-            PayloadLength);
+    if (UseShortHeader != NULL) {
+        return
+            PktBuildQuicPacketShortHeader(
+                Buffer, BufferSize, TypeAndSpecificBits, DestConnId, DestConnIdLength, Payload,
+                PayloadLength);
     }
 
-    return PktBuildQuicV1PacketLongHeader(
-        Buffer, BufferSize, TypeAndSpecificBits, DestConnId, DestConnIdLength, SrcConnId,
-        SrcConnIdLength, Payload, PayloadLength);
+    return
+        PktBuildQuicV1PacketLongHeader(
+            Buffer, BufferSize, TypeAndSpecificBits, DestConnId, DestConnIdLength, SrcConnId,
+            SrcConnIdLength, Payload, PayloadLength);
 }
 
 inline
