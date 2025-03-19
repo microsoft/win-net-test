@@ -51,10 +51,11 @@ The following sections are generally for the maintainers of win-net-test.
 It is time for a new release! 
 The process is somewhat manual, here is the step-by-step breakdown.
 
-### Bump the version numer
+### Bump the version number
 
 Bump up the version number in `version.json`, respecting semantic versionning.
-Complete the pull request in the `main` branch.
+Complete the pull request in the `main` branch, or in the `release/(major).(minor)` branch if patching an existing
+release.
 
 ### Create a release branch
 
@@ -71,7 +72,8 @@ From a command line in the `win-net-test` repos:
 
 ### Gather artifacts
 
-Wait for the CI to successfully complete its run on the `release/(major).(minor)` branch.
+Wait for the CI to successfully complete its run on the `release/(major).(minor)` branch, on the
+**commit tagged for the release**.
 Then, download the following artifacts from the run summary:
 
 - release_dev_artifacts_Release
@@ -89,15 +91,15 @@ Locally, extract them and collect the inner archives:
 - Draft a new release from the `release/(major).(minor)` branch
 - Select the tag `v(major).(minor).(patch)`
 - Clean up the release notes
-- Attach the archives and the nuget package gathered previously
+- Attach the archives and the Nuget package gathered previously
 - Publish it! 🎉
 
-## Publish the nugget package
+## Publish the NuGet package
 
-Got to [win-net-test on Nuget.org](https://www.nuget.org/packages/win-net-test).
+Go to [win-net-test on Nuget.org](https://www.nuget.org/packages/win-net-test).
 If you are not an owner yet, reach out to an owner for help.
 
 - Copy your API key or create a new one if needed
 - `nuget push .\win-net-test.(major).(minor).(patch).nupkg <api key> -Source https://api.nuget.org/v3/index.json`
 
-[Detailed instructions for publishing a nuget package](https://learn.microsoft.com/en-us/nuget/quickstart/create-and-publish-a-package-using-visual-studio?tabs=nuget#publish-the-package)
+[Detailed instructions for publishing a NuGet package](https://learn.microsoft.com/en-us/nuget/quickstart/create-and-publish-a-package-using-visual-studio?tabs=nuget#publish-the-package)
