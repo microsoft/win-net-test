@@ -82,7 +82,7 @@ jobs:
       shell: PowerShell
       run: tools/prepare-machine.ps1 -ForFunctionalTest -NoReboot -Verbose
     - name: Download Artifacts
-      uses: actions/download-artifact@cc203385981b70ca67e1cc392babf9cc229d5806
+      uses: actions/download-artifact@95815c38cf2ff2164869cbab79da8d1f422bc89e
       with:
         name: bin_${{ matrix.configuration }}_${{ matrix.platform }}
         path: artifacts/bin
@@ -120,12 +120,12 @@ jobs:
     - name: Checkout repository
       uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683
     - name: Download x64 Artifacts
-      uses: actions/download-artifact@cc203385981b70ca67e1cc392babf9cc229d5806
+      uses: actions/download-artifact@95815c38cf2ff2164869cbab79da8d1f422bc89e
       with:
         name: bin_${{ matrix.configuration }}_x64
         path: artifacts/bin
     - name: Download arm64 Artifacts
-      uses: actions/download-artifact@cc203385981b70ca67e1cc392babf9cc229d5806
+      uses: actions/download-artifact@95815c38cf2ff2164869cbab79da8d1f422bc89e
       with:
         name: bin_${{ matrix.configuration }}_arm64
         path: artifacts/bin
@@ -152,7 +152,7 @@ jobs:
     - name: Checkout repository
       uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683
     - name: Download Artifacts
-      uses: actions/download-artifact@cc203385981b70ca67e1cc392babf9cc229d5806
+      uses: actions/download-artifact@95815c38cf2ff2164869cbab79da8d1f422bc89e
       with:
         name: bin_${{ matrix.configuration }}_${{ matrix.platform }}
         path: artifacts/bin
