@@ -12,12 +12,12 @@ $RootDir = Split-Path $PSScriptRoot -Parent
 $BinDir = Join-Path $RootDir "artifacts\bin"
 $IncludeDir = Join-Path $RootDir "inc"
 
-$Configs = @("chk", "fre")
-$Platforms = @("amd64", "arm64")
+$Configs = @("Debug", "Release")
+$Platforms = @("x64", "arm64")
 
 foreach ($Config in $Configs) {
     foreach ($Platform in $Platforms) {
-        $VpackDir = Join-Path $BinDir "$($Platform)$($Config)"
+        $VpackDir = Join-Path $BinDir "$($Platform)_$($Config)"
         New-Item -Path $VpackDir -ItemType Directory -Force | Out-Null
         Copy-Item $IncludeDir\* $VpackDir -Force | Out-Null
         Copy-Item $RootDir\tools\setup.ps1 $VpackDir -Force | Out-Null
