@@ -24,7 +24,7 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        os: [2022]
+        os: [2022, 2025]
         configuration: [Release, Debug]
         platform: [x64, arm64]
     runs-on: windows-${{ matrix.os }}
@@ -69,7 +69,7 @@ jobs:
       fail-fast: false
       matrix:
         apimode: [UserMode, KernelMode]
-        os: [2019, 2022]
+        os: [2022, 2025]
         configuration: [Release, Debug]
         platform: [x64]
     runs-on: windows-${{ matrix.os }}
