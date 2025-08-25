@@ -95,6 +95,11 @@ function Get-VsTestPath {
         return $CiVsTestPath
     }
 
+    $CiVsTestPath2022 = "${Env:ProgramFiles(X86)}\Microsoft Visual Studio\2022\BuildTools\Common7\IDE\Extensions\TestPlatform"
+    if (Test-Path $CiVsTestPath2022) {
+        return $CiVsTestPath2022
+    }
+
     return $null
 }
 
