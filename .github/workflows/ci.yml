@@ -46,7 +46,7 @@ jobs:
       run: msbuild wnt.sln /m /p:configuration=${{ matrix.configuration }} /p:platform=${{ matrix.platform }} /p:SignMode=TestSign
     - name: Upload Artifacts
       if: matrix.os == 2022
-      uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
+      uses: actions/upload-artifact@330a01c490aca151604b8cf639adc76d48f6c5d4
       with:
         name: bin_${{ matrix.configuration }}_${{ matrix.platform }}
         path: |
@@ -102,7 +102,7 @@ jobs:
       shell: PowerShell
       run: tools/log.ps1 -Convert -Name fnfunc* -Verbose -Config ${{ matrix.configuration }} -Arch ${{ matrix.platform }}
     - name: Upload Logs
-      uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
+      uses: actions/upload-artifact@330a01c490aca151604b8cf639adc76d48f6c5d4
       if: ${{ always() }}
       with:
         name: logs_func_${{ matrix.apimode }}_${{ matrix.os }}_${{ matrix.configuration }}_${{ matrix.platform }}
@@ -133,7 +133,7 @@ jobs:
       shell: PowerShell
       run: tools/create-nuget-package.ps1 -Config ${{ matrix.configuration }} -Platform x64, arm64
     - name: Upload Release Artifacts
-      uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
+      uses: actions/upload-artifact@330a01c490aca151604b8cf639adc76d48f6c5d4
       with:
         name: release_dev_artifacts_${{ matrix.configuration }}
         path: |
@@ -160,7 +160,7 @@ jobs:
       shell: PowerShell
       run: tools/create-runtimekit.ps1 -Config ${{ matrix.configuration }} -Platform ${{ matrix.platform }}
     - name: Upload Release Artifacts
-      uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
+      uses: actions/upload-artifact@330a01c490aca151604b8cf639adc76d48f6c5d4
       with:
         name: release_runtime_artifacts_${{ matrix.configuration }}_${{ matrix.platform }}
         path: |
