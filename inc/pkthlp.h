@@ -49,6 +49,10 @@ typedef union {
 #define QUIC_MAX_HEADER_LEN 47 // Based on RFC 9000 (QUIC v1)
 #define UDP_HEADER_STORAGE UDP_HEADER_BACKFILL(AF_INET6)
 #define TCP_HEADER_STORAGE (TCP_HEADER_BACKFILL(AF_INET6) + TCP_MAX_OPTION_LEN)
+#define ICMP4_ECHOREPLY_TYPE 0
+#define ICMP4_ECHOREPLY_CODE 0
+#define ICMP6_ECHOREPLY_TYPE 129
+#define ICMP6_ECHOREPLY_CODE 0
 
 inline
 UINT16
@@ -349,20 +353,15 @@ PktBuildIcmp4Frame(
     IpHeader->HeaderChecksum = PktChecksum(0, IpHeader, sizeof(*IpHeader));
     PktBuffer = IpHeader + 1;
     ICMPV4_HEADER *Icmp4Hdr = (ICMPV4_HEADER *) PktBuffer;
-    Icmp4Hdr->Type = 0;
-    Icmp4Hdr->Code = 0;
+    Icmp4Hdr->Type = ICMP4_ECHOREPLY_TYPE;
+    Icmp4Hdr->Code = ICMP4_ECHOREPLY_CODE;
     PktBuffer = Icmp4Hdr + 1;
 
     // Fill ICMP payload
-    UCHAR *payloadptr = (UCHAR *)PktBuffer;
-    for (int i = 0; i < PayloadLength; i++) {
-        *payloadptr = Payload[i];
-        payloadptr = payloadptr + 1;
-    }
+    RtlCopyMemory(PktBuffer, Payload, PayloadLength);
     Icmp4Hdr->Checksum = PktChecksum(0, Icmp4Hdr, sizeof(*Icmp4Hdr) + PayloadLength);
 
     *BufferSize = TotalLength;
-
     return TRUE;
 }
 
@@ -405,61 +404,41 @@ PktBuildIcmp6Frame(
     RtlCopyMemory(&IpHeader->DestinationAddress, IpDestination, AddressLength);
     PktBuffer = IpHeader + 1;
     ICMPV6_HEADER *Icmp6Hdr = (ICMPV6_HEADER *) PktBuffer;
-    Icmp6Hdr->Type = 129;
-    Icmp6Hdr->Code = 0;
+    Icmp6Hdr->Type = ICMP6_ECHOREPLY_TYPE;
+    Icmp6Hdr->Code = ICMP6_ECHOREPLY_CODE;
     PktBuffer = Icmp6Hdr + 1;
 
     // Fill ICMP payload
-    UCHAR *payloadptr = (UCHAR *)PktBuffer;
-    for (int i = 0; i < PayloadLength; i++) {
-        *payloadptr = Payload[i];
-        payloadptr = payloadptr + 1;
-    }
+    RtlCopyMemory(PktBuffer, Payload, PayloadLength);
 
     //
     // Prepare data to compute ICMPV6 checksum
     // Data for checksum calculation: { IPV6 pseudo header + ICMPv6 header (0 for cxsum) + ICMPv6 payload }
     //
-    Icmp6Hdr->Checksum = 0;
-    UINT16 CheckSumDataLength = 2 * sizeof(IN6_ADDR) + sizeof(UINT32) + sizeof(UINT32) + sizeof(ICMPV6_HEADER) + PayloadLength;
-    void *ptr = malloc(CheckSumDataLength);
-    if (ptr == NULL) {
-        return FALSE;
-    }
-    memset(ptr, 0, CheckSumDataLength);
-    UCHAR *CheckSumData = (UCHAR*) ptr;
-    IN6_ADDR *src = (IN6_ADDR*) ptr;
-    *src = IpHeader->SourceAddress;
-    ptr = src + 1;
-    IN6_ADDR *dst = (IN6_ADDR*) ptr;
-    *dst = IpHeader->DestinationAddress;
-    ptr = dst + 1;
-    UINT16 UpperLayerPacketLen = sizeof(ICMPV6_HEADER) + PayloadLength;
-    UINT32 *upperlayerpacketlen = (UINT32 *) ptr;
-    *upperlayerpacketlen = htons(UpperLayerPacketLen);
-    ptr = upperlayerpacketlen + 1;
-    UCHAR* reserved = (UCHAR*) ptr;
-    // zeroes for reserved bits
-    ptr = reserved + 3;
-    UCHAR* nextheader = (UCHAR* ) ptr;
-    *nextheader = IPPROTO_ICMPV6;
-    ptr = nextheader + 1;
-    ICMPV6_HEADER* icmpv6header = (ICMPV6_HEADER*) ptr;
-    *icmpv6header = *Icmp6Hdr;
-    ptr = icmpv6header + 1;
-    payloadptr = (UCHAR*) ptr;
-    for (int j = 0; j < PayloadLength; j++) {
-        *payloadptr = Payload[j];
-        payloadptr = payloadptr + 1;
-    }
 
-    Icmp6Hdr->Checksum = PktChecksum(0, CheckSumData, CheckSumDataLength);
-    free(CheckSumData);
+    // Pseudo header
+    UINT32 Checksum = 0;
+    Checksum += PktPartialChecksum(IpSource, AddressLength);
+    Checksum += PktPartialChecksum(IpDestination, AddressLength);
+
+    UINT16 UpperLayerPacketLen = sizeof(ICMPV6_HEADER) + PayloadLength;
+
+    UINT32 UpperLayerPacketLen2 = htons(UpperLayerPacketLen);
+    Checksum += PktPartialChecksum(&UpperLayerPacketLen2, sizeof(UINT32));
+    Checksum += (IpHeader->NextHeader << 8);
+
+    // ICMPv6 header
+    Icmp6Hdr->Checksum = 0;
+    Checksum += PktPartialChecksum(Icmp6Hdr, sizeof(*Icmp6Hdr));
+
+    // Payload
+    Checksum += PktPartialChecksum(Payload, PayloadLength);
+    Icmp6Hdr->Checksum = ~PktChecksumFold(Checksum);
+
     *BufferSize = TotalLength;
 
     return TRUE;
 }
-
 
 inline
 _Success_(return != FALSE)
