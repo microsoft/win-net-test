@@ -72,7 +72,7 @@ From a command line in the `win-net-test` repos:
 
 ### Gather artifacts
 
-Wait for the CI to successfully complete its run on the `release/(major).(minor)` branch, on the
+Wait for the CI on Github to successfully complete its run on the `release/(major).(minor)` branch, on the
 **commit tagged for the release**.
 Then, download the following artifacts from the run summary:
 
