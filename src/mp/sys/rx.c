@@ -115,6 +115,8 @@ SharedIrpRxEnqueue(
         NET_BUFFER_LIST_INFO(Nbl, TcpRecvSegCoalesceInfo) = EnqueueIn.Frame.Input.Rsc.Value;
     }
 
+    NdisSetNblTimestampInfo(Nbl, &EnqueueIn.Frame.Input.Timestamp);
+
     KeAcquireSpinLock(&Rx->Shared->Lock, &OldIrql);
     if (Rx->Nbls.NblCount < MAXUINT32) {
         NdisAppendSingleNblToNblCountedQueue(&Rx->Nbls, Nbl);

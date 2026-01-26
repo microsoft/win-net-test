@@ -46,6 +46,7 @@ typedef struct _DATA_FRAME {
             UINT32 RssHashQueueId;
             NDIS_TCP_IP_CHECKSUM_NET_BUFFER_LIST_INFO Checksum;
             NDIS_RSC_NBL_INFO Rsc;
+            NET_BUFFER_LIST_TIMESTAMP Timestamp;
         } Input;
         //
         // Used when retrieving filtered IO.

@@ -57,6 +57,9 @@ typedef struct FNSOCK_SOCKET_ACCEPT_CONTEXT {
 
 typedef struct FNSOCK_SOCKET_RECV_DATA {
     LIST_ENTRY Link;
+    INT Flags;
+    ULONG ControlDataLength;
+    DECLSPEC_ALIGN(MEMORY_ALLOCATION_ALIGNMENT) UCHAR ControlData[128];
     ULONG DataLength;
     UCHAR Data[0];
 } FNSOCK_SOCKET_RECV_DATA;
@@ -1018,6 +1021,26 @@ FnSockRecv(
     _In_ INT Flags
     )
 {
+    INT ControlBufferLength = 0;
+
+    return
+        FnSockRecvMsg(
+            Socket, Buffer, BufferLength, BufferIsNonPagedPool, NULL, &ControlBufferLength, &Flags);
+}
+
+FNSOCKAPI
+_IRQL_requires_max_(PASSIVE_LEVEL)
+INT
+FnSockRecvMsg(
+    _In_ FNSOCK_HANDLE Socket,
+    _Out_writes_bytes_to_(BufferLength, return) CHAR* Buffer,
+    _In_ INT BufferLength,
+    _In_ BOOLEAN BufferIsNonPagedPool,
+    _Out_writes_bytes_to_(*ControlBufferLength, *ControlBufferLength) CMSGHDR *ControlBuffer,
+    _Inout_ INT *ControlBufferLength,
+    _In_ INT *Flags
+    )
+{
     FNSOCK_SOCKET_BINDING* Binding = (FNSOCK_SOCKET_BINDING*)Socket;
     LIST_ENTRY* Entry;
     FNSOCK_SOCKET_RECV_DATA* RecvData;
@@ -1026,7 +1049,6 @@ FnSockRecv(
     NTSTATUS Status;
 
     UNREFERENCED_PARAMETER(BufferIsNonPagedPool);
-    UNREFERENCED_PARAMETER(Flags);
 
     KeAcquireSpinLock(&Binding->RecvDataLock, &PrevIrql);
 
@@ -1067,7 +1089,11 @@ FnSockRecv(
 
     KeReleaseSpinLock(&Binding->RecvDataLock, PrevIrql);
 
+
     RecvData = CONTAINING_RECORD(Entry, FNSOCK_SOCKET_RECV_DATA, Link);
+
+    *Flags = RecvData->Flags;
+
     // TODO: Iterate through the received data list to fill buffers for stream sockets.
     if (RecvData->DataLength <= (ULONG)BufferLength) {
         BytesReceived = RecvData->DataLength;
@@ -1076,6 +1102,14 @@ FnSockRecv(
         Status = STATUS_BUFFER_OVERFLOW;
     }
     RtlCopyMemory(Buffer, RecvData->Data, min(RecvData->DataLength, (ULONG)BufferLength));
+
+    if ((ULONG)*ControlBufferLength >= RecvData->ControlDataLength) {
+        *ControlBufferLength = RecvData->ControlDataLength;
+    } else {
+        *Flags |= MSG_CTRUNC;
+    }
+
+    RtlCopyMemory(ControlBuffer, RecvData->ControlData, *ControlBufferLength);
 
     ExFreePoolWithTag(RecvData, POOLTAG_FNSOCK_RECV);
 
@@ -1095,7 +1129,9 @@ _IRQL_requires_max_(DISPATCH_LEVEL)
 VOID
 QueueRecvData(
     _In_ FNSOCK_SOCKET_BINDING* Binding,
-    _In_ WSK_BUF* Buffer
+    _In_ WSK_BUF* Buffer,
+    _In_opt_ CMSGHDR* ControlBuffer,
+    _In_ ULONG ControlBufferLength
     )
 {
     PMDL Mdl = Buffer->Mdl;
@@ -1142,6 +1178,16 @@ QueueRecvData(
         return;
     }
     RtlZeroMemory(RecvData, AllocSize);
+
+    if (ControlBufferLength > 0) {
+        if (ControlBufferLength > sizeof(RecvData->ControlData)) {
+            ControlBufferLength = sizeof(RecvData->ControlData);
+            RecvData->Flags |= MSG_CTRUNC;
+        }
+        NT_ASSERT_ASSUME(ControlBuffer != NULL);
+        RtlCopyMemory(RecvData->ControlData, ControlBuffer, ControlBufferLength);
+        RecvData->ControlDataLength = ControlBufferLength;
+    }
 
     RecvData->DataLength = (ULONG)DataLength;
     CopiedLength = 0;
@@ -1211,7 +1257,9 @@ FnSockDatagramSocketReceive(
             Binding,
             (ULONG)DataIndication->Buffer.Length);
 
-        QueueRecvData(Binding, &DataIndication->Buffer);
+        QueueRecvData(
+            Binding, &DataIndication->Buffer, DataIndication->ControlInfo,
+            DataIndication->ControlInfoLength);
     }
 
     return STATUS_SUCCESS;
@@ -1360,7 +1408,7 @@ FnSockStreamSocketReceive(
             Binding,
             (ULONG)DataIndication->Buffer.Length);
 
-        QueueRecvData(Binding, &DataIndication->Buffer);
+        QueueRecvData(Binding, &DataIndication->Buffer, NULL, 0);
     }
 
     *BytesAccepted = BytesIndicated;

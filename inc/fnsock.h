@@ -266,6 +266,19 @@ FnSockRecv(
 FNSOCKAPI
 _IRQL_requires_max_(PASSIVE_LEVEL)
 INT
+FnSockRecvMsg(
+    _In_ FNSOCK_HANDLE Socket,
+    _Out_writes_bytes_to_(BufferLength, return) CHAR* Buffer,
+    _In_ INT BufferLength,
+    _In_ BOOLEAN BufferIsNonPagedPool,
+    _Out_writes_bytes_to_(*ControlBufferLength, *ControlBufferLength) CMSGHDR *ControlBuffer,
+    _Inout_ INT *ControlBufferLength,
+    _In_ INT *Flags
+    );
+
+FNSOCKAPI
+_IRQL_requires_max_(PASSIVE_LEVEL)
+INT
 FnSockGetLastError(
     VOID
     );
