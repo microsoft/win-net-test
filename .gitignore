@@ -370,3 +370,6 @@ artifacts_server/
 
 # Intermediate output
 *.tlog
+
+# CodeQL files
+_codeql_detected_source_root
