@@ -1130,7 +1130,7 @@ VOID
 QueueRecvData(
     _In_ FNSOCK_SOCKET_BINDING* Binding,
     _In_ WSK_BUF* Buffer,
-    _In_opt_ CMSGHDR* ControlBuffer,
+    _When_(ControlBufferLength > 0, _In_) _When_(ControlBufferLength == 0, _In_opt_) CMSGHDR* ControlBuffer,
     _In_ ULONG ControlBufferLength
     )
 {
@@ -1184,7 +1184,6 @@ QueueRecvData(
             ControlBufferLength = sizeof(RecvData->ControlData);
             RecvData->Flags |= MSG_CTRUNC;
         }
-        NT_ASSERT_ASSUME(ControlBuffer != NULL);
         RtlCopyMemory(RecvData->ControlData, ControlBuffer, ControlBufferLength);
         RecvData->ControlDataLength = ControlBufferLength;
     }
