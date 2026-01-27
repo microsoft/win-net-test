@@ -559,6 +559,18 @@ MpTxAllocateAndGetFrame(
 }
 
 static
+FNMPAPI_STATUS
+MpTxSetFrame(
+    _In_ const unique_fnmp_handle& Handle,
+    _In_ UINT32 Index,
+    _In_ DATA_FRAME *Frame,
+    _In_opt_ UINT32 SubIndex = 0
+    )
+{
+    return FnMpTxSetFrame(Handle.get(), Index, SubIndex, Frame);
+}
+
+static
 bool
 MpTxDequeueFrame(
     _In_ const unique_fnmp_handle& Handle,
@@ -1501,6 +1513,60 @@ MpBasicTxOffload()
     TEST_TRUE(MpTxFrame->Output.Checksum.Transmit.UdpChecksum);
     TEST_TRUE(MpTxDequeueFrame(SharedMp, 0));
     TEST_TRUE(MpTxFlush(SharedMp));
+
+    //
+    // Validate timestamping.
+    //
+    TIMESTAMPING_CONFIG TimestampingConfig = {0};
+    TimestampingConfig.Flags = TIMESTAMPING_FLAG_TX;
+    TimestampingConfig.TxTimestampsBuffered = 1;
+    ULONG BytesReturned;
+    TEST_CXPLAT(
+        FnSockIoctl(
+            UdpSocket.get(), SIO_TIMESTAMPING, (char*)&TimestampingConfig,
+            sizeof(TimestampingConfig), NULL, 0, &BytesReturned));
+
+    UINT32 *TimestampId;
+    CHAR ControlBuffer[CMSG_SPACE(sizeof(*TimestampId))];
+    CMSGHDR *Cmsg = (CMSGHDR *)ControlBuffer;
+    Cmsg->cmsg_len = CMSG_LEN(sizeof(*TimestampId));
+    Cmsg->cmsg_level = SOL_SOCKET;
+    Cmsg->cmsg_type = SO_TIMESTAMP_ID;
+    TimestampId = (UINT32 *)WSA_CMSG_DATA(Cmsg);
+    *TimestampId = 0xABCDEF01;
+
+    TEST_EQUAL(
+        (int)sizeof(UdpPayload),
+        FnSockSendMsg(
+            UdpSocket.get(), (PCHAR)UdpPayload, sizeof(UdpPayload), FALSE, 0,
+            (PSOCKADDR)&RemoteAddr, sizeof(RemoteAddr), (CMSGHDR *)ControlBuffer,
+            sizeof(ControlBuffer)));
+
+    MpTxFrame = MpTxAllocateAndGetFrame(SharedMp, 0);
+    TEST_NOT_NULL(MpTxFrame.get());
+
+    DATA_FRAME UpdateFrame = {0};
+    UpdateFrame.Input.Timestamp.Timestamp = 0x0123456789ABCDEF0;
+    UpdateFrame.Input.Flags.Timestamp = TRUE;
+    TEST_CXPLAT(MpTxSetFrame(SharedMp, 0, &UpdateFrame));
+    TEST_TRUE(MpTxDequeueFrame(SharedMp, 0));
+    TEST_TRUE(MpTxFlush(SharedMp));
+
+    Stopwatch Watchdog(TEST_TIMEOUT_ASYNC_MS);
+    UINT64 Timestamp = 0;
+
+    do {
+        FNSOCK_STATUS Status =
+            FnSockIoctl(
+                UdpSocket.get(), SIO_GET_TX_TIMESTAMP, TimestampId, sizeof(*TimestampId),
+                &Timestamp, sizeof(Timestamp), &BytesReturned);
+
+        if (FNSOCK_SUCCEEDED(Status)) {
+            break;
+        }
+    } while (CxPlatSleep(POLL_INTERVAL_MS), !Watchdog.IsExpired());
+
+    TEST_EQUAL(UpdateFrame.Input.Timestamp.Timestamp, Timestamp);
 }
 
 EXTERN_C

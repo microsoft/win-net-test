@@ -38,6 +38,7 @@ typedef struct _WSK_IOREQUEST_COMPLETION {
     KEVENT Event;
     NTSTATUS Status;
     BOOLEAN BufLocked;
+    DECLSPEC_ALIGN(MEMORY_ALLOCATION_ALIGNMENT) CHAR ControlData[128];
 } WSKIOREQUEST_COMPLETION, *PWSKIOREQUEST_COMPLETION;
 
 NTSTATUS
@@ -298,7 +299,7 @@ WskSendToAsync(
     BOOLEAN BufIsNonPagedPool,
     _In_ PSOCKADDR RemoteAddr,
     ULONG ControlLen,
-    _In_opt_ PCMSGHDR Control,
+    _When_(ControlLen > 0, _In_) _When_(ControlLen == 0, _In_opt_) const CMSGHDR *Control,
     _Out_ PVOID* SendCompletion
     );
 

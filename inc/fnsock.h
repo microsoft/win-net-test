@@ -255,6 +255,21 @@ FnSockSendto(
 FNSOCKAPI
 _IRQL_requires_max_(PASSIVE_LEVEL)
 INT
+FnSockSendMsg(
+    _In_ FNSOCK_HANDLE Socket,
+    _In_reads_bytes_(BufferLength) const CHAR* Buffer,
+    _In_ INT BufferLength,
+    _In_ BOOLEAN BufferIsNonPagedPool,
+    _In_ INT Flags,
+    _In_reads_bytes_(AddressLength) const struct sockaddr* Address,
+    _In_ INT AddressLength,
+    _In_reads_bytes_(ControlBufferLength) const CMSGHDR* ControlBuffer,
+    _In_ INT ControlBufferLength
+    );
+
+FNSOCKAPI
+_IRQL_requires_max_(PASSIVE_LEVEL)
+INT
 FnSockRecv(
     _In_ FNSOCK_HANDLE Socket,
     _Out_writes_bytes_to_(BufferLength, return) CHAR* Buffer,

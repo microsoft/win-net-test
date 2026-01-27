@@ -315,6 +315,40 @@ Exit:
 
 _IRQL_requires_max_(PASSIVE_LEVEL)
 NTSTATUS
+SharedIrpTxSetFrame(
+    _In_ SHARED_TX *Tx,
+    _In_ IRP *Irp,
+    _In_ IO_STACK_LOCATION *IrpSp
+    )
+{
+    NTSTATUS Status;
+    ADAPTER_SHARED *AdapterShared = Tx->Shared->Adapter->Shared;
+    DATA_SET_FRAME_IN *In = Irp->AssociatedIrp.SystemBuffer;
+    KIRQL OldIrql;
+
+    KeAcquireSpinLock(&AdapterShared->Lock, &OldIrql);
+
+    if (Tx->DataFilter == NULL) {
+        Status = STATUS_NOT_FOUND;
+        goto Exit;
+    }
+
+    if (IrpSp->Parameters.DeviceIoControl.InputBufferLength < sizeof(*In)) {
+        Status = STATUS_BUFFER_TOO_SMALL;
+        goto Exit;
+    }
+
+    Status = FnIoSetFilteredFrame(Tx->DataFilter, In->Index, In->SubIndex, &In->Frame);
+
+Exit:
+
+    KeReleaseSpinLock(&AdapterShared->Lock, OldIrql);
+
+    return Status;
+}
+
+_IRQL_requires_max_(PASSIVE_LEVEL)
+NTSTATUS
 SharedIrpTxDequeueFrame(
     _In_ SHARED_TX *Tx,
     _In_ IRP *Irp,

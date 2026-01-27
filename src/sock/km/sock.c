@@ -940,6 +940,27 @@ FnSockSendto(
     _In_ INT AddressLength
     )
 {
+    return
+        FnSockSendMsg(
+            Socket, Buffer, BufferLength, BufferIsNonPagedPool, Flags, Address, AddressLength,
+            NULL, 0);
+}
+
+FNSOCKAPI
+_IRQL_requires_max_(PASSIVE_LEVEL)
+INT
+FnSockSendMsg(
+    _In_ FNSOCK_HANDLE Socket,
+    _In_reads_bytes_(BufferLength) const CHAR* Buffer,
+    _In_ INT BufferLength,
+    _In_ BOOLEAN BufferIsNonPagedPool,
+    _In_ INT Flags,
+    _In_reads_bytes_(AddressLength) const struct sockaddr* Address,
+    _In_ INT AddressLength,
+    _In_reads_bytes_(ControlBufferLength) const CMSGHDR* ControlBuffer,
+    _In_ INT ControlBufferLength
+    )
+{
     NTSTATUS Status;
     FNSOCK_SOCKET_BINDING* Binding = (FNSOCK_SOCKET_BINDING*)Socket;
     FNSOCK_SOCKET_SEND_CONTEXT* SendContext;
@@ -976,8 +997,8 @@ FnSockSendto(
             BufferLength,
             BufferIsNonPagedPool,
             (PSOCKADDR)Address,
-            0,
-            NULL,
+            ControlBufferLength,
+            ControlBuffer,
             &SendContext->WskClientSendContext);
     if (!NT_SUCCESS(Status)) {
         TraceError(

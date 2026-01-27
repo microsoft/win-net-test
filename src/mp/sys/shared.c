@@ -339,6 +339,10 @@ SharedIrpDeviceIoControl(
         Status = SharedIrpTxGetFrame(Shared->Tx, Irp, IrpSp);
         break;
 
+    case FNMP_IOCTL_TX_SET_FRAME:
+        Status = SharedIrpTxSetFrame(Shared->Tx, Irp, IrpSp);
+        break;
+
     case FNMP_IOCTL_TX_DEQUEUE_FRAME:
         Status = SharedIrpTxDequeueFrame(Shared->Tx, Irp, IrpSp);
         break;
