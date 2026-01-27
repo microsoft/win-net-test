@@ -274,7 +274,7 @@ FnMpTxSetFrame(
     DATA_SET_FRAME_IN In = {0};
 
     //
-    // Returns the contents of a captured NBL (Index) and NB (SubIndex).
+    // Updates the contents of a captured NBL (Index) and NB (SubIndex).
     //
 
     In.Index = FrameIndex;
