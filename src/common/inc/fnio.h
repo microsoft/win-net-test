@@ -47,6 +47,15 @@ FnIoGetFilteredFrame(
 
 _IRQL_requires_max_(DISPATCH_LEVEL)
 NTSTATUS
+FnIoSetFilteredFrame(
+    _In_ DATA_FILTER *Filter,
+    _In_ UINT32 Index,
+    _In_ UINT32 SubIndex,
+    _In_ const DATA_FRAME *Frame
+    );
+
+_IRQL_requires_max_(DISPATCH_LEVEL)
+NTSTATUS
 FnIoDequeueFilteredFrame(
     _In_ DATA_FILTER *Filter,
     _In_ UINT32 Index

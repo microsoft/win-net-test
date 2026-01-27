@@ -35,6 +35,14 @@ SharedIrpTxGetFrame(
 
 _IRQL_requires_max_(PASSIVE_LEVEL)
 NTSTATUS
+SharedIrpTxSetFrame(
+    _In_ SHARED_TX *Tx,
+    _In_ IRP *Irp,
+    _In_ IO_STACK_LOCATION *IrpSp
+    );
+
+_IRQL_requires_max_(PASSIVE_LEVEL)
+NTSTATUS
 SharedIrpTxDequeueFrame(
     _In_ SHARED_TX *Tx,
     _In_ IRP *Irp,

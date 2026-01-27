@@ -1591,7 +1591,7 @@ WskSendToAsync(
     BOOLEAN BufIsNonPagedPool,
     _In_ PSOCKADDR RemoteAddr,
     ULONG ControlLen,
-    _In_opt_ PCMSGHDR Control,
+    _When_(ControlLen > 0, _In_) _When_(ControlLen == 0, _In_opt_) const CMSGHDR *Control,
     _Out_ PVOID* SendCompletion
     )
 {
@@ -1603,6 +1603,7 @@ WskSendToAsync(
     // On success, caller must follow up with a call to WskSendToAwait.
 
     ASSERT(BufLen > 0);
+
 
     #pragma warning( suppress : 4996 )
     Completion = ExAllocatePoolWithTag(NonPagedPoolNx, sizeof(*Completion), 'tseT');
@@ -1619,6 +1620,13 @@ WskSendToAsync(
         goto Failure;
     }
 
+    if (ControlLen > sizeof(Completion->ControlData)) {
+        Status = STATUS_NOT_SUPPORTED;
+        goto Failure;
+    }
+
+    RtlCopyMemory(Completion->ControlData, Control, ControlLen);
+
     WskSendTo = ((PWSK_PROVIDER_DATAGRAM_DISPATCH)Sock->Dispatch)->WskSendTo;
     Irp = IoAllocateIrp(1, FALSE);
     if (Irp == NULL) {
@@ -1627,7 +1635,10 @@ WskSendToAsync(
     }
     KeInitializeEvent(&Completion->Event, NotificationEvent, FALSE);
     IoSetCompletionRoutine(Irp, GenericCompletionRoutine, &Completion->Event, TRUE, TRUE, TRUE);
-    Status = WskSendTo(Sock, &Completion->WskBuf, 0, RemoteAddr, ControlLen, Control, Irp);
+    Status =
+        WskSendTo(
+            Sock, &Completion->WskBuf, 0, RemoteAddr, ControlLen,
+            (CMSGHDR *)Completion->ControlData, Irp);
 
     if (NT_SUCCESS(Status)) {
         // N.B. This includes the STATUS_PENDING case.

@@ -47,6 +47,17 @@ typedef struct _DATA_FRAME {
             NDIS_TCP_IP_CHECKSUM_NET_BUFFER_LIST_INFO Checksum;
             NDIS_RSC_NBL_INFO Rsc;
             NET_BUFFER_LIST_TIMESTAMP Timestamp;
+            //
+            // When submitting IO, each input field is implicitly set. When
+            // modifying an existing filtered IO, these flags indicate which
+            // fields to update.
+            //
+            struct {
+                UINT8 RssHashQueueId : 1;
+                UINT8 Checksum : 1;
+                UINT8 Rsc : 1;
+                UINT8 Timestamp : 1;
+            } Flags;
         } Input;
         //
         // Used when retrieving filtered IO.
@@ -106,6 +117,16 @@ typedef struct _DATA_GET_FRAME_IN {
     UINT32 Index;
     UINT32 SubIndex;
 } DATA_GET_FRAME_IN;
+
+//
+// Parameters for IOCTL_[RX|TX]_SET_FRAME.
+//
+
+typedef struct _DATA_SET_FRAME_IN {
+    UINT32 Index;
+    UINT32 SubIndex;
+    DATA_FRAME Frame;
+} DATA_SET_FRAME_IN;
 
 //
 // Parameters for IOCTL_[RX|TX]_DEQUEUE_FRAME.

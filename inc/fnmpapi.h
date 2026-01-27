@@ -264,6 +264,28 @@ FnMpTxGetFrame(
 
 FNMPAPI
 FNMPAPI_STATUS
+FnMpTxSetFrame(
+    _In_ FNMP_HANDLE Handle,
+    _In_ UINT32 FrameIndex,
+    _In_ UINT32 FrameSubIndex,
+    _In_ DATA_FRAME *Frame
+    )
+{
+    DATA_SET_FRAME_IN In = {0};
+
+    //
+    // Returns the contents of a captured NBL (Index) and NB (SubIndex).
+    //
+
+    In.Index = FrameIndex;
+    In.SubIndex = FrameSubIndex;
+    In.Frame = *Frame;
+
+    return FnIoctl(Handle, FNMP_IOCTL_TX_SET_FRAME, &In, sizeof(In), NULL, 0, NULL, NULL);
+}
+
+FNMPAPI
+FNMPAPI_STATUS
 FnMpTxDequeueFrame(
     _In_ FNMP_HANDLE Handle,
     _In_ UINT32 FrameIndex

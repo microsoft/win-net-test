@@ -8,6 +8,7 @@
 #include <winternl.h>
 #include <stdlib.h>
 #include <mswsock.h>
+#include <ws2ipdef.h>
 
 #define FNSOCKAPI __declspec(dllexport)
 
@@ -369,6 +370,80 @@ FnSockSendto(
     UNREFERENCED_PARAMETER(BufferIsNonPagedPool);
 
     return sendto((SOCKET)Socket, Buffer, BufferLength, Flags, Address, AddressLength);
+}
+
+FNSOCKAPI
+_IRQL_requires_max_(PASSIVE_LEVEL)
+INT
+FnSockSendMsg(
+    _In_ FNSOCK_HANDLE Socket,
+    _In_reads_bytes_(BufferLength) const CHAR* Buffer,
+    _In_ INT BufferLength,
+    _In_ BOOLEAN BufferIsNonPagedPool,
+    _In_ INT Flags,
+    _In_reads_bytes_(AddressLength) const struct sockaddr* Address,
+    _In_ INT AddressLength,
+    _In_reads_bytes_(ControlBufferLength) const CMSGHDR* ControlBuffer,
+    _In_ INT ControlBufferLength
+    )
+{
+    static LPFN_WSASENDMSG CachedWsaSendMsg = NULL;
+    LPFN_WSASENDMSG WsaSendMsg = (LPFN_WSASENDMSG)ReadPointerNoFence(&(VOID *)CachedWsaSendMsg);
+    DWORD BytesSent;
+    WSAMSG Msg = {0};
+    WSABUF Buf = {0};
+    SOCKADDR_INET *AddressIn;
+
+    UNREFERENCED_PARAMETER(BufferIsNonPagedPool);
+
+    if (WsaSendMsg == NULL) {
+        GUID Guid = WSAID_WSASENDMSG;
+        DWORD BytesReturned;
+
+        if (WSAIoctl((SOCKET)Socket, SIO_GET_EXTENSION_FUNCTION_POINTER, &Guid, sizeof(Guid),
+                &WsaSendMsg, sizeof(WsaSendMsg), &BytesReturned, NULL, NULL) == SOCKET_ERROR) {
+            TraceError(
+                "[ lib] ERROR, %u, %s.",
+                WSAGetLastError(),
+                "WSAIoctl");
+            return SOCKET_ERROR;
+        }
+
+        WritePointerNoFence(&(VOID *)CachedWsaSendMsg, (VOID *)WsaSendMsg);
+    }
+
+    //
+    // Truncate the socket address length based on the address family:
+    // WsaSendMsg requires the exact length for the address family, which is
+    // clumsy and inconsistent with other Winsock send APIs.
+    //
+    if (AddressLength >= RTL_SIZEOF_THROUGH_FIELD(SOCKADDR_INET, si_family)) {
+        AddressIn = (SOCKADDR_INET *)Address;
+        if (AddressIn->si_family == AF_INET) {
+            AddressLength = min(AddressLength, sizeof(SOCKADDR_IN));
+        } else if (AddressIn->si_family == AF_INET6) {
+            AddressLength = min(AddressLength, sizeof(SOCKADDR_IN6));
+        }
+    }
+
+    Buf.buf = (CHAR*)Buffer;
+    Buf.len = BufferLength;
+    Msg.lpBuffers = &Buf;
+    Msg.dwBufferCount = 1;
+    Msg.name = (LPSOCKADDR)Address;
+    Msg.namelen = AddressLength;
+    Msg.Control.buf = (CHAR*)ControlBuffer;
+    Msg.Control.len = ControlBufferLength;
+
+    if (WsaSendMsg((SOCKET)Socket, &Msg, Flags, &BytesSent, NULL, NULL) == SOCKET_ERROR) {
+        TraceError(
+            "[ lib] ERROR, %u, %s.",
+            WSAGetLastError(),
+            "WSASendMsg");
+        return SOCKET_ERROR;
+    }
+
+    return BytesSent;
 }
 
 FNSOCKAPI

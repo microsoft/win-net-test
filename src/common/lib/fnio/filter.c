@@ -181,6 +181,64 @@ Exit:
     return Status;
 }
 
+static
+_IRQL_requires_max_(DISPATCH_LEVEL)
+NTSTATUS
+FnIoGetFilteredFrameNb(
+    _In_ DATA_FILTER *Filter,
+    _In_ UINT32 Index,
+    _In_ UINT32 SubIndex,
+    _Out_ NET_BUFFER_LIST **Nbl,
+    _Out_ NET_BUFFER **Nb
+    )
+{
+    NTSTATUS Status;
+
+    *Nbl = Filter->NblQueue.Queue.First;
+    for (UINT32 NblIndex = 0; NblIndex < Index; NblIndex++) {
+        if (*Nbl == NULL) {
+            Status = STATUS_NOT_FOUND;
+            goto Exit;
+        }
+
+        *Nbl = (*Nbl)->Next;
+    }
+
+    if (*Nbl == NULL) {
+        Status = STATUS_NOT_FOUND;
+        goto Exit;
+    }
+
+#pragma warning(suppress:6001) // '**Nbl' is not uninitialized, assigned above.
+    *Nb = NET_BUFFER_LIST_FIRST_NB(*Nbl);
+    ASSERT(*Nb != NULL);
+
+    do {
+        //
+        // Only count NBs that match the filter.
+        //
+        if (FnIoFilterNb(Filter, *Nb)) {
+            if (SubIndex == 0) {
+                break;
+            } else {
+                SubIndex--;
+            }
+        }
+
+        *Nb = (*Nb)->Next;
+        if (*Nb == NULL) {
+            Status = STATUS_NOT_FOUND;
+            goto Exit;
+        }
+    } while (TRUE);
+
+    Status = STATUS_SUCCESS;
+
+Exit:
+
+    return Status;
+}
+
 _IRQL_requires_max_(DISPATCH_LEVEL)
 NTSTATUS
 FnIoGetFilteredFrame(
@@ -208,42 +266,10 @@ FnIoGetFilteredFrame(
 
     *BytesReturned = 0;
 
-    Nbl = Filter->NblQueue.Queue.First;
-    for (UINT32 NblIndex = 0; NblIndex < Index; NblIndex++) {
-        if (Nbl == NULL) {
-            Status = STATUS_NOT_FOUND;
-            goto Exit;
-        }
-
-        Nbl = Nbl->Next;
-    }
-
-    if (Nbl == NULL) {
-        Status = STATUS_NOT_FOUND;
+    Status = FnIoGetFilteredFrameNb(Filter, Index, SubIndex, &Nbl, &NetBuffer);
+    if (!NT_SUCCESS(Status)) {
         goto Exit;
     }
-
-    NetBuffer = NET_BUFFER_LIST_FIRST_NB(Nbl);
-    ASSERT(NetBuffer != NULL);
-
-    do {
-        //
-        // Only count NBs that match the filter.
-        //
-        if (FnIoFilterNb(Filter, NetBuffer)) {
-            if (SubIndex == 0) {
-                break;
-            } else {
-                SubIndex--;
-            }
-        }
-
-        NetBuffer = NetBuffer->Next;
-        if (NetBuffer == NULL) {
-            Status = STATUS_NOT_FOUND;
-            goto Exit;
-        }
-    } while (TRUE);
 
     BufferCount = 0;
     OutputSize = sizeof(*Frame);
@@ -322,6 +348,65 @@ FnIoGetFilteredFrame(
     }
 
     *BytesReturned = OutputSize;
+    Status = STATUS_SUCCESS;
+
+Exit:
+
+    return Status;
+}
+
+_IRQL_requires_max_(DISPATCH_LEVEL)
+NTSTATUS
+FnIoSetFilteredFrame(
+    _In_ DATA_FILTER *Filter,
+    _In_ UINT32 Index,
+    _In_ UINT32 SubIndex,
+    _In_ const DATA_FRAME *Frame
+    )
+{
+    NTSTATUS Status;
+    NET_BUFFER_LIST *Nbl;
+    NET_BUFFER *NetBuffer;
+
+    if (Frame->BufferCount > 0) {
+        //
+        // Rewriting payload is not implemented yet.
+        //
+        Status = STATUS_NOT_SUPPORTED;
+        goto Exit;
+    }
+
+    Status = FnIoGetFilteredFrameNb(Filter, Index, SubIndex, &Nbl, &NetBuffer);
+    if (!NT_SUCCESS(Status)) {
+        goto Exit;
+    }
+
+    if (Frame->Input.Flags.RssHashQueueId) {
+        //
+        // Rewriting RSS hash is not implemented yet.
+        //
+        Status = STATUS_NOT_SUPPORTED;
+        goto Exit;
+    }
+
+    if (Frame->Input.Flags.Checksum) {
+        NET_BUFFER_LIST_INFO(Nbl, TcpIpChecksumNetBufferListInfo) =
+            Frame->Input.Checksum.Value;
+    }
+
+    if (Frame->Input.Flags.Rsc) {
+        if (Frame->Input.Rsc.Info.CoalescedSegCount < 1) {
+            Status = STATUS_INVALID_PARAMETER;
+            goto Exit;
+        }
+
+        NET_BUFFER_LIST_INFO(Nbl, TcpRecvSegCoalesceInfo) = Frame->Input.Rsc.Value;
+    }
+
+    if (Frame->Input.Flags.Timestamp) {
+        NdisSetNblTimestampInfo(Nbl, &Frame->Input.Timestamp);
+    }
+
     Status = STATUS_SUCCESS;
 
 Exit:
