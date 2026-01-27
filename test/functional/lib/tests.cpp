@@ -1509,7 +1509,7 @@ MpBasicTxOffload()
 
     MpTxFrame = MpTxAllocateAndGetFrame(SharedMp, 0);
     TEST_NOT_NULL(MpTxFrame.get());
-    // TEST_TRUE(MpTxFrame->Output.Checksum.Transmit.UdpChecksum); // TODO debug
+    TEST_TRUE(MpTxFrame->Output.Checksum.Transmit.UdpChecksum);
     TEST_TRUE(MpTxDequeueFrame(SharedMp, 0));
     TEST_TRUE(MpTxFlush(SharedMp));
 
