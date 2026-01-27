@@ -1399,6 +1399,46 @@ MpBasicRxOffload()
     TEST_TRUE(RtlEqualMemory(UdpPayload, RecvPayload, sizeof(UdpPayload)));
     RxFrame.Frame.Input.Checksum.Value = 0;
     IpHdr->HeaderChecksum--;
+
+    //
+    // Validate timestamping.
+    //
+    TIMESTAMPING_CONFIG TimestampingConfig = {0};
+    TimestampingConfig.Flags = TIMESTAMPING_FLAG_RX;
+    ULONG BytesReturned;
+    TEST_CXPLAT(
+        FnSockIoctl(
+            UdpSocket.get(), SIO_TIMESTAMPING, (char*)&TimestampingConfig,
+            sizeof(TimestampingConfig), NULL, 0, &BytesReturned));
+
+    RxFrame.Frame.Input.Timestamp.Timestamp = 0x123456789ABCDEF0;
+    TEST_FNMPAPI(MpRxIndicateFrame(SharedMp, &RxFrame));
+
+    CHAR ControlBuffer[CMSG_SPACE(sizeof(UINT64))];
+    INT ControlBufferLength = sizeof(ControlBuffer);
+    INT Flags = 0;
+    TEST_EQUAL(
+        sizeof(UdpPayload),
+        FnSockRecvMsg(
+            UdpSocket.get(), RecvPayload, sizeof(RecvPayload), FALSE, (CMSGHDR *)ControlBuffer,
+            &ControlBufferLength, &Flags));
+    TEST_TRUE(RtlEqualMemory(UdpPayload, RecvPayload, sizeof(UdpPayload)));
+    TEST_FALSE(Flags & MSG_CTRUNC);
+
+    WSAMSG Msg = {0};
+    Msg.Control.buf = ControlBuffer;
+    Msg.Control.len = ControlBufferLength;
+    UINT64 Timestamp = 0;
+
+    for (WSACMSGHDR* CMsg = CMSG_FIRSTHDR(&Msg);
+        CMsg != NULL;
+        CMsg = CMSG_NXTHDR(&Msg, CMsg)) {
+        if (CMsg->cmsg_level == SOL_SOCKET && CMsg->cmsg_type == SO_TIMESTAMP) {
+            Timestamp = *(PUINT64)WSA_CMSG_DATA(CMsg);
+        }
+    }
+
+    TEST_EQUAL(Timestamp, RxFrame.Frame.Input.Timestamp.Timestamp);
 }
 
 EXTERN_C

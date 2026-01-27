@@ -7,6 +7,7 @@
 #include <windows.h>
 #include <winternl.h>
 #include <stdlib.h>
+#include <mswsock.h>
 
 #define FNSOCKAPI __declspec(dllexport)
 
@@ -384,6 +385,65 @@ FnSockRecv(
     UNREFERENCED_PARAMETER(BufferIsNonPagedPool);
 
     return recv((SOCKET)Socket, Buffer, BufferLength, Flags);
+}
+
+FNSOCKAPI
+_IRQL_requires_max_(PASSIVE_LEVEL)
+INT
+FnSockRecvMsg(
+    _In_ FNSOCK_HANDLE Socket,
+    _Out_writes_bytes_to_(BufferLength, return) CHAR* Buffer,
+    _In_ INT BufferLength,
+    _In_ BOOLEAN BufferIsNonPagedPool,
+    _Out_writes_bytes_to_(*ControlBufferLength, *ControlBufferLength) CMSGHDR *ControlBuffer,
+    _Inout_ INT *ControlBufferLength,
+    _In_ INT *Flags
+    )
+{
+    static LPFN_WSARECVMSG CachedWsaRecvMsg = NULL;
+    LPFN_WSARECVMSG WsaRecvMsg = (LPFN_WSARECVMSG)ReadPointerNoFence(&(VOID *)CachedWsaRecvMsg);
+    DWORD BytesReceived;
+    WSAMSG Msg = {0};
+    WSABUF Buf = {0};
+
+    UNREFERENCED_PARAMETER(BufferIsNonPagedPool);
+
+    if (WsaRecvMsg == NULL) {
+        GUID Guid = WSAID_WSARECVMSG;
+        DWORD BytesReturned;
+
+        if (WSAIoctl((SOCKET)Socket, SIO_GET_EXTENSION_FUNCTION_POINTER, &Guid, sizeof(Guid),
+                &WsaRecvMsg, sizeof(WsaRecvMsg), &BytesReturned, NULL, NULL) == SOCKET_ERROR) {
+            TraceError(
+                "[ lib] ERROR, %u, %s.",
+                WSAGetLastError(),
+                "WSAIoctl");
+            return SOCKET_ERROR;
+        }
+
+        WritePointerNoFence(&(VOID *)CachedWsaRecvMsg, (VOID *)WsaRecvMsg);
+    }
+
+    Buf.buf = Buffer;
+    Buf.len = BufferLength;
+    Msg.lpBuffers = &Buf;
+    Msg.dwBufferCount = 1;
+    Msg.Control.buf = (CHAR*)ControlBuffer;
+    Msg.Control.len = *ControlBufferLength;
+    Msg.dwFlags = *Flags;
+
+    if (WsaRecvMsg((SOCKET)Socket, &Msg, &BytesReceived, NULL, NULL) == SOCKET_ERROR) {
+        TraceError(
+            "[ lib] ERROR, %u, %s.",
+            WSAGetLastError(),
+            "WSARecvMsg");
+        return SOCKET_ERROR;
+    }
+
+    *ControlBufferLength = (INT)Msg.Control.len;
+    *Flags = (INT)Msg.dwFlags;
+
+    return BytesReceived;
 }
 
 FNSOCKAPI

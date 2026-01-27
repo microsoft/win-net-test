@@ -153,6 +153,11 @@ typedef union _NDIS_RSC_NBL_INFO
 
 C_ASSERT(sizeof(NDIS_RSC_NBL_INFO) == sizeof(PVOID));
 
+typedef struct _NET_BUFFER_LIST_TIMESTAMP
+{
+    ULONG64 Timestamp;
+} NET_BUFFER_LIST_TIMESTAMP, *PNET_BUFFER_LIST_TIMESTAMP;
+
 EXTERN_C_END
 
 #pragma warning(pop)
