@@ -48,13 +48,6 @@
 
 #include "tests.tmh"
 
-#define FNMP_IF_DESC "FNMP"
-#define FNMP_IF_DESCW L"FNMP"
-#define FNMP_IPV4_ADDRESS "192.168.200.1"
-#define FNMP_NEIGHBOR_IPV4_ADDRESS "192.168.200.2"
-#define FNMP_IPV6_ADDRESS "fc00::200:1"
-#define FNMP_NEIGHBOR_IPV6_ADDRESS "fc00::200:2"
-
 //
 // A timeout value that allows for a little latency, e.g. async threads to
 // execute.
