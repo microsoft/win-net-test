@@ -29,8 +29,8 @@ This script installs or uninstalls various project components.
 .PARAMETER FnMpCount
     Supplies an optional number of FnMp instances to install/uninstall.
 
-.PARAMETER FnMpAutoConfig
-    Indicates if setup should perform some common configuration on the FNMP
+.PARAMETER FnMpAutoIpConfig
+    Indicates if setup should perform some common IP configuration on the FNMP
     adapter (IP addresses, neighbors, etc.). Only applicable when FnMpCount = 1.
 #>
 
@@ -64,7 +64,7 @@ param (
     [int]$FnMpCount = 1,
 
     [Parameter(Mandatory = $false)]
-    [switch]$FnMpAutoConfig = $true
+    [switch]$FnMpAutoIpConfig = $true
 )
 
 Set-StrictMode -Version 'Latest'
@@ -297,7 +297,7 @@ function Install-FnMp {
         Write-Verbose "Get-NetAdapter FNMP"
         Get-NetAdapter FNMP | Format-Table | Out-String | Write-Verbose
 
-        if ($FnMpAutoConfig) {
+        if ($FnMpAutoIpConfig) {
             Write-Verbose "Configure fnmp ipv4"
             netsh int ipv4 set int interface=fnmp dadtransmits=0 | Write-Verbose
             netsh int ipv4 add address name=fnmp address=192.168.200.1/24 | Write-Verbose
