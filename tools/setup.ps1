@@ -215,7 +215,7 @@ function Wait-For-Adapters($IfDesc, $Count=1, $WaitForUp=$true) {
 # Installs the certificates for a given file.
 function Install-SigningCertificate($DriverPath) {
     $Signature = Get-AuthenticodeSignature $DriverPath
-    if ($Signature.Status -ne 'Valid') {
+    if (($Signature.Status -ne 'Valid') -and ($Signature.SignerCertificate -ne $null)) {
         Write-Verbose "Installing certificates for $DriverPath"
         $CertFileName = [System.IO.Path]::GetTempFileName()
         $Signature | Select-Object -ExpandProperty SignerCertificate | Export-Certificate -Type CERT -FilePath $CertFileName
