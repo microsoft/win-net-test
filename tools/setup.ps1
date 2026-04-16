@@ -29,6 +29,9 @@ This script installs or uninstalls various project components.
 .PARAMETER FnMpCount
     Supplies an optional number of FnMp instances to install/uninstall.
 
+.PARAMETER FnMpAutoIpConfig
+    Indicates if setup should perform some common IP configuration on the FNMP
+    adapter (IP addresses, neighbors, etc.). Only applicable when FnMpCount = 1.
 #>
 
 param (
@@ -58,7 +61,10 @@ param (
     [string]$ToolsDir = "",
 
     [Parameter(Mandatory = $false)]
-    [int]$FnMpCount = 1
+    [int]$FnMpCount = 1,
+
+    [Parameter(Mandatory = $false)]
+    [switch]$FnMpAutoIpConfig = $true
 )
 
 Set-StrictMode -Version 'Latest'
@@ -291,15 +297,17 @@ function Install-FnMp {
         Write-Verbose "Get-NetAdapter FNMP"
         Get-NetAdapter FNMP | Format-Table | Out-String | Write-Verbose
 
-        Write-Verbose "Configure fnmp ipv4"
-        netsh int ipv4 set int interface=fnmp dadtransmits=0 | Write-Verbose
-        netsh int ipv4 add address name=fnmp address=192.168.200.1/24 | Write-Verbose
-        netsh int ipv4 add neighbor fnmp address=192.168.200.2 neighbor=22-22-22-22-00-02 | Write-Verbose
+        if ($FnMpAutoIpConfig) {
+            Write-Verbose "Configure fnmp ipv4"
+            netsh int ipv4 set int interface=fnmp dadtransmits=0 | Write-Verbose
+            netsh int ipv4 add address name=fnmp address=192.168.200.1/24 | Write-Verbose
+            netsh int ipv4 add neighbor fnmp address=192.168.200.2 neighbor=22-22-22-22-00-02 | Write-Verbose
 
-        Write-Verbose "Configure fnmp ipv6"
-        netsh int ipv6 set int interface=fnmp dadtransmits=0 | Write-Verbose
-        netsh int ipv6 add address interface=fnmp address=fc00::200:1/112 | Write-Verbose
-        netsh int ipv6 add neighbor fnmp address=fc00::200:2 neighbor=22-22-22-22-00-02 | Write-Verbose
+            Write-Verbose "Configure fnmp ipv6"
+            netsh int ipv6 set int interface=fnmp dadtransmits=0 | Write-Verbose
+            netsh int ipv6 add address interface=fnmp address=fc00::200:1/112 | Write-Verbose
+            netsh int ipv6 add neighbor fnmp address=fc00::200:2 neighbor=22-22-22-22-00-02 | Write-Verbose
+        }
     }
 
     Write-Verbose "fnmp.sys install complete!"
