@@ -53,6 +53,7 @@ FnLwfUnloadApi(
     }
 }
 
+FNLWFAPI
 VOID *
 FnLwfInitializeEa(
     _In_ FNLWF_FILE_TYPE FileType,

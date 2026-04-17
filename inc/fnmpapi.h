@@ -68,6 +68,7 @@ FnMpUnloadApi(
     }
 }
 
+FNMPAPI
 VOID *
 FnMpInitializeEa(
     _In_ FNMP_FILE_TYPE FileType,
