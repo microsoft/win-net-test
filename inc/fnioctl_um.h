@@ -5,12 +5,12 @@
 
 #pragma once
 
+#ifndef FN_SKIP_WINCOMMON
 #include <windows.h>
 #include <winioctl.h>
-#ifndef FN_SKIP_KERNEL_DEFINES
 #include <winternl.h>
-#endif
 #include <ifdef.h>
+#endif
 
 EXTERN_C_START
 
@@ -26,7 +26,7 @@ EXTERN_C_START
 // This file implements common file handle and IOCTL helpers.
 //
 
-#ifndef FN_SKIP_KERNEL_DEFINES
+#ifndef FN_SKIP_WINCOMMON
 //
 // This struct is defined in public kernel headers, but not user mode headers.
 //

@@ -16,10 +16,12 @@
 // However, it is most likely too late to include these headers by the time this
 // header is included.
 //
+#ifndef FN_SKIP_WINCOMMON
 #include <windows.h>
 #include <winsock2.h>
 #include <ws2ipdef.h>
 #include <iphlpapi.h>
+#endif
 #include <ndisoobtypes.h>
 #endif
 
