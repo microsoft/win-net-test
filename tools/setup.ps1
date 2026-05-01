@@ -87,11 +87,13 @@ if ([string]::IsNullOrEmpty($ToolsDir)) {
 # File paths.
 $FnMpSys = "$ArtifactsDir\fnmp\fnmp.sys"
 $FnMpInf = "$ArtifactsDir\fnmp\fnmp.inf"
+$FnMpCat = "$ArtifactsDir\fnmp\fnmp.cat"
 $FnMpComponentId = "ms_fnmp"
 $FnMpDeviceIdPrefix = "fnmp"
 $FnMpServiceName = "FNMP"
 $FnLwfSys = "$ArtifactsDir\fnlwf\fnlwf.sys"
 $FnLwfInf = "$ArtifactsDir\fnlwf\fnlwf.inf"
+$FnLwfCat = "$ArtifactsDir\fnlwf\fnlwf.cat"
 $FnLwfComponentId = "ms_fnlwf"
 $IsrDrvSys = "$ArtifactsDir\isrdrv.sys"
 $IsrSvcExe = "$ArtifactsDir\isrsvc.exe"
@@ -212,16 +214,31 @@ function Wait-For-Adapters($IfDesc, $Count=1, $WaitForUp=$true) {
     }
 }
 
-# Installs the certificates for a given file.
-function Install-SigningCertificate($DriverPath) {
-    $Signature = Get-AuthenticodeSignature $DriverPath
-    if (($Signature.Status -ne 'Valid') -and ($Signature.SignerCertificate -ne $null)) {
-        Write-Verbose "Installing certificates for $DriverPath"
-        $CertFileName = [System.IO.Path]::GetTempFileName()
-        $Signature | Select-Object -ExpandProperty SignerCertificate | Export-Certificate -Type CERT -FilePath $CertFileName
-        Import-Certificate -FilePath $CertFileName -CertStoreLocation 'cert:\localmachine\root' | Write-Verbose
-        Import-Certificate -FilePath $CertFileName -CertStoreLocation 'cert:\localmachine\trustedpublisher' | Write-Verbose
-    }
+# Installs the certificates for driver package signing.
+function Install-DriverCertificate($CertFileName) {
+    Write-Verbose "Installing driver signing certificate $CertFileName"
+
+    # Resolve the root certificate in the signing certificate's chain, and trust that.
+    $CertFileName = (Resolve-Path $CertFileName).Path
+    $CertRootFileName = "$CertFileName.root.cer"
+    $Cert = New-Object -TypeName System.Security.Cryptography.X509Certificates.X509Certificate2 $CertFileName
+    $Chain = New-Object -TypeName System.Security.Cryptography.X509Certificates.X509Chain
+    $Chain.Build($Cert) | Write-Verbose
+    $RootCert = $Chain.ChainElements.Certificate | Select-Object -Last 1
+    $RootCert | Export-Certificate -Type CERT -FilePath $CertRootFileName | Write-Verbose
+
+    Import-Certificate -FilePath $CertRootFileName -CertStoreLocation 'cert:\localmachine\root' | Write-Verbose
+    $TrustedPublisherStore = New-Object -TypeName System.Security.Cryptography.X509Certificates.X509Store "TrustedPublisher", "LocalMachine"
+    $TrustedPublisherStore.Open("ReadWrite")
+    $TrustedPublisherStore.Add($Cert)
+    $TrustedPublisherStore.Close()
+}
+
+function Install-SignedDriverCertificate($SignedFileName) {
+    $CertFileName = "$SignedFileName.cer"
+    Write-Verbose "Extracting driver signing certificate $CertFileName from $SignedFileName"
+    Get-AuthenticodeSignature $SignedFileName | Select-Object -ExpandProperty SignerCertificate | Export-Certificate -Type CERT -FilePath $CertFileName | Write-Verbose
+    Install-DriverCertificate $CertFileName
 }
 
 # Helper to uninstall a driver from its inf file.
@@ -264,7 +281,7 @@ function Install-FnMp {
         Write-Error "$FnMpSys does not exist!"
     }
 
-    Install-SigningCertificate $FnMpSys
+    Install-SignedDriverCertificate $FnMpCat
 
     Write-Verbose "pnputil.exe /install /add-driver $FnMpInf"
     pnputil.exe /install /add-driver $FnMpInf | Write-Verbose
@@ -343,7 +360,7 @@ function Install-FnLwf {
         Write-Error "$FnLwfSys does not exist!"
     }
 
-    Install-SigningCertificate $FnLwfSys
+    Install-SignedDriverCertificate $FnLwfCat
 
     Write-Verbose "netcfg.exe -v -l $FnLwfInf -c s -i $FnLwfComponentId"
     netcfg.exe -v -l $FnLwfInf -c s -i $FnLwfComponentId | Write-Verbose
