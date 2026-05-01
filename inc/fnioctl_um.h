@@ -5,10 +5,12 @@
 
 #pragma once
 
+#ifndef FN_SKIP_WINCOMMON
 #include <windows.h>
 #include <winioctl.h>
 #include <winternl.h>
 #include <ifdef.h>
+#endif
 
 EXTERN_C_START
 
@@ -24,6 +26,7 @@ EXTERN_C_START
 // This file implements common file handle and IOCTL helpers.
 //
 
+#ifndef FN_SKIP_WINCOMMON
 //
 // This struct is defined in public kernel headers, but not user mode headers.
 //
@@ -34,6 +37,7 @@ typedef struct _FILE_FULL_EA_INFORMATION {
     USHORT EaValueLength;
     CHAR EaName[1];
 } FILE_FULL_EA_INFORMATION;
+#endif
 
 typedef HANDLE FNIOCTL_HANDLE;
 
