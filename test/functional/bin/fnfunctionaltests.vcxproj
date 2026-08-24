@@ -8,7 +8,6 @@
     <UndockedType Condition="'$(UndockedOfficial)' == 'true'">lib</UndockedType>
     <UndockedDir>$(SolutionDir)submodules\undocked\</UndockedDir>
     <UndockedOut>$(SolutionDir)artifacts\</UndockedOut>
-    <UndockedSourceLink>true</UndockedSourceLink>
   </PropertyGroup>
   <Import Project="$(SolutionDir)src\wnt.cpp.props" />
   <ItemGroup>
