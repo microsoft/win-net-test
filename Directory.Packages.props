@@ -1,0 +1,24 @@
+<Project>
+  <!--
+    Central package versions for win-net-test's projects. undocked (vs\windows.undocked.props) adds the
+    package *references* (SourceLink for every project, plus WDK/SDK for driver-toolset projects);
+    this file pins their versions. Mirrors undocked's own Directory.Packages.props so win-net-test builds
+    standalone (no parent repo) on both VS 2022 and VS 2026.
+  -->
+  <PropertyGroup>
+    <ManagePackageVersionsCentrally>true</ManagePackageVersionsCentrally>
+    <!-- Match the WDK NuGet package to the VS build tools: VS 2022 (17.0) ships the 17.0 driver
+         build tasks, VS 2026 (18.0) ships the 18.0 tasks; no single package has both. -->
+    <UndockedWdkVersion Condition="'$(UndockedWdkVersion)' == '' AND '$(VisualStudioVersion)' == '17.0'">10.0.26100.6584</UndockedWdkVersion>
+    <UndockedWdkVersion Condition="'$(UndockedWdkVersion)' == '' AND '$(VisualStudioVersion)' == '18.0'">10.0.28000.2526</UndockedWdkVersion>
+  </PropertyGroup>
+  <ItemGroup>
+    <PackageVersion Include="Microsoft.SourceLink.GitHub" Version="1.0.0" />
+    <PackageVersion Include="Microsoft.SourceLink.AzureRepos.Git" Version="1.0.0" />
+    <PackageVersion Include="Microsoft.Windows.SDK.cpp.x64" Version="$(UndockedWdkVersion)" />
+    <PackageVersion Include="Microsoft.Windows.SDK.cpp.arm64" Version="$(UndockedWdkVersion)" />
+    <PackageVersion Include="Microsoft.Windows.SDK.cpp.x86" Version="$(UndockedWdkVersion)" />
+    <PackageVersion Include="Microsoft.Windows.WDK.x64" Version="$(UndockedWdkVersion)" />
+    <PackageVersion Include="Microsoft.Windows.WDK.arm64" Version="$(UndockedWdkVersion)" />
+  </ItemGroup>
+</Project>
