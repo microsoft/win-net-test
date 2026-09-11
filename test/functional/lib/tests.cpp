@@ -2105,17 +2105,24 @@ LwfPnpEventPowerTransition()
     TEST_NOT_NULL(DefaultLwf.get());
     TEST_NOT_NULL(Bus.get());
 
-    TEST_FNLWFAPI(FnLwfPnpEventSetFilter(DefaultLwf.get(), FnLwfNetEventSetPower, FALSE, TRUE));
+    TEST_FNLWFAPI(FnLwfPnpEventSetFilter(DefaultLwf.get(), FnLwfNetEventSetPower, TRUE));
 
+    //
+    // Holding blocks the transition, so the power request must not be waited on.
+    //
     TEST_FNMPAPI(
-        FnBusSetNicPower(Bus.get(), FNMP_BUS_SERIAL_NUMBER, FnBusDevicePowerD3, TRUE));
+        FnBusSetNicPower(Bus.get(), FNMP_BUS_SERIAL_NUMBER, FnBusDevicePowerD3, FALSE));
     TEST_TRUE(
         LwfPnpEventGet(DefaultLwf, Buffer, sizeof(Buffer), FnLwfNetDeviceStateD3));
+    TEST_FNLWFAPI(FnLwfPnpEventComplete(DefaultLwf.get(), FNLWF_PNP_EVENT_SUCCESS));
 
     TEST_FNMPAPI(
-        FnBusSetNicPower(Bus.get(), FNMP_BUS_SERIAL_NUMBER, FnBusDevicePowerD0, TRUE));
+        FnBusSetNicPower(Bus.get(), FNMP_BUS_SERIAL_NUMBER, FnBusDevicePowerD0, FALSE));
     TEST_TRUE(
         LwfPnpEventGet(DefaultLwf, Buffer, sizeof(Buffer), FnLwfNetDeviceStateD0));
+    TEST_FNLWFAPI(FnLwfPnpEventComplete(DefaultLwf.get(), FNLWF_PNP_EVENT_SUCCESS));
+
+    TEST_FNLWFAPI(FnLwfPnpEventSetFilter(DefaultLwf.get(), FnLwfNetEventSetPower, FALSE));
 }
 
 //
@@ -2133,13 +2140,13 @@ LwfPnpEventPend()
     TEST_NOT_NULL(Bus.get());
 
     //
-    // Nothing is pended yet.
+    // Nothing is held yet.
     //
     TEST_EQUAL(
         FNLWFAPI_STATUS_NOT_FOUND,
         FnLwfPnpEventComplete(DefaultLwf.get(), FNLWF_PNP_EVENT_SUCCESS));
 
-    TEST_FNLWFAPI(FnLwfPnpEventSetFilter(DefaultLwf.get(), FnLwfNetEventSetPower, TRUE, TRUE));
+    TEST_FNLWFAPI(FnLwfPnpEventSetFilter(DefaultLwf.get(), FnLwfNetEventSetPower, TRUE));
 
     //
     // The transition cannot complete while the LWF holds the event, so the
@@ -2153,13 +2160,13 @@ LwfPnpEventPend()
     TEST_FNLWFAPI(FnLwfPnpEventComplete(DefaultLwf.get(), FNLWF_PNP_EVENT_SUCCESS));
 
     //
-    // The pend is consumed by the completion.
+    // The hold is consumed by the completion.
     //
     TEST_EQUAL(
         FNLWFAPI_STATUS_NOT_FOUND,
         FnLwfPnpEventComplete(DefaultLwf.get(), FNLWF_PNP_EVENT_SUCCESS));
 
-    TEST_FNLWFAPI(FnLwfPnpEventSetFilter(DefaultLwf.get(), FnLwfNetEventSetPower, FALSE, FALSE));
+    TEST_FNLWFAPI(FnLwfPnpEventSetFilter(DefaultLwf.get(), FnLwfNetEventSetPower, FALSE));
     TEST_FNMPAPI(
         FnBusSetNicPower(Bus.get(), FNMP_BUS_SERIAL_NUMBER, FnBusDevicePowerD0, TRUE));
 }
@@ -2182,7 +2189,7 @@ LwfPnpEventPendCleanup()
         TEST_NOT_NULL(DefaultLwf.get());
 
         TEST_FNLWFAPI(
-            FnLwfPnpEventSetFilter(DefaultLwf.get(), FnLwfNetEventSetPower, TRUE, TRUE));
+            FnLwfPnpEventSetFilter(DefaultLwf.get(), FnLwfNetEventSetPower, TRUE));
 
         TEST_FNMPAPI(
             FnBusSetNicPower(Bus.get(), FNMP_BUS_SERIAL_NUMBER, FnBusDevicePowerD3, FALSE));

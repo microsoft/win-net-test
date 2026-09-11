@@ -22,76 +22,42 @@ C_ASSERT((UINT32)FnLwfNetDeviceStateD0 == (UINT32)NetDeviceStateD0);
 C_ASSERT((UINT32)FnLwfNetDeviceStateD3 == (UINT32)NetDeviceStateD3);
 C_ASSERT(FNLWF_PNP_EVENT_SUCCESS == NDIS_STATUS_SUCCESS);
 
-typedef struct _DEFAULT_PNP_EVENT_ENTRY {
-    LIST_ENTRY Link;
-    UINT32 NetEvent;
-    UINT32 BufferLength;
-    UCHAR *Buffer;
-} DEFAULT_PNP_EVENT_ENTRY;
-
 //
 // NDIS has no filter-side completion routine for NET_PNP_EVENT, so a filter
-// cannot return NDIS_STATUS_PENDING. The handler runs at PASSIVE_LEVEL, so hold
-// the event by blocking the calling thread instead.
+// cannot return NDIS_STATUS_PENDING. The handler runs at PASSIVE_LEVEL and
+// holds the event by blocking, which keeps the indication alive for the whole
+// hold. That lets this reference the caller's notification directly and live on
+// the blocked handler's stack, so the indication path allocates nothing.
 //
-typedef struct _DEFAULT_PNP_EVENT_PENDED {
+typedef struct _DEFAULT_PNP_EVENT_HELD {
     LIST_ENTRY Link;
+    NET_PNP_EVENT_NOTIFICATION *Notification;
     KEVENT ReleaseEvent;
     NDIS_STATUS CompletionStatus;
     ULONGLONG Timestamp;
-} DEFAULT_PNP_EVENT_PENDED;
+} DEFAULT_PNP_EVENT_HELD;
 
 typedef struct _DEFAULT_PNP_EVENT {
     DEFAULT_CONTEXT *Default;
     LIST_ENTRY PnpEventFilterLink;
     UINT32 NetEventFilter;
-    BOOLEAN PendEvents;
-    BOOLEAN QueueEvents;
-    LIST_ENTRY PnpEventList;
-    LIST_ENTRY PendedList;
+    BOOLEAN HoldEvents;
+    LIST_ENTRY HeldList;
 } DEFAULT_PNP_EVENT;
 
-static
-VOID
-PnpEventEntryCleanup(
-    _In_ DEFAULT_PNP_EVENT_ENTRY *Entry
-    )
-{
-    if (Entry->Buffer != NULL) {
-        ExFreePoolWithTag(Entry->Buffer, POOLTAG_LWF_DEFAULT_PNPEVENT);
-    }
-
-    ExFreePoolWithTag(Entry, POOLTAG_LWF_DEFAULT_PNPEVENT);
-}
-
-static
-_Requires_lock_held_(&PnpEventFile->Default->Filter->Lock)
-VOID
-PnpEventFlush(
-    _In_ DEFAULT_PNP_EVENT *PnpEventFile
-    )
-{
-    while (!IsListEmpty(&PnpEventFile->PnpEventList)) {
-        LIST_ENTRY *Link = RemoveHeadList(&PnpEventFile->PnpEventList);
-        DEFAULT_PNP_EVENT_ENTRY *Entry =
-            CONTAINING_RECORD(Link, DEFAULT_PNP_EVENT_ENTRY, Link);
-
-        PnpEventEntryCleanup(Entry);
-    }
-}
-
 //
-// Wakes the thread blocked in the handler. It owns the record from here.
+// Wakes the thread blocked in the handler. The caller must have already removed
+// the record from the list, since the stack frame owning it unwinds from here.
 //
 static
 VOID
-PnpEventReleasePended(
-    _In_ DEFAULT_PNP_EVENT_PENDED *Pended,
+PnpEventRelease(
+    _In_ DEFAULT_PNP_EVENT_HELD *Held,
     _In_ NDIS_STATUS CompletionStatus
     )
 {
-    Pended->CompletionStatus = CompletionStatus;
-    KeSetEvent(&Pended->ReleaseEvent, IO_NO_INCREMENT, FALSE);
+    Held->CompletionStatus = CompletionStatus;
+    KeSetEvent(&Held->ReleaseEvent, IO_NO_INCREMENT, FALSE);
 }
 
 VOID
@@ -100,12 +66,12 @@ PnpEventCleanup(
     )
 {
     LWF_FILTER *Filter = PnpEventFile->Default->Filter;
-    LIST_ENTRY PendedList;
+    LIST_ENTRY HeldList;
     KIRQL OldIrql;
 
     TraceEnter(TRACE_CONTROL, "PnpEventFile=%p", PnpEventFile);
 
-    InitializeListHead(&PendedList);
+    InitializeListHead(&HeldList);
 
     KeAcquireSpinLock(&Filter->Lock, &OldIrql);
 
@@ -114,26 +80,23 @@ PnpEventCleanup(
         InitializeListHead(&PnpEventFile->PnpEventFilterLink);
     }
 
-    PnpEventFlush(PnpEventFile);
-
     //
-    // Releasing the file must not strand a pended event, or the originating
-    // stack never makes progress.
+    // Releasing the file must not strand a held event, or the originating stack
+    // never makes progress.
     //
-    if (!IsListEmpty(&PnpEventFile->PendedList)) {
-        AppendTailList(&PendedList, &PnpEventFile->PendedList);
-        RemoveEntryList(&PnpEventFile->PendedList);
-        InitializeListHead(&PnpEventFile->PendedList);
+    if (!IsListEmpty(&PnpEventFile->HeldList)) {
+        AppendTailList(&HeldList, &PnpEventFile->HeldList);
+        RemoveEntryList(&PnpEventFile->HeldList);
+        InitializeListHead(&PnpEventFile->HeldList);
     }
 
     KeReleaseSpinLock(&Filter->Lock, OldIrql);
 
-    while (!IsListEmpty(&PendedList)) {
-        LIST_ENTRY *Link = RemoveHeadList(&PendedList);
-        DEFAULT_PNP_EVENT_PENDED *Pended =
-            CONTAINING_RECORD(Link, DEFAULT_PNP_EVENT_PENDED, Link);
+    while (!IsListEmpty(&HeldList)) {
+        LIST_ENTRY *Link = RemoveHeadList(&HeldList);
 
-        PnpEventReleasePended(Pended, NDIS_STATUS_SUCCESS);
+        PnpEventRelease(
+            CONTAINING_RECORD(Link, DEFAULT_PNP_EVENT_HELD, Link), NDIS_STATUS_SUCCESS);
     }
 
     ExFreePoolWithTag(PnpEventFile, POOLTAG_LWF_DEFAULT_PNPEVENT);
@@ -159,8 +122,7 @@ PnpEventCreate(
 
     PnpEventFile->Default = Default;
     InitializeListHead(&PnpEventFile->PnpEventFilterLink);
-    InitializeListHead(&PnpEventFile->PnpEventList);
-    InitializeListHead(&PnpEventFile->PendedList);
+    InitializeListHead(&PnpEventFile->HeldList);
 
     TraceVerbose(TRACE_CONTROL, "Default=%p PnpEventFile=%p", Default, PnpEventFile);
 
@@ -194,9 +156,7 @@ PnpEventIrpFilter(
     KeAcquireSpinLock(&Filter->Lock, &OldIrql);
 
     PnpEventFile->NetEventFilter = In->NetEvent;
-    PnpEventFile->PendEvents = !!In->PendEvents;
-    PnpEventFile->QueueEvents = !!In->QueueEvents;
-    PnpEventFlush(PnpEventFile);
+    PnpEventFile->HoldEvents = !!In->HoldEvents;
 
     if (IsListEmpty(&PnpEventFile->PnpEventFilterLink)) {
         InsertTailList(&Filter->PnpEventFilterList, &PnpEventFile->PnpEventFilterLink);
@@ -204,8 +164,8 @@ PnpEventIrpFilter(
 
     TraceVerbose(
         TRACE_CONTROL,
-        "PnpEventFile=%p NetEventFilter=%u PendEvents=%u QueueEvents=%u",
-        PnpEventFile, In->NetEvent, In->PendEvents, In->QueueEvents);
+        "PnpEventFile=%p NetEventFilter=%u HoldEvents=%u",
+        PnpEventFile, In->NetEvent, In->HoldEvents);
 
     KeReleaseSpinLock(&Filter->Lock, OldIrql);
 
@@ -230,7 +190,8 @@ PnpEventIrpGet(
     UINT32 OutputBufferLength = IrpSp->Parameters.DeviceIoControl.OutputBufferLength;
     SIZE_T *BytesReturned = &Irp->IoStatus.Information;
     PNP_EVENT_NOTIFICATION_OUT *Out;
-    DEFAULT_PNP_EVENT_ENTRY *Entry;
+    DEFAULT_PNP_EVENT_HELD *Held;
+    NET_PNP_EVENT *NetPnPEvent;
     UINT32 RequiredSize;
     NTSTATUS Status;
     KIRQL OldIrql;
@@ -239,15 +200,19 @@ PnpEventIrpGet(
 
     KeAcquireSpinLock(&Filter->Lock, &OldIrql);
 
-    if (IsListEmpty(&PnpEventFile->PnpEventList)) {
+    if (IsListEmpty(&PnpEventFile->HeldList)) {
         Status = STATUS_NOT_FOUND;
         goto Exit;
     }
 
-    Entry =
-        CONTAINING_RECORD(PnpEventFile->PnpEventList.Flink, DEFAULT_PNP_EVENT_ENTRY, Link);
+    //
+    // The indication is still owned by the blocked handler, so it is safe to
+    // read here.
+    //
+    Held = CONTAINING_RECORD(PnpEventFile->HeldList.Flink, DEFAULT_PNP_EVENT_HELD, Link);
+    NetPnPEvent = &Held->Notification->NetPnPEvent;
 
-    Status = RtlUInt32Add(sizeof(*Out), Entry->BufferLength, &RequiredSize);
+    Status = RtlUInt32Add(sizeof(*Out), NetPnPEvent->BufferLength, &RequiredSize);
     if (!NT_SUCCESS(Status)) {
         goto Exit;
     }
@@ -264,26 +229,24 @@ PnpEventIrpGet(
     }
 
     Out = Irp->AssociatedIrp.SystemBuffer;
-    Out->NetEvent = Entry->NetEvent;
-    Out->BufferLength = Entry->BufferLength;
+    Out->NetEvent = NetPnPEvent->NetEvent;
+    Out->BufferLength = NetPnPEvent->BufferLength;
 
-    if (Entry->BufferLength > 0) {
-        RtlCopyMemory(Out + 1, Entry->Buffer, Entry->BufferLength);
+    if (NetPnPEvent->BufferLength > 0) {
+        RtlCopyMemory(Out + 1, NetPnPEvent->Buffer, NetPnPEvent->BufferLength);
     }
 
     *BytesReturned = RequiredSize;
-    RemoveEntryList(&Entry->Link);
-    PnpEventEntryCleanup(Entry);
     Status = STATUS_SUCCESS;
 
     //
-    // A test that is actively draining events is making progress, so treat this
-    // as liveness and let it hold its pends longer.
+    // A test that is actively inspecting events is making progress, so treat
+    // this as liveness and let it hold longer.
     //
-    for (LIST_ENTRY *Link = PnpEventFile->PendedList.Flink;
-         Link != &PnpEventFile->PendedList;
+    for (LIST_ENTRY *Link = PnpEventFile->HeldList.Flink;
+         Link != &PnpEventFile->HeldList;
          Link = Link->Flink) {
-        CONTAINING_RECORD(Link, DEFAULT_PNP_EVENT_PENDED, Link)->Timestamp =
+        CONTAINING_RECORD(Link, DEFAULT_PNP_EVENT_HELD, Link)->Timestamp =
             KeQueryUnbiasedInterruptTime();
     }
 
@@ -306,7 +269,7 @@ PnpEventIrpComplete(
 {
     const PNP_EVENT_COMPLETE_IN *In = Irp->AssociatedIrp.SystemBuffer;
     LWF_FILTER *Filter = PnpEventFile->Default->Filter;
-    DEFAULT_PNP_EVENT_PENDED *Pended = NULL;
+    DEFAULT_PNP_EVENT_HELD *Held = NULL;
     NTSTATUS Status;
     KIRQL OldIrql;
 
@@ -319,19 +282,19 @@ PnpEventIrpComplete(
 
     KeAcquireSpinLock(&Filter->Lock, &OldIrql);
 
-    if (!IsListEmpty(&PnpEventFile->PendedList)) {
-        LIST_ENTRY *Link = RemoveHeadList(&PnpEventFile->PendedList);
-        Pended = CONTAINING_RECORD(Link, DEFAULT_PNP_EVENT_PENDED, Link);
+    if (!IsListEmpty(&PnpEventFile->HeldList)) {
+        LIST_ENTRY *Link = RemoveHeadList(&PnpEventFile->HeldList);
+        Held = CONTAINING_RECORD(Link, DEFAULT_PNP_EVENT_HELD, Link);
     }
 
     KeReleaseSpinLock(&Filter->Lock, OldIrql);
 
-    if (Pended == NULL) {
+    if (Held == NULL) {
         Status = STATUS_NOT_FOUND;
         goto Exit;
     }
 
-    PnpEventReleasePended(Pended, In->CompletionStatus);
+    PnpEventRelease(Held, In->CompletionStatus);
     Status = STATUS_SUCCESS;
 
 Exit:
@@ -360,13 +323,13 @@ PnpEventWatchdogTimeout(
         DEFAULT_PNP_EVENT *PnpEventFile =
             CONTAINING_RECORD(FileLink, DEFAULT_PNP_EVENT, PnpEventFilterLink);
 
-        for (LIST_ENTRY *Link = PnpEventFile->PendedList.Flink;
-             Link != &PnpEventFile->PendedList;
+        for (LIST_ENTRY *Link = PnpEventFile->HeldList.Flink;
+             Link != &PnpEventFile->HeldList;
              Link = Link->Flink) {
-            DEFAULT_PNP_EVENT_PENDED *Pended =
-                CONTAINING_RECORD(Link, DEFAULT_PNP_EVENT_PENDED, Link);
+            DEFAULT_PNP_EVENT_HELD *Held =
+                CONTAINING_RECORD(Link, DEFAULT_PNP_EVENT_HELD, Link);
 
-            if (CurrentTime > Pended->Timestamp + WatchdogGracePeriod) {
+            if (CurrentTime > Held->Timestamp + WatchdogGracePeriod) {
                 Expired = TRUE;
                 break;
             }
@@ -383,15 +346,15 @@ PnpEventWatchdogTimeout(
 _IRQL_requires_max_(PASSIVE_LEVEL)
 _Function_class_(FILTER_NET_PNP_EVENT)
 NDIS_STATUS
-FilterNetPnPEvent(    _In_ NDIS_HANDLE FilterModuleContext,
+FilterNetPnPEvent(
+    _In_ NDIS_HANDLE FilterModuleContext,
     _In_ NET_PNP_EVENT_NOTIFICATION *NetPnPEventNotification
     )
 {
     LWF_FILTER *Filter = (LWF_FILTER *)FilterModuleContext;
     NET_PNP_EVENT *NetPnPEvent = &NetPnPEventNotification->NetPnPEvent;
-    DEFAULT_PNP_EVENT_ENTRY *Entry = NULL;
-    DEFAULT_PNP_EVENT_PENDED *Pended = NULL;
-    DEFAULT_PNP_EVENT_PENDED *Held = NULL;
+    DEFAULT_PNP_EVENT_HELD Held;
+    BOOLEAN Holding = FALSE;
     LIST_ENTRY *Link;
     KIRQL OldIrql;
 
@@ -399,24 +362,6 @@ FilterNetPnPEvent(    _In_ NDIS_HANDLE FilterModuleContext,
         TRACE_CONTROL,
         "Filter=%p NetEvent=%u BufferLength=%u",
         Filter, NetPnPEvent->NetEvent, NetPnPEvent->BufferLength);
-
-    //
-    // Allocate before taking the lock, since the queue and pend paths cannot
-    // fail cleanly once the event has been claimed.
-    //
-    Entry = ExAllocatePoolZero(NonPagedPoolNx, sizeof(*Entry), POOLTAG_LWF_DEFAULT_PNPEVENT);
-    Pended = ExAllocatePoolZero(NonPagedPoolNx, sizeof(*Pended), POOLTAG_LWF_DEFAULT_PNPEVENT);
-
-    if (Entry != NULL && NetPnPEvent->BufferLength > 0) {
-        Entry->Buffer =
-            ExAllocatePoolZero(
-                NonPagedPoolNx, NetPnPEvent->BufferLength, POOLTAG_LWF_DEFAULT_PNPEVENT);
-
-        if (Entry->Buffer == NULL) {
-            PnpEventEntryCleanup(Entry);
-            Entry = NULL;
-        }
-    }
 
     KeAcquireSpinLock(&Filter->Lock, &OldIrql);
 
@@ -431,25 +376,13 @@ FilterNetPnPEvent(    _In_ NDIS_HANDLE FilterModuleContext,
             continue;
         }
 
-        if (PnpEventFile->QueueEvents && Entry != NULL) {
-            Entry->NetEvent = NetPnPEvent->NetEvent;
-            Entry->BufferLength = NetPnPEvent->BufferLength;
-
-            if (NetPnPEvent->BufferLength > 0) {
-                RtlCopyMemory(Entry->Buffer, NetPnPEvent->Buffer, NetPnPEvent->BufferLength);
-            }
-
-            InsertTailList(&PnpEventFile->PnpEventList, &Entry->Link);
-            Entry = NULL;
-        }
-
-        if (PnpEventFile->PendEvents && Pended != NULL) {
-            KeInitializeEvent(&Pended->ReleaseEvent, NotificationEvent, FALSE);
-            Pended->CompletionStatus = NDIS_STATUS_SUCCESS;
-            Pended->Timestamp = KeQueryUnbiasedInterruptTime();
-            InsertTailList(&PnpEventFile->PendedList, &Pended->Link);
-            Held = Pended;
-            Pended = NULL;
+        if (PnpEventFile->HoldEvents) {
+            Held.Notification = NetPnPEventNotification;
+            Held.CompletionStatus = NDIS_STATUS_SUCCESS;
+            Held.Timestamp = KeQueryUnbiasedInterruptTime();
+            KeInitializeEvent(&Held.ReleaseEvent, NotificationEvent, FALSE);
+            InsertTailList(&PnpEventFile->HeldList, &Held.Link);
+            Holding = TRUE;
         }
 
         break;
@@ -457,25 +390,12 @@ FilterNetPnPEvent(    _In_ NDIS_HANDLE FilterModuleContext,
 
     KeReleaseSpinLock(&Filter->Lock, OldIrql);
 
-    if (Entry != NULL) {
-        PnpEventEntryCleanup(Entry);
-    }
+    if (Holding) {
+        KeWaitForSingleObject(&Held.ReleaseEvent, Executive, KernelMode, FALSE, NULL);
 
-    if (Pended != NULL) {
-        ExFreePoolWithTag(Pended, POOLTAG_LWF_DEFAULT_PNPEVENT);
-    }
-
-    if (Held != NULL) {
-        NDIS_STATUS CompletionStatus;
-
-        KeWaitForSingleObject(&Held->ReleaseEvent, Executive, KernelMode, FALSE, NULL);
-
-        CompletionStatus = Held->CompletionStatus;
-        ExFreePoolWithTag(Held, POOLTAG_LWF_DEFAULT_PNPEVENT);
-
-        if (CompletionStatus != NDIS_STATUS_SUCCESS) {
+        if (Held.CompletionStatus != NDIS_STATUS_SUCCESS) {
             TraceExitSuccess(TRACE_CONTROL);
-            return CompletionStatus;
+            return Held.CompletionStatus;
         }
     }
 

@@ -136,13 +136,12 @@ typedef enum _FNLWF_NET_DEVICE_POWER_STATE {
 
 typedef struct _PNP_EVENT_FILTER_IN {
     UINT32 NetEvent;
-    BOOLEAN PendEvents;
-    BOOLEAN QueueEvents;
+    BOOLEAN HoldEvents;
 } PNP_EVENT_FILTER_IN;
 
 //
-// Output for FNLWF_IOCTL_PNP_EVENT_GET_NOTIFICATION. The event buffer, whose
-// contents depend on NetEvent, immediately follows this header.
+// Output for FNLWF_IOCTL_PNP_EVENT_GET. The event buffer, whose contents depend
+// on NetEvent, immediately follows this header.
 //
 
 typedef struct _PNP_EVENT_NOTIFICATION_OUT {
