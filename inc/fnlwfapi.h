@@ -316,29 +316,28 @@ FnLwfDatapathGetState(
 }
 
 //
-// Selects a NET_PNP_EVENT_CODE to hold. A held event blocks the originating
-// stack until FnLwfPnpEventComplete, and is released if the handle is closed.
-// Events are only observable while held, since the indication is not copied.
+// Selects a NET_PNP_EVENT_CODE to pend. A pended event blocks the originating
+// stack until FnLwfPnpEventComplete, and is completed if the handle is closed.
+// Events are only observable while pended, since the indication is not copied.
+// Close the handle to stop pending.
 //
 FNLWFAPI
 FNLWFAPI_STATUS
 FnLwfPnpEventSetFilter(
     _In_ FNLWF_HANDLE Handle,
-    _In_ UINT32 NetEvent,
-    _In_ BOOLEAN HoldEvents
+    _In_ UINT32 NetEvent
     )
 {
     PNP_EVENT_FILTER_IN In = {0};
 
     In.NetEvent = NetEvent;
-    In.HoldEvents = HoldEvents;
 
     return FnIoctl(Handle, FNLWF_IOCTL_PNP_EVENT_SET_FILTER, &In, sizeof(In), NULL, 0, 0, NULL);
 }
 
 //
-// Reads the currently held event as a PNP_EVENT_NOTIFICATION_OUT followed by
-// the event buffer.
+// Reads the pended event as a PNP_EVENT_NOTIFICATION_OUT followed by the event
+// buffer.
 //
 FNLWFAPI
 FNLWFAPI_STATUS

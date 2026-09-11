@@ -136,7 +136,6 @@ typedef enum _FNLWF_NET_DEVICE_POWER_STATE {
 
 typedef struct _PNP_EVENT_FILTER_IN {
     UINT32 NetEvent;
-    BOOLEAN HoldEvents;
 } PNP_EVENT_FILTER_IN;
 
 //
