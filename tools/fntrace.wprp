@@ -59,6 +59,11 @@
                 <Keyword Value="0x7FFFFFFFFFFFFFFF" />
             </Keywords>
         </EventProvider>
+        <EventProvider Id="EP_FnBusWpp" Name="9B4E1D7C-3F2A-4D18-B0C6-2A7E5D9F4A31" Level="5" NonPagedMemory="true">
+            <Keywords>
+                <Keyword Value="0x7FFFFFFFFFFFFFFF" />
+            </Keywords>
+        </EventProvider>
         <EventProvider Id="EP_FnTestWpp" Name="3207D516-BB97-4C97-9B49-5EB25829C43F" Level="5">
             <Keywords>
                 <Keyword Value="0x7FFFFFFFFFFFFFFF" />
@@ -95,6 +100,7 @@
                     <EventProviders>
                         <EventProviderId Value="EP_FnMpWpp" />
                         <EventProviderId Value="EP_FnLwfWpp" />
+                        <EventProviderId Value="EP_FnBusWpp" />
                         <EventProviderId Value="EP_FnTestWpp" />
                         <EventProviderId Value="EP_FnTestDrvWpp" />
                         <EventProviderId Value="EP_InvokeSystemRelayDrvWpp" />

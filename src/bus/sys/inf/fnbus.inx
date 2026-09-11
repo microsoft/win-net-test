@@ -1,0 +1,56 @@
+; Copyright (c) Microsoft Corporation.
+; Licensed under the MIT License.
+
+[Version]
+CatalogFile = fnbus.cat
+Signature   = "$Windows NT$"
+Class       = System
+ClassGuid   = {4D36E97D-E325-11CE-BFC1-08002BE10318}
+Provider    = %Msft%
+DriverVer   = 01/01/2026,1.0.0.0
+PnpLockdown = 1
+
+[DestinationDirs]
+DefaultDestDir = 12
+
+[SourceDisksNames]
+1 = %DiskName%,,,""
+
+[SourceDisksFiles]
+fnbus.sys = 1,,
+
+[Manufacturer]
+%Msft% = Standard,NT$ARCH$
+
+[Standard.NT$ARCH$]
+%fnbus.DeviceDesc% = fnbus_Device, root\ms_fnbus
+
+[fnbus_Device.NT]
+CopyFiles = Drivers_Dir
+
+[fnbus_Device.NT.HW]
+AddReg = fnbus_Device.NT.AddReg
+
+[fnbus_Device.NT.AddReg]
+HKR,,DeviceCharacteristics,0x10001,0x0100
+HKR,,Security,,"D:P(A;;GA;;;BA)(A;;GA;;;SY)"
+
+[Drivers_Dir]
+fnbus.sys
+
+[fnbus_Device.NT.Services]
+AddService = fnbus,%SPSVCINST_ASSOCSERVICE%,fnbus_Service_Inst
+
+[fnbus_Service_Inst]
+DisplayName   = %fnbus.SVCDESC%
+ServiceType   = 1
+StartType     = 3
+ErrorControl  = 1
+ServiceBinary = %12%\fnbus.sys
+
+[Strings]
+SPSVCINST_ASSOCSERVICE = 0x00000002
+Msft                   = "Microsoft"
+DiskName               = "FNBUS Installation Disk"
+fnbus.DeviceDesc       = "FNBUS Enumerator"
+fnbus.SVCDESC          = "FNBUS Enumerator"

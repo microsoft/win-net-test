@@ -33,6 +33,7 @@ New-Item -Path $DstPath\bin\isr -ItemType Directory > $null
 New-Item -Path $DstPath\bin\fnsock -ItemType Directory > $null
 copy -Recurse "artifacts\bin\$($Platform)_$($Config)\fnmp\" $DstPath\bin
 copy -Recurse "artifacts\bin\$($Platform)_$($Config)\fnlwf\" $DstPath\bin
+copy -Recurse "artifacts\bin\$($Platform)_$($Config)\fnbus\" $DstPath\bin
 copy "artifacts\bin\$($Platform)_$($Config)\isrdrv.sys" $DstPath\bin\isr
 copy "artifacts\bin\$($Platform)_$($Config)\isrsvc.exe" $DstPath\bin\isr
 copy "artifacts\bin\$($Platform)_$($Config)\fnsock_um.dll" $DstPath\bin\fnsock
@@ -41,6 +42,7 @@ copy "artifacts\bin\$($Platform)_$($Config)\fnsock_km.sys" $DstPath\bin\fnsock
 New-Item -Path $DstPath\symbols -ItemType Directory > $null
 copy "artifacts\bin\$($Platform)_$($Config)\fnmp.pdb" $DstPath\symbols
 copy "artifacts\bin\$($Platform)_$($Config)\fnlwf.pdb" $DstPath\symbols
+copy "artifacts\bin\$($Platform)_$($Config)\fnbus.pdb" $DstPath\symbols
 copy "artifacts\bin\$($Platform)_$($Config)\isrdrv.pdb" $DstPath\symbols
 copy "artifacts\bin\$($Platform)_$($Config)\isrsvc.pdb" $DstPath\symbols
 copy "artifacts\bin\$($Platform)_$($Config)\fnsock_um.pdb" $DstPath\symbols

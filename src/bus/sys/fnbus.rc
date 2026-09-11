@@ -1,0 +1,13 @@
+//
+// Copyright (c) Microsoft Corporation.
+// Licensed under the MIT License.
+//
+
+#include <windows.h>
+
+#define VER_FILETYPE                VFT_DRV
+#define VER_FILESUBTYPE             VFT2_DRV_SYSTEM
+#define VER_FILEDESCRIPTION_STR     "Functional Test Bus Enumerator"
+#define VER_INTERNALNAME_STR        "fnbus.sys"
+
+#include "undocked.ver"

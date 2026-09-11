@@ -1,4 +1,4 @@
-﻿
+
 Microsoft Visual Studio Solution File, Format Version 12.00
 # Visual Studio Version 16
 VisualStudioVersion = 16.0.29728.190
@@ -18,6 +18,8 @@ EndProject
 Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "debugcrt", "test\debugcrt\debugcrt.vcxproj", "{74f5716d-c62f-45d4-9cc2-4637440d5e4e}"
 EndProject
 Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "fnlwf", "src\lwf\sys\fnlwf.vcxproj", "{F819A7AE-2641-4275-A3BA-CF9283C9D519}"
+EndProject
+Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "fnbus", "src\bus\sys\fnbus.vcxproj", "{7C3A1F42-5D8B-4E96-9A11-2B6C0F73D8E4}"
 EndProject
 Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "fnfunctionaltestlib_um", "test\functional\lib\fnfunctionaltestlib_um.vcxproj", "{F37C088B-C801-46C4-B210-EAD7AF7FFAEE}"
 EndProject
@@ -135,6 +137,18 @@ Global
 		{F819A7AE-2641-4275-A3BA-CF9283C9D519}.Release|x64.ActiveCfg = Release|x64
 		{F819A7AE-2641-4275-A3BA-CF9283C9D519}.Release|x64.Build.0 = Release|x64
 		{F819A7AE-2641-4275-A3BA-CF9283C9D519}.Release|x64.Deploy.0 = Release|x64
+		{7C3A1F42-5D8B-4E96-9A11-2B6C0F73D8E4}.Debug|ARM64.ActiveCfg = Debug|ARM64
+		{7C3A1F42-5D8B-4E96-9A11-2B6C0F73D8E4}.Debug|ARM64.Build.0 = Debug|ARM64
+		{7C3A1F42-5D8B-4E96-9A11-2B6C0F73D8E4}.Debug|ARM64.Deploy.0 = Debug|ARM64
+		{7C3A1F42-5D8B-4E96-9A11-2B6C0F73D8E4}.Debug|x64.ActiveCfg = Debug|x64
+		{7C3A1F42-5D8B-4E96-9A11-2B6C0F73D8E4}.Debug|x64.Build.0 = Debug|x64
+		{7C3A1F42-5D8B-4E96-9A11-2B6C0F73D8E4}.Debug|x64.Deploy.0 = Debug|x64
+		{7C3A1F42-5D8B-4E96-9A11-2B6C0F73D8E4}.Release|ARM64.ActiveCfg = Release|ARM64
+		{7C3A1F42-5D8B-4E96-9A11-2B6C0F73D8E4}.Release|ARM64.Build.0 = Release|ARM64
+		{7C3A1F42-5D8B-4E96-9A11-2B6C0F73D8E4}.Release|ARM64.Deploy.0 = Release|ARM64
+		{7C3A1F42-5D8B-4E96-9A11-2B6C0F73D8E4}.Release|x64.ActiveCfg = Release|x64
+		{7C3A1F42-5D8B-4E96-9A11-2B6C0F73D8E4}.Release|x64.Build.0 = Release|x64
+		{7C3A1F42-5D8B-4E96-9A11-2B6C0F73D8E4}.Release|x64.Deploy.0 = Release|x64
 		{F37C088B-C801-46C4-B210-EAD7AF7FFAEE}.Debug|ARM64.ActiveCfg = Debug|ARM64
 		{F37C088B-C801-46C4-B210-EAD7AF7FFAEE}.Debug|ARM64.Build.0 = Debug|ARM64
 		{F37C088B-C801-46C4-B210-EAD7AF7FFAEE}.Debug|ARM64.Deploy.0 = Debug|ARM64

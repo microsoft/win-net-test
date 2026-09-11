@@ -731,6 +731,7 @@ MiniportInitializeHandler(
     NDIS_MINIPORT_ADAPTER_REGISTRATION_ATTRIBUTES *RegAttributes;
     NDIS_MINIPORT_ADAPTER_GENERAL_ATTRIBUTES GeneralAttributes;
     NDIS_RECEIVE_SCALE_CAPABILITIES RssCaps;
+    NDIS_PM_CAPABILITIES PmCaps;
 
     UNREFERENCED_PARAMETER(MiniportDriverContext);
 
@@ -806,6 +807,29 @@ MiniportInitializeHandler(
     GeneralAttributes.SupportedStatistics = NDIS_STATISTICS_GEN_STATISTICS_SUPPORTED;
     GeneralAttributes.SupportedOidList = (NDIS_OID *)MpSupportedOidArray;
     GeneralAttributes.SupportedOidListLength = MpSupportedOidArraySize;
+
+    //
+    // NDIS only manages device power for a miniport that reports PM
+    // capabilities, so without these no low-power NET_PNP_EVENT is delivered to
+    // protocols even when the devnode supports D-states. Only meaningful when
+    // FNMP is enumerated by FNBUS; on a software-enumerated devnode the PnP
+    // manager reports D0 only and these capabilities have no effect.
+    //
+    NdisZeroMemory(&PmCaps, sizeof(PmCaps));
+    PmCaps.Header.Type = NDIS_OBJECT_TYPE_DEFAULT;
+    PmCaps.Header.Revision = NDIS_PM_CAPABILITIES_REVISION_1;
+    PmCaps.Header.Size = NDIS_SIZEOF_NDIS_PM_CAPABILITIES_REVISION_1;
+    PmCaps.MinMagicPacketWakeUp = NdisDeviceStateD3;
+    PmCaps.MinPatternWakeUp = NdisDeviceStateD3;
+    PmCaps.MinLinkChangeWakeUp = NdisDeviceStateD3;
+    PmCaps.SupportedWoLPacketPatterns = 0;
+    PmCaps.NumTotalWoLPatterns = 0;
+    PmCaps.MaxWoLPatternSize = 0;
+    PmCaps.MaxWoLPatternListSize = 0;
+    PmCaps.SupportedProtocolOffloads = 0;
+    PmCaps.NumArpOffloadIPv4Addresses = 0;
+    PmCaps.NumNSOffloadIPv6Addresses = 0;
+    GeneralAttributes.PowerManagementCapabilitiesEx = &PmCaps;
 
     if (Adapter->RssEnabled) {
         NdisZeroMemory(&RssCaps, sizeof(NDIS_RECEIVE_SCALE_CAPABILITIES));
