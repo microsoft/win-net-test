@@ -23,25 +23,39 @@
 #define WPP_LEVEL_FLAGS_ENABLED(level, flags) \
     (WPP_LEVEL_ENABLED(flags) && WPP_CONTROL(WPP_BIT_ ## flags).Level >= level)
 
-#define WPP_RECORDER_LEVEL_FLAGS_ARGS(level, flags) \
-    WPP_CONTROL(WPP_BIT_ ## flags).AutoLogContext, level, WPP_BIT_ ## flags
-#define WPP_RECORDER_LEVEL_FLAGS_FILTER(level, flags) \
-    (level < TRACE_LEVEL_VERBOSE || WPP_CONTROL(WPP_BIT_ ## flags).Level >= level)
+//
+// Opt-in to a WPP recorder feature that enables independent evaluation of
+// conditions to decide if a message needs to be sent to the recorder, an
+// enabled session, or both.
+//
+#define ENABLE_WPP_TRACE_FILTERING_WITH_WPP_RECORDER 1
+
+#define WPP_IFRLOG_LEVEL_FLAGS_ENABLED(IFRLOG, LEVEL, FLAGS) WPP_LEVEL_FLAGS_ENABLED(LEVEL, FLAGS)
+#define WPP_IFRLOG_LEVEL_FLAGS_LOGGER(IFRLOG, LEVEL, FLAGS)  WPP_LEVEL_FLAGS_LOGGER(LEVEL, FLAGS)
 
 // begin_wpp config
 //
-// FUNC TraceError{LEVEL=TRACE_LEVEL_ERROR}(FLAGS, MSG, ...);
-// FUNC TraceWarn{LEVEL=TRACE_LEVEL_WARNING}(FLAGS, MSG, ...);
-// FUNC TraceInfo{LEVEL=TRACE_LEVEL_INFORMATION}(FLAGS, MSG, ...);
-// FUNC TraceVerbose{LEVEL=TRACE_LEVEL_VERBOSE}(FLAGS, MSG, ...);
+// USEPREFIX(TraceError,"%!STDPREFIX! %!FUNC!:%!LINE!%!SPACE!");
+// FUNC TraceError{LEVEL=TRACE_LEVEL_ERROR}(FLAGS,MSG,...);
 //
-// FUNC TraceEnter{LEVEL=TRACE_LEVEL_VERBOSE, FLAGS=TRACE_CONTROL}(ENTEREXIT_MSG, ...);
-// USESUFFIX(TraceEnter, "%!FUNC! ---> " ENTEREXIT_MSG);
+// USEPREFIX(TraceWarn,"%!STDPREFIX! %!FUNC!:%!LINE!%!SPACE!");
+// FUNC TraceWarn{LEVEL=TRACE_LEVEL_WARNING}(FLAGS,MSG,...);
 //
-// FUNC TraceExitStatus{LEVEL=TRACE_LEVEL_VERBOSE, FLAGS=TRACE_CONTROL}(EXITSTATUS_ARG);
-// USESUFFIX(TraceExitStatus, "%!FUNC! <--- Status=%!STATUS!", EXITSTATUS_ARG);
+// USEPREFIX(TraceInfo,"%!STDPREFIX! %!FUNC!:%!LINE!%!SPACE!");
+// FUNC TraceInfo{LEVEL=TRACE_LEVEL_INFORMATION}(FLAGS,MSG,...);
 //
-// FUNC TraceExitSuccess{LEVEL=TRACE_LEVEL_VERBOSE, FLAGS=TRACE_CONTROL}(...);
-// USESUFFIX(TraceExitSuccess, "%!FUNC! <--- Success");
+// USEPREFIX(TraceVerbose,"%!STDPREFIX! %!FUNC!:%!LINE!%!SPACE!");
+// FUNC TraceVerbose{LEVEL=TRACE_LEVEL_VERBOSE}(FLAGS,MSG,...);
+//
+// USEPREFIX(TraceEnter,"%!STDPREFIX! %!FUNC!:%!LINE! --->%!SPACE!");
+// FUNC TraceEnter{LEVEL=TRACE_LEVEL_VERBOSE}(FLAGS,MSG,...);
+//
+// USEPREFIX(TraceExitSuccess,"%!STDPREFIX! %!FUNC!:%!LINE! <---%!SPACE! ");
+// FUNC TraceExitSuccess{LEVEL=TRACE_LEVEL_VERBOSE}(FLAGS,...);
+// USESUFFIX (TraceExitSuccess, "STATUS_SUCCESS");
+//
+// USEPREFIX(TraceExitStatus,"%!STDPREFIX! %!FUNC!:%!LINE! <---%!SPACE!");
+// FUNC TraceExitStatus{LEVEL=TRACE_LEVEL_VERBOSE}(FLAGS);
+// USESUFFIX (TraceExitStatus, "%!STATUS!", Status);
 //
 // end_wpp

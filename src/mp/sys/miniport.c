@@ -822,13 +822,6 @@ MiniportInitializeHandler(
     PmCaps.MinMagicPacketWakeUp = NdisDeviceStateD3;
     PmCaps.MinPatternWakeUp = NdisDeviceStateD3;
     PmCaps.MinLinkChangeWakeUp = NdisDeviceStateD3;
-    PmCaps.SupportedWoLPacketPatterns = 0;
-    PmCaps.NumTotalWoLPatterns = 0;
-    PmCaps.MaxWoLPatternSize = 0;
-    PmCaps.MaxWoLPatternListSize = 0;
-    PmCaps.SupportedProtocolOffloads = 0;
-    PmCaps.NumArpOffloadIPv4Addresses = 0;
-    PmCaps.NumNSOffloadIPv6Addresses = 0;
     GeneralAttributes.PowerManagementCapabilitiesEx = &PmCaps;
 
     if (Adapter->RssEnabled) {

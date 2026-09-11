@@ -19,7 +19,6 @@
 DRIVER_INITIALIZE DriverEntry;
 EVT_WDF_DRIVER_UNLOAD FnBusEvtDriverUnload;
 
-static
 VOID
 FnBusEvtDriverUnload(
     _In_ WDFDRIVER Driver

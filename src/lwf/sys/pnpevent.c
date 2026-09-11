@@ -30,12 +30,14 @@ typedef struct _DEFAULT_PNP_EVENT_ENTRY {
 } DEFAULT_PNP_EVENT_ENTRY;
 
 //
-// A NET_PNP_EVENT the filter returned NDIS_STATUS_PENDING for. The originating
-// stack is blocked until this is forwarded and completed.
+// NDIS has no filter-side completion routine for NET_PNP_EVENT, so a filter
+// cannot return NDIS_STATUS_PENDING. The handler runs at PASSIVE_LEVEL, so hold
+// the event by blocking the calling thread instead.
 //
 typedef struct _DEFAULT_PNP_EVENT_PENDED {
     LIST_ENTRY Link;
-    NET_PNP_EVENT_NOTIFICATION *Notification;
+    KEVENT ReleaseEvent;
+    NDIS_STATUS CompletionStatus;
     ULONGLONG Timestamp;
 } DEFAULT_PNP_EVENT_PENDED;
 
@@ -79,31 +81,17 @@ PnpEventFlush(
 }
 
 //
-// Forwards a pended event and completes the pend the filter took out for it. A
-// synchronous PENDING return means the rest of the stack owns completion.
+// Wakes the thread blocked in the handler. It owns the record from here.
 //
 static
-_IRQL_requires_max_(PASSIVE_LEVEL)
 VOID
-PnpEventForwardPended(
-    _In_ LWF_FILTER *Filter,
+PnpEventReleasePended(
     _In_ DEFAULT_PNP_EVENT_PENDED *Pended,
     _In_ NDIS_STATUS CompletionStatus
     )
 {
-    NDIS_STATUS Status;
-
-    if (CompletionStatus == NDIS_STATUS_SUCCESS) {
-        Status = NdisFNetPnPEvent(Filter->NdisFilterHandle, Pended->Notification);
-    } else {
-        Status = CompletionStatus;
-    }
-
-    if (Status != NDIS_STATUS_PENDING) {
-        NdisFNetPnPEventComplete(Filter->NdisFilterHandle, Pended->Notification, Status);
-    }
-
-    ExFreePoolWithTag(Pended, POOLTAG_LWF_DEFAULT_PNPEVENT);
+    Pended->CompletionStatus = CompletionStatus;
+    KeSetEvent(&Pended->ReleaseEvent, IO_NO_INCREMENT, FALSE);
 }
 
 VOID
@@ -145,7 +133,7 @@ PnpEventCleanup(
         DEFAULT_PNP_EVENT_PENDED *Pended =
             CONTAINING_RECORD(Link, DEFAULT_PNP_EVENT_PENDED, Link);
 
-        PnpEventForwardPended(Filter, Pended, NDIS_STATUS_SUCCESS);
+        PnpEventReleasePended(Pended, NDIS_STATUS_SUCCESS);
     }
 
     ExFreePoolWithTag(PnpEventFile, POOLTAG_LWF_DEFAULT_PNPEVENT);
@@ -343,7 +331,7 @@ PnpEventIrpComplete(
         goto Exit;
     }
 
-    PnpEventForwardPended(Filter, Pended, In->CompletionStatus);
+    PnpEventReleasePended(Pended, In->CompletionStatus);
     Status = STATUS_SUCCESS;
 
 Exit:
@@ -403,8 +391,8 @@ FilterNetPnPEvent(    _In_ NDIS_HANDLE FilterModuleContext,
     NET_PNP_EVENT *NetPnPEvent = &NetPnPEventNotification->NetPnPEvent;
     DEFAULT_PNP_EVENT_ENTRY *Entry = NULL;
     DEFAULT_PNP_EVENT_PENDED *Pended = NULL;
+    DEFAULT_PNP_EVENT_PENDED *Held = NULL;
     LIST_ENTRY *Link;
-    BOOLEAN Pend = FALSE;
     KIRQL OldIrql;
 
     TraceEnter(
@@ -456,11 +444,12 @@ FilterNetPnPEvent(    _In_ NDIS_HANDLE FilterModuleContext,
         }
 
         if (PnpEventFile->PendEvents && Pended != NULL) {
-            Pended->Notification = NetPnPEventNotification;
+            KeInitializeEvent(&Pended->ReleaseEvent, NotificationEvent, FALSE);
+            Pended->CompletionStatus = NDIS_STATUS_SUCCESS;
             Pended->Timestamp = KeQueryUnbiasedInterruptTime();
             InsertTailList(&PnpEventFile->PendedList, &Pended->Link);
+            Held = Pended;
             Pended = NULL;
-            Pend = TRUE;
         }
 
         break;
@@ -476,11 +465,21 @@ FilterNetPnPEvent(    _In_ NDIS_HANDLE FilterModuleContext,
         ExFreePoolWithTag(Pended, POOLTAG_LWF_DEFAULT_PNPEVENT);
     }
 
-    TraceExitSuccess(TRACE_CONTROL);
+    if (Held != NULL) {
+        NDIS_STATUS CompletionStatus;
 
-    if (Pend) {
-        return NDIS_STATUS_PENDING;
+        KeWaitForSingleObject(&Held->ReleaseEvent, Executive, KernelMode, FALSE, NULL);
+
+        CompletionStatus = Held->CompletionStatus;
+        ExFreePoolWithTag(Held, POOLTAG_LWF_DEFAULT_PNPEVENT);
+
+        if (CompletionStatus != NDIS_STATUS_SUCCESS) {
+            TraceExitSuccess(TRACE_CONTROL);
+            return CompletionStatus;
+        }
     }
+
+    TraceExitSuccess(TRACE_CONTROL);
 
     return NdisFNetPnPEvent(Filter->NdisFilterHandle, NetPnPEventNotification);
 }
