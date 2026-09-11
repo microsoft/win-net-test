@@ -6,6 +6,22 @@
 #include "precomp.h"
 #include "pnpevent.tmh"
 
+//
+// The user mode mirrors in fnlwfioctl.h must track netpnp.h exactly.
+//
+C_ASSERT((UINT32)FnLwfNetEventSetPower == (UINT32)NetEventSetPower);
+C_ASSERT((UINT32)FnLwfNetEventQueryPower == (UINT32)NetEventQueryPower);
+C_ASSERT((UINT32)FnLwfNetEventQueryRemoveDevice == (UINT32)NetEventQueryRemoveDevice);
+C_ASSERT((UINT32)FnLwfNetEventPnPCapabilities == (UINT32)NetEventPnPCapabilities);
+C_ASSERT((UINT32)FnLwfNetEventPause == (UINT32)NetEventPause);
+C_ASSERT((UINT32)FnLwfNetEventRestart == (UINT32)NetEventRestart);
+C_ASSERT((UINT32)FnLwfNetEventFilterPreDetach == (UINT32)NetEventFilterPreDetach);
+C_ASSERT((UINT32)FnLwfNetEventUploadGftFlowEntries == (UINT32)NetEventUploadGftFlowEntries);
+C_ASSERT((UINT32)FnLwfNetDeviceStateUnspecified == (UINT32)NetDeviceStateUnspecified);
+C_ASSERT((UINT32)FnLwfNetDeviceStateD0 == (UINT32)NetDeviceStateD0);
+C_ASSERT((UINT32)FnLwfNetDeviceStateD3 == (UINT32)NetDeviceStateD3);
+C_ASSERT(FNLWF_PNP_EVENT_SUCCESS == NDIS_STATUS_SUCCESS);
+
 typedef struct _DEFAULT_PNP_EVENT_ENTRY {
     LIST_ENTRY Link;
     UINT32 NetEvent;
@@ -20,6 +36,7 @@ typedef struct _DEFAULT_PNP_EVENT_ENTRY {
 typedef struct _DEFAULT_PNP_EVENT_PENDED {
     LIST_ENTRY Link;
     NET_PNP_EVENT_NOTIFICATION *Notification;
+    ULONGLONG Timestamp;
 } DEFAULT_PNP_EVENT_PENDED;
 
 typedef struct _DEFAULT_PNP_EVENT {
@@ -215,7 +232,7 @@ Exit:
 
 _IRQL_requires_max_(PASSIVE_LEVEL)
 NTSTATUS
-PnpEventIrpGetNotification(
+PnpEventIrpGet(
     _In_ DEFAULT_PNP_EVENT *PnpEventFile,
     _In_ IRP *Irp,
     _In_ IO_STACK_LOCATION *IrpSp
@@ -270,6 +287,17 @@ PnpEventIrpGetNotification(
     RemoveEntryList(&Entry->Link);
     PnpEventEntryCleanup(Entry);
     Status = STATUS_SUCCESS;
+
+    //
+    // A test that is actively draining events is making progress, so treat this
+    // as liveness and let it hold its pends longer.
+    //
+    for (LIST_ENTRY *Link = PnpEventFile->PendedList.Flink;
+         Link != &PnpEventFile->PendedList;
+         Link = Link->Flink) {
+        CONTAINING_RECORD(Link, DEFAULT_PNP_EVENT_PENDED, Link)->Timestamp =
+            KeQueryUnbiasedInterruptTime();
+    }
 
 Exit:
 
@@ -326,10 +354,48 @@ Exit:
 }
 
 _IRQL_requires_max_(PASSIVE_LEVEL)
+VOID
+PnpEventWatchdogTimeout(
+    _In_ LWF_FILTER *Filter
+    )
+{
+    static const ULONGLONG WatchdogGracePeriod = RTL_SEC_TO_100NANOSEC(5);
+    ULONGLONG CurrentTime = KeQueryUnbiasedInterruptTime();
+    BOOLEAN Expired = FALSE;
+    KIRQL OldIrql;
+
+    KeAcquireSpinLock(&Filter->Lock, &OldIrql);
+
+    for (LIST_ENTRY *FileLink = Filter->PnpEventFilterList.Flink;
+         FileLink != &Filter->PnpEventFilterList && !Expired;
+         FileLink = FileLink->Flink) {
+        DEFAULT_PNP_EVENT *PnpEventFile =
+            CONTAINING_RECORD(FileLink, DEFAULT_PNP_EVENT, PnpEventFilterLink);
+
+        for (LIST_ENTRY *Link = PnpEventFile->PendedList.Flink;
+             Link != &PnpEventFile->PendedList;
+             Link = Link->Flink) {
+            DEFAULT_PNP_EVENT_PENDED *Pended =
+                CONTAINING_RECORD(Link, DEFAULT_PNP_EVENT_PENDED, Link);
+
+            if (CurrentTime > Pended->Timestamp + WatchdogGracePeriod) {
+                Expired = TRUE;
+                break;
+            }
+        }
+    }
+
+    KeReleaseSpinLock(&Filter->Lock, OldIrql);
+
+    if (Expired) {
+        FilterWatchdogFailure(Filter, "PnP event");
+    }
+}
+
+_IRQL_requires_max_(PASSIVE_LEVEL)
 _Function_class_(FILTER_NET_PNP_EVENT)
 NDIS_STATUS
-FilterNetPnPEvent(
-    _In_ NDIS_HANDLE FilterModuleContext,
+FilterNetPnPEvent(    _In_ NDIS_HANDLE FilterModuleContext,
     _In_ NET_PNP_EVENT_NOTIFICATION *NetPnPEventNotification
     )
 {
@@ -391,6 +457,7 @@ FilterNetPnPEvent(
 
         if (PnpEventFile->PendEvents && Pended != NULL) {
             Pended->Notification = NetPnPEventNotification;
+            Pended->Timestamp = KeQueryUnbiasedInterruptTime();
             InsertTailList(&PnpEventFile->PendedList, &Pended->Link);
             Pended = NULL;
             Pend = TRUE;

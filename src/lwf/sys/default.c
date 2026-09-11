@@ -62,8 +62,8 @@ DefaultIrpDeviceIoControl(
         Status = PnpEventIrpFilter(Default->PnpEvent, Irp, IrpSp);
         break;
 
-    case FNLWF_IOCTL_PNP_EVENT_GET_NOTIFICATION:
-        Status = PnpEventIrpGetNotification(Default->PnpEvent, Irp, IrpSp);
+    case FNLWF_IOCTL_PNP_EVENT_GET:
+        Status = PnpEventIrpGet(Default->PnpEvent, Irp, IrpSp);
         break;
 
     case FNLWF_IOCTL_PNP_EVENT_COMPLETE:

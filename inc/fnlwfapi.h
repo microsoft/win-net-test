@@ -343,7 +343,7 @@ FnLwfPnpEventSetFilter(
 //
 FNLWFAPI
 FNLWFAPI_STATUS
-FnLwfPnpEventGetNotification(
+FnLwfPnpEventGet(
     _In_ FNLWF_HANDLE Handle,
     _Inout_ UINT32 *NotificationLength,
     _Out_writes_bytes_opt_(*NotificationLength) VOID *Notification
@@ -351,7 +351,7 @@ FnLwfPnpEventGetNotification(
 {
     return
         FnIoctl(
-            Handle, FNLWF_IOCTL_PNP_EVENT_GET_NOTIFICATION, NULL, 0, Notification,
+            Handle, FNLWF_IOCTL_PNP_EVENT_GET, NULL, 0, Notification,
             *NotificationLength, NotificationLength, NULL);
 }
 

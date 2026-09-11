@@ -54,7 +54,7 @@ typedef struct _FNLWF_OPEN_DEFAULT {
     CTL_CODE(FILE_DEVICE_NETWORK, 10, METHOD_BUFFERED, FILE_WRITE_ACCESS)
 #define FNLWF_IOCTL_PNP_EVENT_SET_FILTER \
     CTL_CODE(FILE_DEVICE_NETWORK, 11, METHOD_BUFFERED, FILE_WRITE_ACCESS)
-#define FNLWF_IOCTL_PNP_EVENT_GET_NOTIFICATION \
+#define FNLWF_IOCTL_PNP_EVENT_GET \
     CTL_CODE(FILE_DEVICE_NETWORK, 12, METHOD_BUFFERED, FILE_WRITE_ACCESS)
 #define FNLWF_IOCTL_PNP_EVENT_COMPLETE \
     CTL_CODE(FILE_DEVICE_NETWORK, 13, METHOD_BUFFERED, FILE_WRITE_ACCESS)
@@ -85,6 +85,50 @@ typedef struct _STATUS_FILTER_IN {
     BOOLEAN BlockIndications;
     BOOLEAN QueueIndications;
 } STATUS_FILTER_IN;
+
+//
+// Mirrors of the public netpnp.h enums, which are unavailable to user mode.
+// fnlwf asserts these match the real values at compile time.
+//
+
+typedef enum _FNLWF_NET_PNP_EVENT_CODE {
+    FnLwfNetEventSetPower = 0,
+    FnLwfNetEventQueryPower = 1,
+    FnLwfNetEventQueryRemoveDevice = 2,
+    FnLwfNetEventCancelRemoveDevice = 3,
+    FnLwfNetEventReconfigure = 4,
+    FnLwfNetEventBindList = 5,
+    FnLwfNetEventBindsComplete = 6,
+    FnLwfNetEventPnPCapabilities = 7,
+    FnLwfNetEventPause = 8,
+    FnLwfNetEventRestart = 9,
+    FnLwfNetEventPortActivation = 10,
+    FnLwfNetEventPortDeactivation = 11,
+    FnLwfNetEventIMReEnableDevice = 12,
+    FnLwfNetEventNDKEnable = 13,
+    FnLwfNetEventNDKDisable = 14,
+    FnLwfNetEventFilterPreDetach = 15,
+    FnLwfNetEventBindFailed = 16,
+    FnLwfNetEventSwitchActivate = 17,
+    FnLwfNetEventAllowBindsAbove = 18,
+    FnLwfNetEventInhibitBindsAbove = 19,
+    FnLwfNetEventAllowStart = 20,
+    FnLwfNetEventRequirePause = 21,
+    FnLwfNetEventUploadGftFlowEntries = 22,
+} FNLWF_NET_PNP_EVENT_CODE;
+
+//
+// Buffer contents for FnLwfNetEventSetPower.
+//
+typedef enum _FNLWF_NET_DEVICE_POWER_STATE {
+    FnLwfNetDeviceStateUnspecified = 0,
+    FnLwfNetDeviceStateD0 = 1,
+    FnLwfNetDeviceStateD1 = 2,
+    FnLwfNetDeviceStateD2 = 3,
+    FnLwfNetDeviceStateD3 = 4,
+} FNLWF_NET_DEVICE_POWER_STATE;
+
+#define FNLWF_PNP_EVENT_SUCCESS ((NDIS_STATUS)0)
 
 //
 // Parameters for FNLWF_IOCTL_PNP_EVENT_SET_FILTER.

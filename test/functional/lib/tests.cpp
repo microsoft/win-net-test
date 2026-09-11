@@ -2061,11 +2061,11 @@ FnBusOpenHandle()
 
 static
 bool
-LwfPnpEventGetNotification(
+LwfPnpEventGet(
     _In_ const unique_fnlwf_handle& Handle,
     _Out_writes_bytes_(BufferSize) VOID *Buffer,
     _In_ UINT32 BufferSize,
-    _In_ NET_DEVICE_POWER_STATE ExpectedPowerState
+    _In_ FNLWF_NET_DEVICE_POWER_STATE ExpectedPowerState
     )
 {
     FNLWFAPI_STATUS Result;
@@ -2074,17 +2074,18 @@ LwfPnpEventGetNotification(
 
     do {
         Length = BufferSize;
-        Result = FnLwfPnpEventGetNotification(Handle.get(), &Length, Buffer);
+        Result = FnLwfPnpEventGet(Handle.get(), &Length, Buffer);
     } while (Result == FNLWFAPI_STATUS_NOT_FOUND &&
              (CxPlatSleep(POLL_INTERVAL_MS), !Watchdog.IsExpired()));
 
     TEST_FNLWFAPI_RET(Result, false);
 
     auto Notification = (PNP_EVENT_NOTIFICATION_OUT *)Buffer;
-    TEST_EQUAL_RET((UINT32)NetEventSetPower, Notification->NetEvent, false);
-    TEST_EQUAL_RET((UINT32)sizeof(NET_DEVICE_POWER_STATE), Notification->BufferLength, false);
+    TEST_EQUAL_RET((UINT32)FnLwfNetEventSetPower, Notification->NetEvent, false);
     TEST_EQUAL_RET(
-        ExpectedPowerState, *(NET_DEVICE_POWER_STATE *)(Notification + 1), false);
+        (UINT32)sizeof(FNLWF_NET_DEVICE_POWER_STATE), Notification->BufferLength, false);
+    TEST_EQUAL_RET(
+        (UINT32)ExpectedPowerState, *(UINT32 *)(Notification + 1), false);
 
     return true;
 }
@@ -2097,24 +2098,24 @@ EXTERN_C
 VOID
 LwfPnpEventPowerTransition()
 {
-    UCHAR Buffer[sizeof(PNP_EVENT_NOTIFICATION_OUT) + sizeof(NET_DEVICE_POWER_STATE)];
+    UCHAR Buffer[sizeof(PNP_EVENT_NOTIFICATION_OUT) + sizeof(FNLWF_NET_DEVICE_POWER_STATE)];
     auto DefaultLwf = LwfOpenDefault(FnMpIf->GetIfIndex());
     auto Bus = FnBusOpenHandle();
 
     TEST_NOT_NULL(DefaultLwf.get());
     TEST_NOT_NULL(Bus.get());
 
-    TEST_FNLWFAPI(FnLwfPnpEventSetFilter(DefaultLwf.get(), NetEventSetPower, FALSE, TRUE));
+    TEST_FNLWFAPI(FnLwfPnpEventSetFilter(DefaultLwf.get(), FnLwfNetEventSetPower, FALSE, TRUE));
 
     TEST_FNMPAPI(
         FnBusSetNicPower(Bus.get(), FNMP_BUS_SERIAL_NUMBER, FnBusDevicePowerD3, TRUE));
     TEST_TRUE(
-        LwfPnpEventGetNotification(DefaultLwf, Buffer, sizeof(Buffer), NetDeviceStateD3));
+        LwfPnpEventGet(DefaultLwf, Buffer, sizeof(Buffer), FnLwfNetDeviceStateD3));
 
     TEST_FNMPAPI(
         FnBusSetNicPower(Bus.get(), FNMP_BUS_SERIAL_NUMBER, FnBusDevicePowerD0, TRUE));
     TEST_TRUE(
-        LwfPnpEventGetNotification(DefaultLwf, Buffer, sizeof(Buffer), NetDeviceStateD0));
+        LwfPnpEventGet(DefaultLwf, Buffer, sizeof(Buffer), FnLwfNetDeviceStateD0));
 }
 
 //
@@ -2124,7 +2125,7 @@ EXTERN_C
 VOID
 LwfPnpEventPend()
 {
-    UCHAR Buffer[sizeof(PNP_EVENT_NOTIFICATION_OUT) + sizeof(NET_DEVICE_POWER_STATE)];
+    UCHAR Buffer[sizeof(PNP_EVENT_NOTIFICATION_OUT) + sizeof(FNLWF_NET_DEVICE_POWER_STATE)];
     auto DefaultLwf = LwfOpenDefault(FnMpIf->GetIfIndex());
     auto Bus = FnBusOpenHandle();
 
@@ -2136,9 +2137,9 @@ LwfPnpEventPend()
     //
     TEST_EQUAL(
         FNLWFAPI_STATUS_NOT_FOUND,
-        FnLwfPnpEventComplete(DefaultLwf.get(), NDIS_STATUS_SUCCESS));
+        FnLwfPnpEventComplete(DefaultLwf.get(), FNLWF_PNP_EVENT_SUCCESS));
 
-    TEST_FNLWFAPI(FnLwfPnpEventSetFilter(DefaultLwf.get(), NetEventSetPower, TRUE, TRUE));
+    TEST_FNLWFAPI(FnLwfPnpEventSetFilter(DefaultLwf.get(), FnLwfNetEventSetPower, TRUE, TRUE));
 
     //
     // The transition cannot complete while the LWF holds the event, so the
@@ -2147,18 +2148,18 @@ LwfPnpEventPend()
     TEST_FNMPAPI(
         FnBusSetNicPower(Bus.get(), FNMP_BUS_SERIAL_NUMBER, FnBusDevicePowerD3, FALSE));
     TEST_TRUE(
-        LwfPnpEventGetNotification(DefaultLwf, Buffer, sizeof(Buffer), NetDeviceStateD3));
+        LwfPnpEventGet(DefaultLwf, Buffer, sizeof(Buffer), FnLwfNetDeviceStateD3));
 
-    TEST_FNLWFAPI(FnLwfPnpEventComplete(DefaultLwf.get(), NDIS_STATUS_SUCCESS));
+    TEST_FNLWFAPI(FnLwfPnpEventComplete(DefaultLwf.get(), FNLWF_PNP_EVENT_SUCCESS));
 
     //
     // The pend is consumed by the completion.
     //
     TEST_EQUAL(
         FNLWFAPI_STATUS_NOT_FOUND,
-        FnLwfPnpEventComplete(DefaultLwf.get(), NDIS_STATUS_SUCCESS));
+        FnLwfPnpEventComplete(DefaultLwf.get(), FNLWF_PNP_EVENT_SUCCESS));
 
-    TEST_FNLWFAPI(FnLwfPnpEventSetFilter(DefaultLwf.get(), NetEventSetPower, FALSE, FALSE));
+    TEST_FNLWFAPI(FnLwfPnpEventSetFilter(DefaultLwf.get(), FnLwfNetEventSetPower, FALSE, FALSE));
     TEST_FNMPAPI(
         FnBusSetNicPower(Bus.get(), FNMP_BUS_SERIAL_NUMBER, FnBusDevicePowerD0, TRUE));
 }
@@ -2171,7 +2172,7 @@ EXTERN_C
 VOID
 LwfPnpEventPendCleanup()
 {
-    UCHAR Buffer[sizeof(PNP_EVENT_NOTIFICATION_OUT) + sizeof(NET_DEVICE_POWER_STATE)];
+    UCHAR Buffer[sizeof(PNP_EVENT_NOTIFICATION_OUT) + sizeof(FNLWF_NET_DEVICE_POWER_STATE)];
     auto Bus = FnBusOpenHandle();
 
     TEST_NOT_NULL(Bus.get());
@@ -2180,12 +2181,13 @@ LwfPnpEventPendCleanup()
         auto DefaultLwf = LwfOpenDefault(FnMpIf->GetIfIndex());
         TEST_NOT_NULL(DefaultLwf.get());
 
-        TEST_FNLWFAPI(FnLwfPnpEventSetFilter(DefaultLwf.get(), NetEventSetPower, TRUE, TRUE));
+        TEST_FNLWFAPI(
+            FnLwfPnpEventSetFilter(DefaultLwf.get(), FnLwfNetEventSetPower, TRUE, TRUE));
 
         TEST_FNMPAPI(
             FnBusSetNicPower(Bus.get(), FNMP_BUS_SERIAL_NUMBER, FnBusDevicePowerD3, FALSE));
         TEST_TRUE(
-            LwfPnpEventGetNotification(DefaultLwf, Buffer, sizeof(Buffer), NetDeviceStateD3));
+            LwfPnpEventGet(DefaultLwf, Buffer, sizeof(Buffer), FnLwfNetDeviceStateD3));
     }
 
     //

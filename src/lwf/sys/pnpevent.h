@@ -29,7 +29,7 @@ PnpEventIrpFilter(
 
 _IRQL_requires_max_(PASSIVE_LEVEL)
 NTSTATUS
-PnpEventIrpGetNotification(
+PnpEventIrpGet(
     _In_ DEFAULT_PNP_EVENT *PnpEventFile,
     _In_ IRP *Irp,
     _In_ IO_STACK_LOCATION *IrpSp
@@ -41,4 +41,10 @@ PnpEventIrpComplete(
     _In_ DEFAULT_PNP_EVENT *PnpEventFile,
     _In_ IRP *Irp,
     _In_ IO_STACK_LOCATION *IrpSp
+    );
+
+_IRQL_requires_max_(PASSIVE_LEVEL)
+VOID
+PnpEventWatchdogTimeout(
+    _In_ LWF_FILTER *Filter
     );

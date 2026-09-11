@@ -379,6 +379,7 @@ FilterWatchdogTimeout(
     LWF_FILTER *Filter = CallbackContext;
 
     RxWatchdogTimeout(Filter);
+    PnpEventWatchdogTimeout(Filter);
 }
 
 _IRQL_requires_max_(PASSIVE_LEVEL)
