@@ -355,6 +355,8 @@ FnMpOidFilter(
     // Handle closure will trigger the processing and completion of any
     // outstanding OIDs.
     //
+    // FNMP reports a watchdog failure for an OID left pended too long.
+    //
     return
         FnIoctl(
             Handle, FNMP_IOCTL_OID_FILTER, (VOID *)Keys, sizeof(Keys[0]) * KeyCount, NULL, 0, NULL, NULL);

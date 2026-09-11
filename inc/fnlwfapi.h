@@ -165,6 +165,8 @@ FnLwfRxFilter(
     //
     // Zero-length filters disable packet captures and release all frames.
     //
+    // FNLWF reports a watchdog failure for frames held too long.
+    //
 
     In.Pattern = (const UCHAR *)Pattern;
     In.Mask = (const UCHAR *)Mask;
@@ -315,12 +317,6 @@ FnLwfDatapathGetState(
             NULL, NULL);
 }
 
-//
-// Selects a NET_PNP_EVENT_CODE to pend. A pended event blocks the originating
-// stack until FnLwfPnpEventComplete, and is completed if the handle is closed.
-// Events are only observable while pended, since the indication is not copied.
-// Close the handle to stop pending.
-//
 FNLWFAPI
 FNLWFAPI_STATUS
 FnLwfPnpEventSetFilter(
@@ -330,15 +326,22 @@ FnLwfPnpEventSetFilter(
 {
     PNP_EVENT_FILTER_IN In = {0};
 
+    //
+    // Selects a NET_PNP_EVENT_CODE to pend. A pended event blocks the
+    // originating stack until FnLwfPnpEventComplete, and is completed if the
+    // handle is closed. Events are only observable while pended, since the
+    // indication is not copied. Close the handle to stop pending.
+    //
+    // FNLWF reports a watchdog failure for an event left pended too long.
+    // FnLwfPnpEventGet resets that watchdog, so a test may pend for as long as
+    // it keeps reading the event.
+    //
+
     In.NetEvent = NetEvent;
 
     return FnIoctl(Handle, FNLWF_IOCTL_PNP_EVENT_SET_FILTER, &In, sizeof(In), NULL, 0, 0, NULL);
 }
 
-//
-// Reads the pended event as a PNP_EVENT_NOTIFICATION_OUT followed by the event
-// buffer.
-//
 FNLWFAPI
 FNLWFAPI_STATUS
 FnLwfPnpEventGet(
@@ -347,6 +350,11 @@ FnLwfPnpEventGet(
     _Out_writes_bytes_opt_(*NotificationLength) VOID *Notification
     )
 {
+    //
+    // Reads the pended event as a PNP_EVENT_NOTIFICATION_OUT followed by the
+    // event buffer.
+    //
+
     return
         FnIoctl(
             Handle, FNLWF_IOCTL_PNP_EVENT_GET, NULL, 0, Notification,

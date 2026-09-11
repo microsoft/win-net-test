@@ -41,10 +41,6 @@ FnBusClose(
     FnIoctlClose((FNIOCTL_HANDLE)Handle);
 }
 
-//
-// Enumerates a new child. The adapter appears asynchronously as the function
-// driver loads, so callers must poll for it.
-//
 FNBUSAPI
 FNMPAPI_STATUS
 FnBusCreateNic(
@@ -52,14 +48,19 @@ FnBusCreateNic(
     _In_ UINT32 SerialNumber
     )
 {
-    FNBUS_CREATE_NIC CreateNic;
+    FNBUS_CREATE_NIC In = {0};
 
-    CreateNic.SerialNumber = SerialNumber;
+    //
+    // Enumerates a new child. The adapter appears asynchronously as the
+    // function driver loads, so callers must poll for it.
+    //
+
+    In.SerialNumber = SerialNumber;
 
     return
         FnIoctl(
-            (FNIOCTL_HANDLE)Handle, FNBUS_IOCTL_CREATE_NIC, &CreateNic,
-            sizeof(CreateNic), NULL, 0, NULL, NULL);
+            (FNIOCTL_HANDLE)Handle, FNBUS_IOCTL_CREATE_NIC, &In, sizeof(In), NULL, 0, NULL,
+            NULL);
 }
 
 FNBUSAPI
@@ -69,21 +70,20 @@ FnBusDeleteNic(
     _In_ UINT32 SerialNumber
     )
 {
-    FNBUS_DELETE_NIC DeleteNic;
+    FNBUS_DELETE_NIC In = {0};
 
-    DeleteNic.SerialNumber = SerialNumber;
+    //
+    // Removes a child previously created with FnBusCreateNic.
+    //
+
+    In.SerialNumber = SerialNumber;
 
     return
         FnIoctl(
-            (FNIOCTL_HANDLE)Handle, FNBUS_IOCTL_DELETE_NIC, &DeleteNic,
-            sizeof(DeleteNic), NULL, 0, NULL, NULL);
+            (FNIOCTL_HANDLE)Handle, FNBUS_IOCTL_DELETE_NIC, &In, sizeof(In), NULL, 0, NULL,
+            NULL);
 }
 
-//
-// Drives a child to the requested device power state. With Wait set the call
-// does not return until the power request has completed, which is what a test
-// wants unless it is deliberately exercising a transition that blocks.
-//
 FNBUSAPI
 FNMPAPI_STATUS
 FnBusSetNicPower(
@@ -93,16 +93,23 @@ FnBusSetNicPower(
     _In_ BOOLEAN Wait
     )
 {
-    FNBUS_SET_NIC_POWER SetNicPower;
+    FNBUS_SET_NIC_POWER In = {0};
 
-    SetNicPower.SerialNumber = SerialNumber;
-    SetNicPower.DevicePowerState = DevicePowerState;
-    SetNicPower.Wait = Wait;
+    //
+    // Drives a child to the requested device power state. With Wait set the
+    // call does not return until the power request has completed, which is what
+    // a test wants unless it is deliberately exercising a transition that
+    // blocks.
+    //
+
+    In.SerialNumber = SerialNumber;
+    In.DevicePowerState = DevicePowerState;
+    In.Wait = Wait;
 
     return
         FnIoctl(
-            (FNIOCTL_HANDLE)Handle, FNBUS_IOCTL_SET_NIC_POWER, &SetNicPower,
-            sizeof(SetNicPower), NULL, 0, NULL, NULL);
+            (FNIOCTL_HANDLE)Handle, FNBUS_IOCTL_SET_NIC_POWER, &In, sizeof(In), NULL, 0, NULL,
+            NULL);
 }
 
 EXTERN_C_END
