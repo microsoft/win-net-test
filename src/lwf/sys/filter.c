@@ -155,6 +155,7 @@ FilterStart(
     FChars.DirectOidRequestHandler           = FilterDirectOidRequest;
     FChars.DirectOidRequestCompleteHandler   = FilterDirectOidRequestComplete;
     FChars.StatusHandler                     = FilterStatus;
+    FChars.NetPnPEventHandler                = FilterNetPnPEvent;
     FChars.ReturnNetBufferListsHandler       = FilterReturnNetBufferLists;
     FChars.ReceiveNetBufferListsHandler      = FilterReceiveNetBufferLists;
     FChars.SendNetBufferListsHandler         = FilterSendNetBufferLists;
@@ -221,6 +222,7 @@ FilterAttach(
     KeInitializeSpinLock(&Filter->Lock);
     InitializeListHead(&Filter->RxFilterList);
     InitializeListHead(&Filter->StatusFilterList);
+    InitializeListHead(&Filter->PnpEventFilterList);
     ExInitializeRundownProtection(&Filter->NblRundown);
     ExWaitForRundownProtectionRelease(&Filter->NblRundown);
 

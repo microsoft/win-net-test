@@ -23,7 +23,7 @@ This script installs or uninstalls various project components.
     Supplies an optional directory to output logs.
 
 .PARAMETER ToolsDir
-    Supplies an optional directory to tools (devcon.exe, dswdevice.exe).
+    Supplies an optional directory to tools (devcon.exe).
     Supply this if you are running this script outside of the FNMP repo.
 
 .PARAMETER FnMpCount
@@ -84,19 +84,20 @@ if ([string]::IsNullOrEmpty($LogsDir)) {
 if ([string]::IsNullOrEmpty($ToolsDir)) {
     . $RootDir\tools\common.ps1
     $DevCon = Get-CoreNetCiArtifactPath -Name "devcon.exe"
-    $DswDevice = Get-CoreNetCiArtifactPath -Name "dswdevice.exe"
 } else {
     $DevCon = "$ToolsDir\devcon.exe"
-    $DswDevice = "$ToolsDir\dswdevice.exe"
 }
 
 # File paths.
 $FnMpSys = "$ArtifactsDir\fnmp\fnmp.sys"
 $FnMpInf = "$ArtifactsDir\fnmp\fnmp.inf"
 $FnMpCat = "$ArtifactsDir\fnmp\fnmp.cat"
-$FnMpComponentId = "ms_fnmp"
-$FnMpDeviceIdPrefix = "fnmp"
 $FnMpServiceName = "FNMP"
+$FnBusSys = "$ArtifactsDir\fnbus\fnbus.sys"
+$FnBusInf = "$ArtifactsDir\fnbus\fnbus.inf"
+$FnBusCat = "$ArtifactsDir\fnbus\fnbus.cat"
+$FnBusHardwareId = "root\ms_fnbus"
+$FnBusServiceName = "fnbus"
 $FnLwfSys = "$ArtifactsDir\fnlwf\fnlwf.sys"
 $FnLwfInf = "$ArtifactsDir\fnlwf\fnlwf.inf"
 $FnLwfCat = "$ArtifactsDir\fnlwf\fnlwf.cat"
@@ -286,8 +287,12 @@ function Install-FnMp {
     if (!(Test-Path $FnMpSys)) {
         Write-Error "$FnMpSys does not exist!"
     }
+    if (!(Test-Path $FnBusSys)) {
+        Write-Error "$FnBusSys does not exist!"
+    }
 
     Install-SignedDriverCertificate $FnMpCat
+    Install-SignedDriverCertificate $FnBusCat
 
     Write-Verbose "pnputil.exe /install /add-driver $FnMpInf"
     pnputil.exe /install /add-driver $FnMpInf | Write-Verbose
@@ -295,13 +300,24 @@ function Install-FnMp {
         Write-Error "pnputil.exe exit code: $LastExitCode"
     }
 
-    for ($i = 0; $i -lt $FnMpCount; $i++) {
-        $DeviceId = $FnMpDeviceIdPrefix + "$i"
-        Write-Verbose "dswdevice.exe -i $DeviceId $FnMpComponentId"
-        & $DswDevice -i $DeviceId $FnMpComponentId | Write-Verbose
-        if ($LastExitCode) {
-            Write-Error "dswdevice.exe ($DeviceId) exit code: $LastExitCode"
-        }
+    Write-Verbose "pnputil.exe /install /add-driver $FnBusInf"
+    pnputil.exe /install /add-driver $FnBusInf | Write-Verbose
+    if ($LastExitCode) {
+        Write-Error "pnputil.exe exit code: $LastExitCode"
+    }
+
+    #
+    # FNBUS enumerates one child per adapter at start. The count lives in the
+    # driver's Parameters key so no user mode tool is needed to create devices.
+    #
+    $FnBusParams = "HKLM:\SYSTEM\CurrentControlSet\Services\$FnBusServiceName\Parameters"
+    New-Item -Path $FnBusParams -Force | Out-Null
+    Set-ItemProperty -Path $FnBusParams -Name "ChildCount" -Value $FnMpCount -Type DWord
+
+    Write-Verbose "$DevCon install $FnBusInf $FnBusHardwareId"
+    cmd.exe /c "$DevCon install $FnBusInf $FnBusHardwareId 2>&1" | Write-Verbose
+    if (!$?) {
+        Write-Error "devcon.exe install ($FnBusHardwareId) failed: $LastExitCode"
     }
 
     Wait-For-Adapters -IfDesc $FnMpServiceName -Count $FnMpCount
@@ -339,25 +355,20 @@ function Uninstall-FnMp {
         netsh int ipv6 delete neighbors fnmp | Out-Null
     }
 
-    for ($i = 0; $i -lt $FnMpCount; $i++) {
-        $DeviceId = $FnMpDeviceIdPrefix + "$i"
-
-        Write-Verbose "$DswDevice -u $DeviceId"
-        cmd.exe /c "$DswDevice -u $DeviceId 2>&1" | Write-Verbose
-        if (!$?) {
-            Write-Host "Deleting $DeviceId device failed: $LastExitCode"
-        }
-
-        Write-Verbose "$DevCon remove @SWD\$DeviceId\$DeviceId"
-        cmd.exe /c "$DevCon remove @SWD\$DeviceId\$DeviceId 2>&1" | Write-Verbose
-        if (!$?) {
-            Write-Host "Removing $DeviceId device failed: $LastExitCode"
-        }
+    #
+    # Removing the bus removes every child adapter with it.
+    #
+    Write-Verbose "$DevCon remove $FnBusHardwareId"
+    cmd.exe /c "$DevCon remove $FnBusHardwareId 2>&1" | Write-Verbose
+    if (!$?) {
+        Write-Host "Removing $FnBusHardwareId device failed: $LastExitCode"
     }
 
     Cleanup-Service $FnMpServiceName
+    Cleanup-Service $FnBusServiceName
 
     Uninstall-Driver "fnmp.inf"
+    Uninstall-Driver "fnbus.inf"
 
     Write-Verbose "fnmp.sys uninstall complete!"
 }

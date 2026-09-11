@@ -512,6 +512,30 @@ public:
             ::LwfBasicOid();
         }
     }
+
+    TEST_METHOD(LwfPnpEventPowerTransition) {
+        if (TestingKernelMode) {
+            TEST_TRUE(TestDriverClient.Run(IOCTL_LWF_PNP_EVENT_POWER_TRANSITION));
+        } else {
+            ::LwfPnpEventPowerTransition();
+        }
+    }
+
+    TEST_METHOD(LwfPnpEventPend) {
+        if (TestingKernelMode) {
+            TEST_TRUE(TestDriverClient.Run(IOCTL_LWF_PNP_EVENT_PEND));
+        } else {
+            ::LwfPnpEventPend();
+        }
+    }
+
+    TEST_METHOD(LwfPnpEventPendCleanup) {
+        if (TestingKernelMode) {
+            TEST_TRUE(TestDriverClient.Run(IOCTL_LWF_PNP_EVENT_PEND_CLEANUP));
+        } else {
+            ::LwfPnpEventPendCleanup();
+        }
+    }
 };
 
 TEST_CLASS(fnsockfunctionaltests)

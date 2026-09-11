@@ -21,6 +21,7 @@
     <ClCompile Include="dispatch.c" />
     <ClCompile Include="filter.c" />
     <ClCompile Include="oid.c" />
+    <ClCompile Include="pnpevent.c" />
     <ClCompile Include="rx.c" />
     <ClCompile Include="status.c" />
     <ClCompile Include="trace.c" />

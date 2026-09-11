@@ -52,6 +52,12 @@ typedef struct _FNLWF_OPEN_DEFAULT {
     CTL_CODE(FILE_DEVICE_NETWORK, 9, METHOD_BUFFERED, FILE_WRITE_ACCESS)
 #define FNLWF_IOCTL_DATAPATH_GET_STATE \
     CTL_CODE(FILE_DEVICE_NETWORK, 10, METHOD_BUFFERED, FILE_WRITE_ACCESS)
+#define FNLWF_IOCTL_PNP_EVENT_SET_FILTER \
+    CTL_CODE(FILE_DEVICE_NETWORK, 11, METHOD_BUFFERED, FILE_WRITE_ACCESS)
+#define FNLWF_IOCTL_PNP_EVENT_GET_NOTIFICATION \
+    CTL_CODE(FILE_DEVICE_NETWORK, 12, METHOD_BUFFERED, FILE_WRITE_ACCESS)
+#define FNLWF_IOCTL_PNP_EVENT_COMPLETE \
+    CTL_CODE(FILE_DEVICE_NETWORK, 13, METHOD_BUFFERED, FILE_WRITE_ACCESS)
 
 
 //
@@ -79,5 +85,34 @@ typedef struct _STATUS_FILTER_IN {
     BOOLEAN BlockIndications;
     BOOLEAN QueueIndications;
 } STATUS_FILTER_IN;
+
+//
+// Parameters for FNLWF_IOCTL_PNP_EVENT_SET_FILTER.
+//
+
+typedef struct _PNP_EVENT_FILTER_IN {
+    UINT32 NetEvent;
+    BOOLEAN PendEvents;
+    BOOLEAN QueueEvents;
+} PNP_EVENT_FILTER_IN;
+
+//
+// Output for FNLWF_IOCTL_PNP_EVENT_GET_NOTIFICATION. The event buffer, whose
+// contents depend on NetEvent, immediately follows this header.
+//
+
+typedef struct _PNP_EVENT_NOTIFICATION_OUT {
+    UINT32 NetEvent;
+    UINT32 BufferLength;
+} PNP_EVENT_NOTIFICATION_OUT;
+
+//
+// Parameters for FNLWF_IOCTL_PNP_EVENT_COMPLETE. A non-success status fails the
+// event instead of forwarding it.
+//
+
+typedef struct _PNP_EVENT_COMPLETE_IN {
+    NDIS_STATUS CompletionStatus;
+} PNP_EVENT_COMPLETE_IN;
 
 EXTERN_C_END

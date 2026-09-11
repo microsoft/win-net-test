@@ -458,6 +458,15 @@ TestDrvCtlEvtIoDeviceControl(
     case IOCTL_LWF_BASIC_OID:
         TestDrvCtlRun(LwfBasicOid());
         break;
+    case IOCTL_LWF_PNP_EVENT_POWER_TRANSITION:
+        TestDrvCtlRun(LwfPnpEventPowerTransition());
+        break;
+    case IOCTL_LWF_PNP_EVENT_PEND:
+        TestDrvCtlRun(LwfPnpEventPend());
+        break;
+    case IOCTL_LWF_PNP_EVENT_PEND_CLEANUP:
+        TestDrvCtlRun(LwfPnpEventPendCleanup());
+        break;
     case IOCTL_SOCK_BASIC_TCP:
         NT_FRE_ASSERT(Params != nullptr);
         TestDrvCtlRun(SockBasicTcp(Params->AddressFamily));

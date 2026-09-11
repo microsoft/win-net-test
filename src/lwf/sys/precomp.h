@@ -22,6 +22,7 @@
 #include "dispatch.h"
 #include "filter.h"
 #include "oid.h"
+#include "pnpevent.h"
 #include "pooltag.h"
 #include "rx.h"
 #include "status.h"

@@ -25,6 +25,7 @@ typedef struct _LWF_FILTER {
     NDIS_HANDLE NblPool;
     LIST_ENTRY RxFilterList;
     LIST_ENTRY StatusFilterList;
+    LIST_ENTRY PnpEventFilterList;
     FN_TIMER_HANDLE WatchdogTimer;
 } LWF_FILTER;
 

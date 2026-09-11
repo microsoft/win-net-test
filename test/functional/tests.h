@@ -41,6 +41,15 @@ VOID
 LwfBasicOid();
 
 VOID
+LwfPnpEventPowerTransition();
+
+VOID
+LwfPnpEventPend();
+
+VOID
+LwfPnpEventPendCleanup();
+
+VOID
 SockBasicTcp(USHORT AddressFamily);
 
 VOID

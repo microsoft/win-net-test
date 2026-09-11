@@ -172,6 +172,42 @@ Exit:
     return Status;
 }
 
+_Use_decl_annotations_
+NTSTATUS
+FnBusAddChild(
+    WDFDEVICE Fdo,
+    UINT32 SerialNumber
+    )
+{
+    FNBUS_PDO_IDENTIFICATION Identification;
+
+    WDF_CHILD_IDENTIFICATION_DESCRIPTION_HEADER_INIT(
+        &Identification.Header, sizeof(Identification));
+    Identification.SerialNumber = SerialNumber;
+
+    return
+        WdfChildListAddOrUpdateChildDescriptionAsPresent(
+            WdfFdoGetDefaultChildList(Fdo), &Identification.Header, NULL);
+}
+
+_Use_decl_annotations_
+NTSTATUS
+FnBusRemoveChild(
+    WDFDEVICE Fdo,
+    UINT32 SerialNumber
+    )
+{
+    FNBUS_PDO_IDENTIFICATION Identification;
+
+    WDF_CHILD_IDENTIFICATION_DESCRIPTION_HEADER_INIT(
+        &Identification.Header, sizeof(Identification));
+    Identification.SerialNumber = SerialNumber;
+
+    return
+        WdfChildListUpdateChildDescriptionAsMissing(
+            WdfFdoGetDefaultChildList(Fdo), &Identification.Header);
+}
+
 //
 // Finds a live child by serial number. The caller must hold no child list
 // iteration of its own.

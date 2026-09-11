@@ -25,6 +25,7 @@
 #define POOLTAG_LWF_DEFAULT                'fDfL' // LfDf
 #define POOLTAG_LWF_DEFAULT_RX             'rDfL' // LfDr
 #define POOLTAG_LWF_DEFAULT_STATUS         'sDfL' // LfDs
+#define POOLTAG_LWF_DEFAULT_PNPEVENT       'pDfL' // LfDp
 #define POOLTAG_LWF_DEFAULT_TX             'tDfL' // LfDt
 
 #define POOLTAG_ISR_CLIENT                 'CrsI' // IsrC

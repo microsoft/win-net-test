@@ -11,6 +11,7 @@ typedef struct _LWF_FILTER LWF_FILTER;
 typedef struct _DEFAULT_RX DEFAULT_RX;
 typedef struct _DEFAULT_TX DEFAULT_TX;
 typedef struct _DEFAULT_STATUS DEFAULT_STATUS;
+typedef struct _DEFAULT_PNP_EVENT DEFAULT_PNP_EVENT;
 
 typedef struct _DEFAULT_CONTEXT {
     FILE_OBJECT_HEADER Header;
@@ -19,6 +20,7 @@ typedef struct _DEFAULT_CONTEXT {
     DEFAULT_RX *Rx;
     DEFAULT_TX *Tx;
     DEFAULT_STATUS *Status;
+    DEFAULT_PNP_EVENT *PnpEvent;
 } DEFAULT_CONTEXT;
 
 FILE_CREATE_ROUTINE DefaultIrpCreate;

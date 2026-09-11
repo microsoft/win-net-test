@@ -36,6 +36,7 @@
 #include <pkthlp.h>
 #include <fnmpapi.h>
 #include <fnlwfapi.h>
+#include <fnbusapi.h>
 #if defined(_KERNEL_MODE)
 #include <invokesystemrelay.h>
 #endif
@@ -75,6 +76,7 @@ C_ASSERT(POLL_INTERVAL_MS * 5 <= MP_RESTART_TIMEOUT_MS);
 template <typename T>
 using unique_malloc_ptr = wistd::unique_ptr<T, wil::function_deleter<decltype(&::CxPlatFreeNoTag), ::CxPlatFreeNoTag>>;
 using unique_fnmp_handle = wil::unique_any<FNMP_HANDLE, decltype(::FnMpClose), ::FnMpClose>;
+using unique_fnbus_handle = wil::unique_any<FNBUS_HANDLE, decltype(::FnBusClose), ::FnBusClose>;
 using unique_fnlwf_handle = wil::unique_any<FNLWF_HANDLE, decltype(::FnLwfClose), ::FnLwfClose>;
 using unique_fnsock_handle = wil::unique_any<FNSOCK_HANDLE, decltype(::FnSockClose), ::FnSockClose>;
 using unique_cxplat_thread = wil::unique_any<CXPLAT_THREAD, decltype(::CxPlatThreadDelete), ::CxPlatThreadDelete>;
@@ -2040,4 +2042,155 @@ SockBasicRaw(
     // The TX datapath will form non-contiguous data indications, which FnSock
     // discards on the RX path. Skipping datapath validation for now.
     //
+}
+
+//
+// The bus enumerates children with sequential serial numbers, so the adapter
+// the tests bind to is the first child.
+//
+#define FNMP_BUS_SERIAL_NUMBER 0
+
+static
+unique_fnbus_handle
+FnBusOpenHandle()
+{
+    unique_fnbus_handle Handle;
+    TEST_FNMPAPI_RET(FnBusOpen(&Handle), Handle);
+    return Handle;
+}
+
+static
+bool
+LwfPnpEventGetNotification(
+    _In_ const unique_fnlwf_handle& Handle,
+    _Out_writes_bytes_(BufferSize) VOID *Buffer,
+    _In_ UINT32 BufferSize,
+    _In_ NET_DEVICE_POWER_STATE ExpectedPowerState
+    )
+{
+    FNLWFAPI_STATUS Result;
+    UINT32 Length;
+    Stopwatch Watchdog(MP_RESTART_TIMEOUT_MS);
+
+    do {
+        Length = BufferSize;
+        Result = FnLwfPnpEventGetNotification(Handle.get(), &Length, Buffer);
+    } while (Result == FNLWFAPI_STATUS_NOT_FOUND &&
+             (CxPlatSleep(POLL_INTERVAL_MS), !Watchdog.IsExpired()));
+
+    TEST_FNLWFAPI_RET(Result, false);
+
+    auto Notification = (PNP_EVENT_NOTIFICATION_OUT *)Buffer;
+    TEST_EQUAL_RET((UINT32)NetEventSetPower, Notification->NetEvent, false);
+    TEST_EQUAL_RET((UINT32)sizeof(NET_DEVICE_POWER_STATE), Notification->BufferLength, false);
+    TEST_EQUAL_RET(
+        ExpectedPowerState, *(NET_DEVICE_POWER_STATE *)(Notification + 1), false);
+
+    return true;
+}
+
+//
+// Verifies a device power transition driven by the bus is delivered to the LWF
+// as a NetEventSetPower notification carrying the new device power state.
+//
+EXTERN_C
+VOID
+LwfPnpEventPowerTransition()
+{
+    UCHAR Buffer[sizeof(PNP_EVENT_NOTIFICATION_OUT) + sizeof(NET_DEVICE_POWER_STATE)];
+    auto DefaultLwf = LwfOpenDefault(FnMpIf->GetIfIndex());
+    auto Bus = FnBusOpenHandle();
+
+    TEST_NOT_NULL(DefaultLwf.get());
+    TEST_NOT_NULL(Bus.get());
+
+    TEST_FNLWFAPI(FnLwfPnpEventSetFilter(DefaultLwf.get(), NetEventSetPower, FALSE, TRUE));
+
+    TEST_FNMPAPI(
+        FnBusSetNicPower(Bus.get(), FNMP_BUS_SERIAL_NUMBER, FnBusDevicePowerD3, TRUE));
+    TEST_TRUE(
+        LwfPnpEventGetNotification(DefaultLwf, Buffer, sizeof(Buffer), NetDeviceStateD3));
+
+    TEST_FNMPAPI(
+        FnBusSetNicPower(Bus.get(), FNMP_BUS_SERIAL_NUMBER, FnBusDevicePowerD0, TRUE));
+    TEST_TRUE(
+        LwfPnpEventGetNotification(DefaultLwf, Buffer, sizeof(Buffer), NetDeviceStateD0));
+}
+
+//
+// Verifies the LWF can pend a NetEventSetPower and release it later.
+//
+EXTERN_C
+VOID
+LwfPnpEventPend()
+{
+    UCHAR Buffer[sizeof(PNP_EVENT_NOTIFICATION_OUT) + sizeof(NET_DEVICE_POWER_STATE)];
+    auto DefaultLwf = LwfOpenDefault(FnMpIf->GetIfIndex());
+    auto Bus = FnBusOpenHandle();
+
+    TEST_NOT_NULL(DefaultLwf.get());
+    TEST_NOT_NULL(Bus.get());
+
+    //
+    // Nothing is pended yet.
+    //
+    TEST_EQUAL(
+        FNLWFAPI_STATUS_NOT_FOUND,
+        FnLwfPnpEventComplete(DefaultLwf.get(), NDIS_STATUS_SUCCESS));
+
+    TEST_FNLWFAPI(FnLwfPnpEventSetFilter(DefaultLwf.get(), NetEventSetPower, TRUE, TRUE));
+
+    //
+    // The transition cannot complete while the LWF holds the event, so the
+    // power request must not be waited on here.
+    //
+    TEST_FNMPAPI(
+        FnBusSetNicPower(Bus.get(), FNMP_BUS_SERIAL_NUMBER, FnBusDevicePowerD3, FALSE));
+    TEST_TRUE(
+        LwfPnpEventGetNotification(DefaultLwf, Buffer, sizeof(Buffer), NetDeviceStateD3));
+
+    TEST_FNLWFAPI(FnLwfPnpEventComplete(DefaultLwf.get(), NDIS_STATUS_SUCCESS));
+
+    //
+    // The pend is consumed by the completion.
+    //
+    TEST_EQUAL(
+        FNLWFAPI_STATUS_NOT_FOUND,
+        FnLwfPnpEventComplete(DefaultLwf.get(), NDIS_STATUS_SUCCESS));
+
+    TEST_FNLWFAPI(FnLwfPnpEventSetFilter(DefaultLwf.get(), NetEventSetPower, FALSE, FALSE));
+    TEST_FNMPAPI(
+        FnBusSetNicPower(Bus.get(), FNMP_BUS_SERIAL_NUMBER, FnBusDevicePowerD0, TRUE));
+}
+
+//
+// Verifies closing the handle releases a pended event rather than stranding the
+// originating stack.
+//
+EXTERN_C
+VOID
+LwfPnpEventPendCleanup()
+{
+    UCHAR Buffer[sizeof(PNP_EVENT_NOTIFICATION_OUT) + sizeof(NET_DEVICE_POWER_STATE)];
+    auto Bus = FnBusOpenHandle();
+
+    TEST_NOT_NULL(Bus.get());
+
+    {
+        auto DefaultLwf = LwfOpenDefault(FnMpIf->GetIfIndex());
+        TEST_NOT_NULL(DefaultLwf.get());
+
+        TEST_FNLWFAPI(FnLwfPnpEventSetFilter(DefaultLwf.get(), NetEventSetPower, TRUE, TRUE));
+
+        TEST_FNMPAPI(
+            FnBusSetNicPower(Bus.get(), FNMP_BUS_SERIAL_NUMBER, FnBusDevicePowerD3, FALSE));
+        TEST_TRUE(
+            LwfPnpEventGetNotification(DefaultLwf, Buffer, sizeof(Buffer), NetDeviceStateD3));
+    }
+
+    //
+    // With the event released by the close, the adapter can be powered back up.
+    //
+    TEST_FNMPAPI(
+        FnBusSetNicPower(Bus.get(), FNMP_BUS_SERIAL_NUMBER, FnBusDevicePowerD0, TRUE));
 }

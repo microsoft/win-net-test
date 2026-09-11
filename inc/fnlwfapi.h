@@ -315,4 +315,58 @@ FnLwfDatapathGetState(
             NULL, NULL);
 }
 
+//
+// Selects a NET_PNP_EVENT_CODE to observe. Pended events block the originating
+// stack until FnLwfPnpEventComplete, and are completed if the handle is closed.
+//
+FNLWFAPI
+FNLWFAPI_STATUS
+FnLwfPnpEventSetFilter(
+    _In_ FNLWF_HANDLE Handle,
+    _In_ UINT32 NetEvent,
+    _In_ BOOLEAN PendEvents,
+    _In_ BOOLEAN QueueEvents
+    )
+{
+    PNP_EVENT_FILTER_IN In = {0};
+
+    In.NetEvent = NetEvent;
+    In.PendEvents = PendEvents;
+    In.QueueEvents = QueueEvents;
+
+    return FnIoctl(Handle, FNLWF_IOCTL_PNP_EVENT_SET_FILTER, &In, sizeof(In), NULL, 0, 0, NULL);
+}
+
+//
+// Dequeues one observed event as a PNP_EVENT_NOTIFICATION_OUT followed by the
+// event buffer.
+//
+FNLWFAPI
+FNLWFAPI_STATUS
+FnLwfPnpEventGetNotification(
+    _In_ FNLWF_HANDLE Handle,
+    _Inout_ UINT32 *NotificationLength,
+    _Out_writes_bytes_opt_(*NotificationLength) VOID *Notification
+    )
+{
+    return
+        FnIoctl(
+            Handle, FNLWF_IOCTL_PNP_EVENT_GET_NOTIFICATION, NULL, 0, Notification,
+            *NotificationLength, NotificationLength, NULL);
+}
+
+FNLWFAPI
+FNLWFAPI_STATUS
+FnLwfPnpEventComplete(
+    _In_ FNLWF_HANDLE Handle,
+    _In_ NDIS_STATUS CompletionStatus
+    )
+{
+    PNP_EVENT_COMPLETE_IN In = {0};
+
+    In.CompletionStatus = CompletionStatus;
+
+    return FnIoctl(Handle, FNLWF_IOCTL_PNP_EVENT_COMPLETE, &In, sizeof(In), NULL, 0, 0, NULL);
+}
+
 EXTERN_C_END

@@ -14,15 +14,7 @@ FnBusIoctlCreateNic(
     _In_ FNBUS_CREATE_NIC *CreateNic
     )
 {
-    FNBUS_PDO_IDENTIFICATION Identification;
-
-    WDF_CHILD_IDENTIFICATION_DESCRIPTION_HEADER_INIT(
-        &Identification.Header, sizeof(Identification));
-    Identification.SerialNumber = CreateNic->SerialNumber;
-
-    return
-        WdfChildListAddOrUpdateChildDescriptionAsPresent(
-            WdfFdoGetDefaultChildList(Device), &Identification.Header, NULL);
+    return FnBusAddChild(Device, CreateNic->SerialNumber);
 }
 
 static
@@ -33,15 +25,7 @@ FnBusIoctlDeleteNic(
     _In_ FNBUS_DELETE_NIC *DeleteNic
     )
 {
-    FNBUS_PDO_IDENTIFICATION Identification;
-
-    WDF_CHILD_IDENTIFICATION_DESCRIPTION_HEADER_INIT(
-        &Identification.Header, sizeof(Identification));
-    Identification.SerialNumber = DeleteNic->SerialNumber;
-
-    return
-        WdfChildListUpdateChildDescriptionAsMissing(
-            WdfFdoGetDefaultChildList(Device), &Identification.Header);
+    return FnBusRemoveChild(Device, DeleteNic->SerialNumber);
 }
 
 static

@@ -58,6 +58,18 @@ DefaultIrpDeviceIoControl(
         Status = FilterIrpGetDatapathState(Default->Filter, Irp, IrpSp);
         break;
 
+    case FNLWF_IOCTL_PNP_EVENT_SET_FILTER:
+        Status = PnpEventIrpFilter(Default->PnpEvent, Irp, IrpSp);
+        break;
+
+    case FNLWF_IOCTL_PNP_EVENT_GET_NOTIFICATION:
+        Status = PnpEventIrpGetNotification(Default->PnpEvent, Irp, IrpSp);
+        break;
+
+    case FNLWF_IOCTL_PNP_EVENT_COMPLETE:
+        Status = PnpEventIrpComplete(Default->PnpEvent, Irp, IrpSp);
+        break;
+
     default:
         Status = STATUS_NOT_SUPPORTED;
         goto Exit;
@@ -76,6 +88,10 @@ DefaultCleanup(
 {
     if (Default->Status != NULL) {
         StatusCleanup(Default->Status);
+    }
+
+    if (Default->PnpEvent != NULL) {
+        PnpEventCleanup(Default->PnpEvent);
     }
 
     if (Default->Tx != NULL) {
@@ -165,6 +181,12 @@ DefaultIrpCreate(
 
     Default->Status = StatusCreate(Default);
     if (Default->Status == NULL) {
+        Status = STATUS_NO_MEMORY;
+        goto Exit;
+    }
+
+    Default->PnpEvent = PnpEventCreate(Default);
+    if (Default->PnpEvent == NULL) {
         Status = STATUS_NO_MEMORY;
         goto Exit;
     }

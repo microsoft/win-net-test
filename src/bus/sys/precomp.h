@@ -49,6 +49,20 @@ FnBusPdoCreate(
 
 _IRQL_requires_(PASSIVE_LEVEL)
 NTSTATUS
+FnBusAddChild(
+    _In_ WDFDEVICE Fdo,
+    _In_ UINT32 SerialNumber
+    );
+
+_IRQL_requires_(PASSIVE_LEVEL)
+NTSTATUS
+FnBusRemoveChild(
+    _In_ WDFDEVICE Fdo,
+    _In_ UINT32 SerialNumber
+    );
+
+_IRQL_requires_(PASSIVE_LEVEL)
+NTSTATUS
 FnBusPdoSetPower(
     _In_ WDFDEVICE Fdo,
     _In_ UINT32 SerialNumber,

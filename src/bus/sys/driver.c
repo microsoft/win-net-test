@@ -61,6 +61,37 @@ Exit:
     return Status;
 }
 
+//
+// Number of children to enumerate at start, from the driver's Parameters key.
+// Absent or zero means one.
+//
+static
+_IRQL_requires_(PASSIVE_LEVEL)
+UINT32
+FnBusReadChildCount(
+    VOID
+    )
+{
+    NTSTATUS Status;
+    WDFKEY Key = NULL;
+    ULONG Value = 0;
+    DECLARE_CONST_UNICODE_STRING(ValueName, L"ChildCount");
+
+    Status =
+        WdfDriverOpenParametersRegistryKey(
+            WdfGetDriver(), KEY_READ, WDF_NO_OBJECT_ATTRIBUTES, &Key);
+    if (NT_SUCCESS(Status)) {
+        Status = WdfRegistryQueryULong(Key, &ValueName, &Value);
+        WdfRegistryClose(Key);
+    }
+
+    if (!NT_SUCCESS(Status) || Value == 0) {
+        Value = 1;
+    }
+
+    return (UINT32)Value;
+}
+
 _Use_decl_annotations_
 NTSTATUS
 FnBusEvtDeviceAdd(
@@ -75,6 +106,7 @@ FnBusEvtDeviceAdd(
     WDFDEVICE Device;
     WDFQUEUE Queue;
     FNBUS_FDO_CONTEXT *FdoContext;
+    UINT32 ChildCount;
     DECLARE_CONST_UNICODE_STRING(DeviceName, FNBUS_DEVICE_NAME);
     DECLARE_CONST_UNICODE_STRING(SymbolicLink, L"\\DosDevices\\FNBUS");
 
@@ -123,7 +155,24 @@ FnBusEvtDeviceAdd(
         goto Exit;
     }
 
-    TraceInfo(TRACE_CONTROL, "FNBUS FDO created Device=%p", Device);
+    //
+    // Children created up front let a deployment script bring up adapters
+    // without needing a user mode tool; tests add and remove more at runtime
+    // over the IOCTL interface.
+    //
+    ChildCount = FnBusReadChildCount();
+
+    for (UINT32 i = 0; i < ChildCount; i++) {
+        Status = FnBusAddChild(Device, i);
+        if (!NT_SUCCESS(Status)) {
+            TraceError(
+                TRACE_CONTROL, "FnBusAddChild failed SerialNumber=%u Status=%!STATUS!", i, Status);
+            goto Exit;
+        }
+    }
+
+    TraceInfo(
+        TRACE_CONTROL, "FNBUS FDO created Device=%p ChildCount=%u", Device, ChildCount);
 
 Exit:
 
