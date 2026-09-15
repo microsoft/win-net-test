@@ -27,9 +27,9 @@ FnBusPowerIrpComplete(
 {
     FNBUS_POWER_REQUEST *Request = (FNBUS_POWER_REQUEST *)Context;
 
-    UNREFERENCED_PARAMETER(DeviceObject);
-    UNREFERENCED_PARAMETER(MinorFunction);
-    UNREFERENCED_PARAMETER(PowerState);
+    TraceInfo(
+        TRACE_POWER, "Power completion Device=%p MinorFunction=%u State=%u Status=%!STATUS!",
+        DeviceObject, MinorFunction, PowerState.DeviceState, IoStatus->Status);
 
     if (Request != NULL) {
         Request->Status = IoStatus->Status;
@@ -132,6 +132,12 @@ FnBusPdoCreate(
     PnpCapabilities.Removable = WdfTrue;
     PnpCapabilities.EjectSupported = WdfTrue;
     PnpCapabilities.SurpriseRemovalOK = WdfTrue;
+    //
+    // The serial number makes the instance ID unique system wide. Without this
+    // PnP generates a fresh instance ID each time the bus is recreated, so
+    // every install produces a new network adapter instead of reusing one.
+    //
+    PnpCapabilities.UniqueID = WdfTrue;
     PnpCapabilities.Address = Identification->SerialNumber;
     PnpCapabilities.UINumber = Identification->SerialNumber;
     WdfDeviceSetPnpCapabilities(ChildDevice, &PnpCapabilities);
@@ -180,14 +186,22 @@ FnBusAddChild(
     )
 {
     FNBUS_PDO_IDENTIFICATION Identification;
+    NTSTATUS Status;
 
     WDF_CHILD_IDENTIFICATION_DESCRIPTION_HEADER_INIT(
         &Identification.Header, sizeof(Identification));
     Identification.SerialNumber = SerialNumber;
 
-    return
+    Status =
         WdfChildListAddOrUpdateChildDescriptionAsPresent(
             WdfFdoGetDefaultChildList(Fdo), &Identification.Header, NULL);
+
+    if (NT_SUCCESS(Status)) {
+        IoInvalidateDeviceRelations(
+            WdfDeviceWdmGetPhysicalDevice(Fdo), BusRelations);
+    }
+
+    return Status;
 }
 
 _Use_decl_annotations_
@@ -300,7 +314,7 @@ FnBusPdoSetPower(
             Pdo,
             IRP_MN_SET_POWER,
             PowerState,
-            Wait ? FnBusPowerIrpComplete : NULL,
+            FnBusPowerIrpComplete,
             Wait ? &Request : NULL,
             NULL);
     if (Status == STATUS_PENDING && Wait) {

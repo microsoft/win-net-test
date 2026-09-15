@@ -817,8 +817,8 @@ MiniportInitializeHandler(
     //
     NdisZeroMemory(&PmCaps, sizeof(PmCaps));
     PmCaps.Header.Type = NDIS_OBJECT_TYPE_DEFAULT;
-    PmCaps.Header.Revision = NDIS_PM_CAPABILITIES_REVISION_1;
-    PmCaps.Header.Size = NDIS_SIZEOF_NDIS_PM_CAPABILITIES_REVISION_1;
+    PmCaps.Header.Revision = NDIS_PM_CAPABILITIES_REVISION_2;
+    PmCaps.Header.Size = NDIS_SIZEOF_NDIS_PM_CAPABILITIES_REVISION_2;
     PmCaps.MinMagicPacketWakeUp = NdisDeviceStateD3;
     PmCaps.MinPatternWakeUp = NdisDeviceStateD3;
     PmCaps.MinLinkChangeWakeUp = NdisDeviceStateD3;
