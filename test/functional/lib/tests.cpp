@@ -2061,145 +2061,322 @@ FnBusOpenHandle()
 
 static
 bool
-LwfPnpEventGet(
+LwfPnpEventWait(
     _In_ const unique_fnlwf_handle& Handle,
-    _Out_writes_bytes_(BufferSize) VOID *Buffer,
-    _In_ UINT32 BufferSize,
-    _In_ FNLWF_NET_DEVICE_POWER_STATE ExpectedPowerState
+    _In_ UINT32 ExpectedEvent
     )
 {
+    UINT32 Buffer[256];
     FNLWFAPI_STATUS Result;
-    UINT32 Length;
     Stopwatch Watchdog(MP_RESTART_TIMEOUT_MS);
 
     do {
-        Length = BufferSize;
+        UINT32 Length = sizeof(Buffer);
         Result = FnLwfPnpEventGet(Handle.get(), &Length, Buffer);
-    } while (Result == FNLWFAPI_STATUS_NOT_FOUND &&
-             (CxPlatSleep(POLL_INTERVAL_MS), !Watchdog.IsExpired()));
+        if (FNLWFAPI_SUCCEEDED(Result)) {
+            auto Notification = (PNP_EVENT_NOTIFICATION_OUT *)Buffer;
+            TEST_TRUE_RET(Length >= sizeof(*Notification), false);
+            TEST_EQUAL_RET(ExpectedEvent, Notification->NetEvent, false);
+            TEST_EQUAL_RET(sizeof(*Notification) + Notification->BufferLength, Length, false);
+            return true;
+        }
+        TEST_EQUAL_RET(FNLWFAPI_STATUS_NOT_FOUND, Result, false);
+    } while (CxPlatSleep(POLL_INTERVAL_MS), !Watchdog.IsExpired());
 
     TEST_FNLWFAPI_RET(Result, false);
+    return false;
+}
 
-    auto Notification = (PNP_EVENT_NOTIFICATION_OUT *)Buffer;
-    TEST_EQUAL_RET((UINT32)FnLwfNetEventSetPower, Notification->NetEvent, false);
-    TEST_EQUAL_RET(
-        (UINT32)sizeof(FNLWF_NET_DEVICE_POWER_STATE), Notification->BufferLength, false);
-    TEST_EQUAL_RET(
-        (UINT32)ExpectedPowerState, *(UINT32 *)(Notification + 1), false);
+EXTERN_C
+VOID
+LwfPnpEventRemoval()
+{
+    const UINT32 SerialNumber = 0x10000;
+    auto Bus = FnBusOpenHandle();
+    NET_IFINDEX IfIndex = NET_IFINDEX_UNSPECIFIED;
+    bool Removed = false;
 
-    return true;
+    TEST_NOT_NULL(Bus.get());
+
+    FnBusDeleteNic(Bus.get(), SerialNumber);
+    CxPlatSleep(1000);
+
+    //
+    // Count currently-up FNMP adapters before creating the child.
+    //
+    ULONG OriginalCount = 0;
+    {
+        MIB_IF_TABLE2 *T = NULL;
+        TEST_EQUAL((ULONG)NO_ERROR, GetIfTable2Ex(MibIfTableNormal, &T));
+        for (ULONG i = 0; i < T->NumEntries; i++) {
+            if (wcsncmp(T->Table[i].Description, L"FNMP", 4) == 0 &&
+                !T->Table[i].InterfaceAndOperStatusFlags.FilterInterface &&
+                T->Table[i].OperStatus == IfOperStatusUp) {
+                OriginalCount++;
+            }
+        }
+        FreeMibTable(T);
+    }
+
+    TEST_FNMPAPI(FnBusCreateNic(Bus.get(), SerialNumber));
+    auto RemoveChild = wil::scope_exit([&] {
+        if (!Removed) {
+            FnBusDeleteNic(Bus.get(), SerialNumber);
+        }
+    });
+
+    //
+    // Find the new adapter by waiting for the up-FNMP count to increase.
+    //
+    Stopwatch EnumerationWatchdog(MP_RESTART_TIMEOUT_MS);
+    do {
+        MIB_IF_TABLE2 *Interfaces = NULL;
+        TEST_EQUAL((ULONG)NO_ERROR, GetIfTable2Ex(MibIfTableNormal, &Interfaces));
+        auto FreeInterfaces = wil::scope_exit([&] { FreeMibTable(Interfaces); });
+
+        ULONG CurrentCount = 0;
+        for (ULONG Index = 0; Index < Interfaces->NumEntries; Index++) {
+            auto Row = &Interfaces->Table[Index];
+            if (wcsncmp(Row->Description, L"FNMP", 4) != 0 ||
+                Row->InterfaceAndOperStatusFlags.FilterInterface ||
+                Row->OperStatus != IfOperStatusUp) {
+                continue;
+            }
+            CurrentCount++;
+            if (CurrentCount > OriginalCount) {
+                IfIndex = Row->InterfaceIndex;
+            }
+        }
+    } while (IfIndex == NET_IFINDEX_UNSPECIFIED &&
+             (CxPlatSleep(POLL_INTERVAL_MS), !EnumerationWatchdog.IsExpired()));
+    TEST_NOT_EQUAL(NET_IFINDEX_UNSPECIFIED, IfIndex);
+
+    //
+    // Bus-reported-missing triggers surprise removal. NDIS does not send
+    // NetEventQueryRemoveDevice in this path; it sends FilterPreDetach
+    // before calling FilterDetach. Pending FilterPreDetach blocks the
+    // teardown so the adapter must remain visible while the event is held.
+    //
+    auto DetachLwf = LwfOpenDefault(IfIndex);
+    TEST_NOT_NULL(DetachLwf.get());
+    TEST_FNLWFAPI(FnLwfPnpEventSetFilter(DetachLwf.get(), FnLwfNetEventFilterPreDetach));
+
+    TEST_FNMPAPI(FnBusDeleteNic(Bus.get(), SerialNumber));
+    Removed = true;
+    TEST_TRUE(LwfPnpEventWait(DetachLwf, FnLwfNetEventFilterPreDetach));
+
+    //
+    // While holding FilterPreDetach, verify the adapter is still present.
+    //
+    MIB_IF_ROW2 HeldRow = {0};
+    HeldRow.InterfaceIndex = IfIndex;
+    TEST_EQUAL((NETIO_STATUS)NO_ERROR, GetIfEntry2(&HeldRow));
+
+    TEST_FNLWFAPI(FnLwfPnpEventComplete(DetachLwf.get(), FNLWF_PNP_EVENT_SUCCESS));
+    DetachLwf.reset();
+
+    //
+    // The MIB interface entry lingers after removal (GetIfEntry2 returns
+    // NO_ERROR with historical data), so check OperStatus instead.
+    //
+    MIB_IF_ROW2 Row = {0};
+    Row.InterfaceIndex = IfIndex;
+    Stopwatch RemovalWatchdog(MP_RESTART_TIMEOUT_MS);
+    do {
+        RtlZeroMemory(&Row, sizeof(Row));
+        Row.InterfaceIndex = IfIndex;
+        if (GetIfEntry2(&Row) != NO_ERROR ||
+            Row.OperStatus != IfOperStatusUp) {
+            break;
+        }
+    } while (CxPlatSleep(POLL_INTERVAL_MS), !RemovalWatchdog.IsExpired());
+    TEST_NOT_EQUAL((int)IfOperStatusUp, (int)Row.OperStatus);
 }
 
 //
-// Verifies a device power transition driven by the bus is delivered to the LWF
-// as a NetEventSetPower notification carrying the new device power state.
+// Creates a disposable bus child and waits for the adapter to come up.
+//
+static
+NET_IFINDEX
+CreateAndFindChildAdapter(
+    _In_ FNBUS_HANDLE Bus,
+    _In_ UINT32 SerialNumber
+    )
+{
+    NET_IFINDEX IfIndex = NET_IFINDEX_UNSPECIFIED;
+
+    FnBusDeleteNic(Bus, SerialNumber);
+    CxPlatSleep(1000);
+
+    ULONG OriginalCount = 0;
+    {
+        MIB_IF_TABLE2 *T = NULL;
+        TEST_EQUAL_RET((ULONG)NO_ERROR, GetIfTable2Ex(MibIfTableNormal, &T), IfIndex);
+        for (ULONG i = 0; i < T->NumEntries; i++) {
+            if (wcsncmp(T->Table[i].Description, L"FNMP", 4) == 0 &&
+                !T->Table[i].InterfaceAndOperStatusFlags.FilterInterface &&
+                T->Table[i].OperStatus == IfOperStatusUp) {
+                OriginalCount++;
+            }
+        }
+        FreeMibTable(T);
+    }
+
+    TEST_FNMPAPI_RET(FnBusCreateNic(Bus, SerialNumber), IfIndex);
+
+    Stopwatch Watchdog(MP_RESTART_TIMEOUT_MS);
+    do {
+        MIB_IF_TABLE2 *Interfaces = NULL;
+        TEST_EQUAL_RET(
+            (ULONG)NO_ERROR, GetIfTable2Ex(MibIfTableNormal, &Interfaces), IfIndex);
+        auto FreeInterfaces = wil::scope_exit([&] { FreeMibTable(Interfaces); });
+
+        ULONG CurrentCount = 0;
+        for (ULONG Index = 0; Index < Interfaces->NumEntries; Index++) {
+            auto Row = &Interfaces->Table[Index];
+            if (wcsncmp(Row->Description, L"FNMP", 4) != 0 ||
+                Row->InterfaceAndOperStatusFlags.FilterInterface ||
+                Row->OperStatus != IfOperStatusUp) {
+                continue;
+            }
+            CurrentCount++;
+            if (CurrentCount > OriginalCount) {
+                IfIndex = Row->InterfaceIndex;
+            }
+        }
+    } while (IfIndex == NET_IFINDEX_UNSPECIFIED &&
+             (CxPlatSleep(POLL_INTERVAL_MS), !Watchdog.IsExpired()));
+
+    return IfIndex;
+}
+
+static
+bool
+WaitForAdapterNotUp(
+    _In_ NET_IFINDEX IfIndex
+    )
+{
+    MIB_IF_ROW2 Row;
+    Stopwatch Watchdog(MP_RESTART_TIMEOUT_MS);
+    do {
+        RtlZeroMemory(&Row, sizeof(Row));
+        Row.InterfaceIndex = IfIndex;
+        if (GetIfEntry2(&Row) != NO_ERROR ||
+            Row.OperStatus != IfOperStatusUp) {
+            return true;
+        }
+    } while (CxPlatSleep(POLL_INTERVAL_MS), !Watchdog.IsExpired());
+    return false;
+}
+
+//
+// Verifies FilterPreDetach is delivered to the LWF during surprise removal.
 //
 EXTERN_C
 VOID
 LwfPnpEventPowerTransition()
 {
-    UCHAR Buffer[sizeof(PNP_EVENT_NOTIFICATION_OUT) + sizeof(FNLWF_NET_DEVICE_POWER_STATE)];
-    auto DefaultLwf = LwfOpenDefault(FnMpIf->GetIfIndex());
+    const UINT32 SerialNumber = 0x10001;
     auto Bus = FnBusOpenHandle();
-
-    TEST_NOT_NULL(DefaultLwf.get());
     TEST_NOT_NULL(Bus.get());
 
-    TEST_FNLWFAPI(FnLwfPnpEventSetFilter(DefaultLwf.get(), FnLwfNetEventSetPower));
+    NET_IFINDEX IfIndex = CreateAndFindChildAdapter(Bus.get(), SerialNumber);
+    TEST_NOT_EQUAL(NET_IFINDEX_UNSPECIFIED, IfIndex);
 
-    //
-    // Pending blocks the transition, so the power request must not be waited on.
-    //
-    TEST_FNMPAPI(
-        FnBusSetNicPower(Bus.get(), FNMP_BUS_SERIAL_NUMBER, FnBusDevicePowerD3, FALSE));
-    TEST_TRUE(
-        LwfPnpEventGet(DefaultLwf, Buffer, sizeof(Buffer), FnLwfNetDeviceStateD3));
-    TEST_FNLWFAPI(FnLwfPnpEventComplete(DefaultLwf.get(), FNLWF_PNP_EVENT_SUCCESS));
+    auto RemoveChild = wil::scope_exit([&] { FnBusDeleteNic(Bus.get(), SerialNumber); });
 
-    TEST_FNMPAPI(
-        FnBusSetNicPower(Bus.get(), FNMP_BUS_SERIAL_NUMBER, FnBusDevicePowerD0, FALSE));
-    TEST_TRUE(
-        LwfPnpEventGet(DefaultLwf, Buffer, sizeof(Buffer), FnLwfNetDeviceStateD0));
-    TEST_FNLWFAPI(FnLwfPnpEventComplete(DefaultLwf.get(), FNLWF_PNP_EVENT_SUCCESS));
+    auto Lwf = LwfOpenDefault(IfIndex);
+    TEST_NOT_NULL(Lwf.get());
+    TEST_FNLWFAPI(FnLwfPnpEventSetFilter(Lwf.get(), FnLwfNetEventFilterPreDetach));
+
+    FnBusDeleteNic(Bus.get(), SerialNumber);
+    RemoveChild.release();
+
+    TEST_TRUE(LwfPnpEventWait(Lwf, FnLwfNetEventFilterPreDetach));
+    TEST_FNLWFAPI(FnLwfPnpEventComplete(Lwf.get(), FNLWF_PNP_EVENT_SUCCESS));
+    Lwf.reset();
+
+    TEST_TRUE(WaitForAdapterNotUp(IfIndex));
 }
 
 //
-// Verifies the LWF can pend a NetEventSetPower and release it later.
+// Verifies the LWF can pend a FilterPreDetach and release it later, blocking
+// the teardown while the event is held.
 //
 EXTERN_C
 VOID
 LwfPnpEventPend()
 {
-    UCHAR Buffer[sizeof(PNP_EVENT_NOTIFICATION_OUT) + sizeof(FNLWF_NET_DEVICE_POWER_STATE)];
-    auto DefaultLwf = LwfOpenDefault(FnMpIf->GetIfIndex());
+    const UINT32 SerialNumber = 0x10002;
     auto Bus = FnBusOpenHandle();
-
-    TEST_NOT_NULL(DefaultLwf.get());
     TEST_NOT_NULL(Bus.get());
 
-    //
-    // Nothing is pended yet.
-    //
+    NET_IFINDEX IfIndex = CreateAndFindChildAdapter(Bus.get(), SerialNumber);
+    TEST_NOT_EQUAL(NET_IFINDEX_UNSPECIFIED, IfIndex);
+
+    auto RemoveChild = wil::scope_exit([&] { FnBusDeleteNic(Bus.get(), SerialNumber); });
+
+    auto Lwf = LwfOpenDefault(IfIndex);
+    TEST_NOT_NULL(Lwf.get());
+
     TEST_EQUAL(
         FNLWFAPI_STATUS_NOT_FOUND,
-        FnLwfPnpEventComplete(DefaultLwf.get(), FNLWF_PNP_EVENT_SUCCESS));
+        FnLwfPnpEventComplete(Lwf.get(), FNLWF_PNP_EVENT_SUCCESS));
 
-    TEST_FNLWFAPI(FnLwfPnpEventSetFilter(DefaultLwf.get(), FnLwfNetEventSetPower));
+    TEST_FNLWFAPI(FnLwfPnpEventSetFilter(Lwf.get(), FnLwfNetEventFilterPreDetach));
 
-    //
-    // The transition cannot complete while the LWF pends the event, so the
-    // power request must not be waited on here.
-    //
-    TEST_FNMPAPI(
-        FnBusSetNicPower(Bus.get(), FNMP_BUS_SERIAL_NUMBER, FnBusDevicePowerD3, FALSE));
-    TEST_TRUE(
-        LwfPnpEventGet(DefaultLwf, Buffer, sizeof(Buffer), FnLwfNetDeviceStateD3));
+    FnBusDeleteNic(Bus.get(), SerialNumber);
+    RemoveChild.release();
 
-    TEST_FNLWFAPI(FnLwfPnpEventComplete(DefaultLwf.get(), FNLWF_PNP_EVENT_SUCCESS));
+    TEST_TRUE(LwfPnpEventWait(Lwf, FnLwfNetEventFilterPreDetach));
 
     //
-    // The pend is consumed by the completion.
+    // While holding the event, the adapter must remain visible.
     //
+    MIB_IF_ROW2 Row = {0};
+    Row.InterfaceIndex = IfIndex;
+    TEST_EQUAL((NETIO_STATUS)NO_ERROR, GetIfEntry2(&Row));
+
+    TEST_FNLWFAPI(FnLwfPnpEventComplete(Lwf.get(), FNLWF_PNP_EVENT_SUCCESS));
+
     TEST_EQUAL(
         FNLWFAPI_STATUS_NOT_FOUND,
-        FnLwfPnpEventComplete(DefaultLwf.get(), FNLWF_PNP_EVENT_SUCCESS));
+        FnLwfPnpEventComplete(Lwf.get(), FNLWF_PNP_EVENT_SUCCESS));
 
-    TEST_FNMPAPI(
-        FnBusSetNicPower(Bus.get(), FNMP_BUS_SERIAL_NUMBER, FnBusDevicePowerD0, FALSE));
-    TEST_TRUE(
-        LwfPnpEventGet(DefaultLwf, Buffer, sizeof(Buffer), FnLwfNetDeviceStateD0));
-    TEST_FNLWFAPI(FnLwfPnpEventComplete(DefaultLwf.get(), FNLWF_PNP_EVENT_SUCCESS));
+    Lwf.reset();
+    TEST_TRUE(WaitForAdapterNotUp(IfIndex));
 }
 
 //
-// Verifies closing the handle releases a pended event rather than stranding the
-// originating stack.
+// Verifies closing the handle releases a pended FilterPreDetach rather than
+// stranding the originating stack.
 //
 EXTERN_C
 VOID
 LwfPnpEventPendCleanup()
 {
-    UCHAR Buffer[sizeof(PNP_EVENT_NOTIFICATION_OUT) + sizeof(FNLWF_NET_DEVICE_POWER_STATE)];
+    const UINT32 SerialNumber = 0x10003;
     auto Bus = FnBusOpenHandle();
-
     TEST_NOT_NULL(Bus.get());
 
+    NET_IFINDEX IfIndex = CreateAndFindChildAdapter(Bus.get(), SerialNumber);
+    TEST_NOT_EQUAL(NET_IFINDEX_UNSPECIFIED, IfIndex);
+
+    auto RemoveChild = wil::scope_exit([&] { FnBusDeleteNic(Bus.get(), SerialNumber); });
+
     {
-        auto DefaultLwf = LwfOpenDefault(FnMpIf->GetIfIndex());
-        TEST_NOT_NULL(DefaultLwf.get());
+        auto Lwf = LwfOpenDefault(IfIndex);
+        TEST_NOT_NULL(Lwf.get());
 
         TEST_FNLWFAPI(
-            FnLwfPnpEventSetFilter(DefaultLwf.get(), FnLwfNetEventSetPower));
+            FnLwfPnpEventSetFilter(Lwf.get(), FnLwfNetEventFilterPreDetach));
 
-        TEST_FNMPAPI(
-            FnBusSetNicPower(Bus.get(), FNMP_BUS_SERIAL_NUMBER, FnBusDevicePowerD3, FALSE));
-        TEST_TRUE(
-            LwfPnpEventGet(DefaultLwf, Buffer, sizeof(Buffer), FnLwfNetDeviceStateD3));
+        FnBusDeleteNic(Bus.get(), SerialNumber);
+        RemoveChild.release();
+
+        TEST_TRUE(LwfPnpEventWait(Lwf, FnLwfNetEventFilterPreDetach));
     }
+    // Handle closed without completing — the close must release the pend.
 
-    //
-    // With the event released by the close, the adapter can be powered back up.
-    //
-    TEST_FNMPAPI(
-        FnBusSetNicPower(Bus.get(), FNMP_BUS_SERIAL_NUMBER, FnBusDevicePowerD0, TRUE));
+    TEST_TRUE(WaitForAdapterNotUp(IfIndex));
 }

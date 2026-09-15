@@ -50,6 +50,9 @@ VOID
 LwfPnpEventPendCleanup();
 
 VOID
+LwfPnpEventRemoval();
+
+VOID
 SockBasicTcp(USHORT AddressFamily);
 
 VOID

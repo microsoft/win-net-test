@@ -536,6 +536,14 @@ public:
             ::LwfPnpEventPendCleanup();
         }
     }
+
+    TEST_METHOD(LwfPnpEventRemoval) {
+        if (TestingKernelMode) {
+            TEST_TRUE(TestDriverClient.Run(IOCTL_LWF_PNP_EVENT_REMOVAL));
+        } else {
+            ::LwfPnpEventRemoval();
+        }
+    }
 };
 
 TEST_CLASS(fnsockfunctionaltests)

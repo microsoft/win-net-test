@@ -329,6 +329,10 @@ size_t IOCTL_BUFFER_SIZES[] =
     sizeof(USHORT),
     0,
     0,
+    0,
+    0,
+    0,
+    0,
 };
 
 static_assert(
@@ -466,6 +470,9 @@ TestDrvCtlEvtIoDeviceControl(
         break;
     case IOCTL_LWF_PNP_EVENT_PEND_CLEANUP:
         TestDrvCtlRun(LwfPnpEventPendCleanup());
+        break;
+    case IOCTL_LWF_PNP_EVENT_REMOVAL:
+        TestDrvCtlRun(LwfPnpEventRemoval());
         break;
     case IOCTL_SOCK_BASIC_TCP:
         NT_FRE_ASSERT(Params != nullptr);
