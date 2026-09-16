@@ -95,6 +95,8 @@ typedef struct _ADAPTER_CONTEXT {
     EXCLUSIVE_USER_CONTEXT *UserContext;
 
     ADAPTER_SHARED *Shared;
+
+    ULONG PmEnabled;
 } ADAPTER_CONTEXT;
 
 typedef struct _GLOBAL_CONTEXT {

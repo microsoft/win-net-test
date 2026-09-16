@@ -331,14 +331,26 @@ FnMpSetMtu(
 {
     MINIPORT_SET_MTU_IN In = {0};
 
-    //
-    // Supports shared handles only. Updates the miniport MTU and requests
-    // an NDIS data path restart.
-    //
-
     In.Mtu = Mtu;
 
     return FnIoctl(Handle, FNMP_IOCTL_MINIPORT_SET_MTU, &In, sizeof(In), NULL, 0, NULL, NULL);
+}
+
+FNMPAPI
+FNMPAPI_STATUS
+FnMpSetLinkState(
+    _In_ FNMP_HANDLE Handle,
+    _In_ BOOLEAN Connected
+    )
+{
+    MINIPORT_SET_LINK_STATE_IN In = {0};
+
+    In.Connected = Connected;
+
+    return
+        FnIoctl(
+            Handle, FNMP_IOCTL_MINIPORT_SET_LINK_STATE,
+            &In, sizeof(In), NULL, 0, NULL, NULL);
 }
 
 FNMPAPI

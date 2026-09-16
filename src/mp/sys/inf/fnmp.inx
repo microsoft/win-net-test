@@ -29,6 +29,20 @@
  HKR, Ndi\Interfaces,                       UpperRange, 0,  "ndis5"
 
 [fnmp.ndi.params]
+; Power Management (gates PM capabilities)
+ HKR, Ndi\Params\FnMpPM,                    ParamDesc,      0, "Power Management"
+ HKR, Ndi\Params\FnMpPM,                    default,        0, "0"
+ HKR, Ndi\Params\FnMpPM,                    type,           0, "enum"
+ HKR, Ndi\Params\FnMpPM\Enum,               "0",           0, %DISABLED_STR%
+ HKR, Ndi\Params\FnMpPM\Enum,               "1",           0, %ENABLED_STR%
+
+; DeviceSleepOnDisconnect (standard, effective only when FnMpPM=1)
+ HKR, Ndi\Params\*DeviceSleepOnDisconnect,   ParamDesc,      0, "Device Sleep on Disconnect"
+ HKR, Ndi\Params\*DeviceSleepOnDisconnect,   default,        0, "1"
+ HKR, Ndi\Params\*DeviceSleepOnDisconnect,   type,           0, "enum"
+ HKR, Ndi\Params\*DeviceSleepOnDisconnect\Enum, "0",       0, %DISABLED_STR%
+ HKR, Ndi\Params\*DeviceSleepOnDisconnect\Enum, "1",       0, %ENABLED_STR%
+
 ; RSS
  HKR, Ndi\Params\*RSS,                ParamDesc,      0, "Receive Side Scaling"
  HKR, Ndi\Params\*RSS,                default,        0, "1"

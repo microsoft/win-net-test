@@ -6,6 +6,7 @@
 #include "precomp.h"
 #include "miniport.tmh"
 
+NDIS_STRING RegFnMpPM = NDIS_STRING_CONST("FnMpPM");
 NDIS_STRING RegRSS = NDIS_STRING_CONST("*RSS");
 NDIS_STRING RegNumRssQueues = NDIS_STRING_CONST("*NumRssQueues");
 
@@ -391,6 +392,9 @@ MpReadConfiguration(
     Adapter->CurrentPacketFilter = 0;
     MpInitializeOffload(&Adapter->OffloadCapabilities);
     MpInitializeOffload(&Adapter->OffloadConfig);
+
+    Adapter->PmEnabled = 0;
+    TRY_READ_INT_CONFIGURATION(ConfigHandle, &RegFnMpPM, &Adapter->PmEnabled);
 
     Adapter->RssEnabled = 0;
     TRY_READ_INT_CONFIGURATION(ConfigHandle, &RegRSS, &Adapter->RssEnabled);
@@ -815,14 +819,16 @@ MiniportInitializeHandler(
     // FNMP is enumerated by FNBUS; on a software-enumerated devnode the PnP
     // manager reports D0 only and these capabilities have no effect.
     //
-    NdisZeroMemory(&PmCaps, sizeof(PmCaps));
-    PmCaps.Header.Type = NDIS_OBJECT_TYPE_DEFAULT;
-    PmCaps.Header.Revision = NDIS_PM_CAPABILITIES_REVISION_2;
-    PmCaps.Header.Size = NDIS_SIZEOF_NDIS_PM_CAPABILITIES_REVISION_2;
-    PmCaps.MinMagicPacketWakeUp = NdisDeviceStateD3;
-    PmCaps.MinPatternWakeUp = NdisDeviceStateD3;
-    PmCaps.MinLinkChangeWakeUp = NdisDeviceStateD3;
-    GeneralAttributes.PowerManagementCapabilitiesEx = &PmCaps;
+    if (Adapter->PmEnabled) {
+        NdisZeroMemory(&PmCaps, sizeof(PmCaps));
+        PmCaps.Header.Type = NDIS_OBJECT_TYPE_DEFAULT;
+        PmCaps.Header.Revision = NDIS_PM_CAPABILITIES_REVISION_2;
+        PmCaps.Header.Size = NDIS_SIZEOF_NDIS_PM_CAPABILITIES_REVISION_2;
+        PmCaps.MinMagicPacketWakeUp = NdisDeviceStateD3;
+        PmCaps.MinPatternWakeUp = NdisDeviceStateD3;
+        PmCaps.MinLinkChangeWakeUp = NdisDeviceStateD3;
+        GeneralAttributes.PowerManagementCapabilitiesEx = &PmCaps;
+    }
 
     if (Adapter->RssEnabled) {
         NdisZeroMemory(&RssCaps, sizeof(NDIS_RECEIVE_SCALE_CAPABILITIES));

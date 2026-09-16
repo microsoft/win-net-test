@@ -149,6 +149,39 @@ Exit:
 static
 _IRQL_requires_max_(PASSIVE_LEVEL)
 NTSTATUS
+SharedIrpSetLinkState(
+    _In_ SHARED_CONTEXT *Shared,
+    _In_ IRP *Irp,
+    _In_ IO_STACK_LOCATION *IrpSp
+    )
+{
+    CONST MINIPORT_SET_LINK_STATE_IN *In = Irp->AssociatedIrp.SystemBuffer;
+    NDIS_LINK_STATE LinkState;
+
+    UNREFERENCED_PARAMETER(Irp);
+
+    if (IrpSp->Parameters.DeviceIoControl.InputBufferLength < sizeof(*In)) {
+        return STATUS_BUFFER_TOO_SMALL;
+    }
+
+    NdisZeroMemory(&LinkState, sizeof(LinkState));
+    LinkState.Header.Type = NDIS_OBJECT_TYPE_DEFAULT;
+    LinkState.Header.Revision = NDIS_LINK_STATE_REVISION_1;
+    LinkState.Header.Size = NDIS_SIZEOF_LINK_STATE_REVISION_1;
+    LinkState.MediaConnectState =
+        In->Connected ? MediaConnectStateConnected : MediaConnectStateDisconnected;
+    LinkState.MediaDuplexState = MediaDuplexStateFull;
+    LinkState.XmitLinkSpeed = MpGlobalContext.XmitLinkSpeed;
+    LinkState.RcvLinkSpeed = MpGlobalContext.RecvLinkSpeed;
+
+    MpIndicateStatus(Shared->Adapter, &LinkState, sizeof(LinkState), NDIS_STATUS_LINK_STATE);
+
+    return STATUS_SUCCESS;
+}
+
+static
+_IRQL_requires_max_(PASSIVE_LEVEL)
+NTSTATUS
 SharedIrpUpdateTaskOffload(
     _In_ SHARED_CONTEXT *Shared,
     _In_ IRP *Irp,
@@ -361,6 +394,10 @@ SharedIrpDeviceIoControl(
 
     case FNMP_IOCTL_MINIPORT_UPDATE_TASK_OFFLOAD:
         Status = SharedIrpUpdateTaskOffload(Shared, Irp, IrpSp);
+        break;
+
+    case FNMP_IOCTL_MINIPORT_SET_LINK_STATE:
+        Status = SharedIrpSetLinkState(Shared, Irp, IrpSp);
         break;
 
     default:
